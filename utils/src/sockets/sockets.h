@@ -1,5 +1,5 @@
-#ifndef UTILS_H_
-#define UTILS_H_
+#ifndef SOCKETS_H_
+#define SOCKETS_H_
 
 #include <stdlib.h>
 #include <stdio.h>
