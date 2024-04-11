@@ -12,7 +12,7 @@ int iniciar_servidor(char* puerto, t_log* logger)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	getaddrinfo(NULL, puerto, &hints, &servinfo);
+	getaddrinfo(NULL, puerto, &hints, &servinfo); // NULL para escuchar cualquier IP
 
 	// Creamos el socket de escucha del servidor
 	socket_servidor = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
