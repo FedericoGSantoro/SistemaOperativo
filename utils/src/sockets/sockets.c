@@ -1,4 +1,4 @@
-#include <sockets/sockets.h>
+#include "./sockets.h"
 
 // Iniciamos el servidor 
 int iniciar_servidor(char* puerto, char* ip, t_log* logger, char* msj_server)
