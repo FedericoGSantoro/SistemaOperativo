@@ -82,9 +82,9 @@ int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar)
 	return socket_cliente;
 }
 
-int recibir_operacion(int socket_cliente)
+int recibir_operacion(int socket_cliente) //A CHEQUEAR 
 {
-	int cod_op;
+	int cod_op; //esto es lo raro
 
 	if (recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) > 0)
 		return cod_op;
