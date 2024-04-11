@@ -1,7 +1,6 @@
 #include "./sockets.h"
 
-// Iniciamos el servidor 
-int iniciar_servidor(char* puerto, char* ip, t_log* logger, char* msj_server)
+int iniciar_servidor(char* puerto, t_log* loggerAuxiliar)
 {
 	int socket_servidor;
 
@@ -12,7 +11,7 @@ int iniciar_servidor(char* puerto, char* ip, t_log* logger, char* msj_server)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	getaddrinfo(ip, puerto, &hints, &servinfo);
+	getaddrinfo(NULL, puerto, &hints, &servinfo); // NULL para escuchar cualquier IP
 
 	// Creamos el socket de escucha del servidor
 	socket_servidor = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
@@ -31,13 +30,12 @@ int iniciar_servidor(char* puerto, char* ip, t_log* logger, char* msj_server)
 	}
 
 	freeaddrinfo(servinfo);
-    log_trace(logger, "Mensaje Server: %s", msj_server);
+    log_info(loggerAuxiliar, "Servidor inicializado en el puerto %s", puerto);
 
 	return socket_servidor;
 }
 
-// Creamos conexion contra el servidor
-int crear_conexion(char *ip, char* puerto)
+int crear_conexion(char *ip, char* puerto, t_log* loggerAuxiliar)
 {
     int socket_cliente;
 
@@ -54,11 +52,13 @@ int crear_conexion(char *ip, char* puerto)
 	// Creamos el socket
 	socket_cliente = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
 	if (socket_cliente == -1) {
+		log_info(loggerAuxiliar, "Error al crear el socket del IP: %s", ip);
 		abort();
 	}
 
 	// Conectamos el socket
 	if (connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen) == -1) {
+		log_info(loggerAuxiliar, "Error al conectarse al IP: %s", ip);
 		abort();
 	}
 
@@ -67,22 +67,21 @@ int crear_conexion(char *ip, char* puerto)
 	return socket_cliente;
 }
 
-// Esperamos a que el cliente se conecte
-int esperar_cliente(int socket_servidor, t_log* logger)
+int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar)
 {
     int socket_cliente;
 
 	// Aceptamos un nuevo cliente
 	socket_cliente = accept(socket_servidor, NULL, NULL);
 	if (socket_cliente == -1) {
+		log_info(loggerAuxiliar, "No se pudo conectar el cliente");
 		abort();
 	}
-	log_info(logger, "Se conecto un cliente!");
+	log_info(loggerAuxiliar, "Se conecto un cliente!");
 
 	return socket_cliente;
 }
 
-// Recibimos mensaje del cliente
 int recibir_operacion(int socket_cliente)
 {
 	int cod_op;
