@@ -1,7 +1,7 @@
 #include "./sockets.h"
 
 // Iniciamos el servidor 
-int iniciar_servidor(char* puerto, t_log* logger, char* msj_server)
+int iniciar_servidor(char* puerto, t_log* logger)
 {
 	int socket_servidor;
 
@@ -31,7 +31,7 @@ int iniciar_servidor(char* puerto, t_log* logger, char* msj_server)
 	}
 
 	freeaddrinfo(servinfo);
-    log_trace(logger, "Mensaje Server: %s", msj_server);
+    log_trace(logger, "Servidor inicializado en el puerto %s", puerto);
 
 	return socket_servidor;
 }
