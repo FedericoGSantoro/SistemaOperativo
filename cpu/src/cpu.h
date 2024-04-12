@@ -3,15 +3,16 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "../../utils/src/sockets/sockets.h"
 #include <commons/log.h>
 #include <commons/config.h>
+#include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/config/configs.h"
 
-#define rutaConfiguracionCpu "/home/utnso/Desktop/TP-SO/tp-2024-1c-Grupo-AFFOM/cpu/cpu.config"
+#define rutaConfiguracionCpu "../cpu.config"
 
-t_log* cpu_logger;
-t_config* configuracion;
+t_log* logger_obligatorio_cpu;
+t_log* logger_aux_cpu;
+t_config* configuracion_cpu;
 
 char* IP_MEMORIA;
 int PUERTO_MEMORIA;
@@ -20,6 +21,9 @@ int PUERTO_ESCUCHA_INTERRUPT;
 int CANTIDAD_ENTRADAS_TLB;
 char* ALGORITMO_TLB;
 
+void iniciarLogs();
+void iniciarConfig();
 void leerConfig();
+void terminarPrograma();
 
 #endif
