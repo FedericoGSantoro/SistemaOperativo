@@ -36,4 +36,7 @@ COMPROBAR QUE DEVOLVER
 */
 int recibir_operacion(int socket_cliente);
 
+// Liberamos la conexion de espacio de memoria
+void liberar_conexion(int socket_cliente);
+
 #endif
