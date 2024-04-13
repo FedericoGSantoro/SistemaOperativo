@@ -41,9 +41,17 @@ t_log* logs_obligatorios;
 int fd_memoria;
 int fd_cpu_dispatch;
 int fd_cpu_interrupt;
-int fd_escucha;
+int socket_servidor;
+
+/*---------VARIABLES---------*/
+
+
 
 /*---------FUNCIONES---------*/
+// Inicializa las variables
+void inicializarVariables();
+// Escucha el socket por peticiones
+bool escucharServer(int socket_servidor);
 // Crea los logs obligatorios y auxiliares
 void crearLogs();
 // Crea los sockets y se conecta hacia los otros modulos

@@ -12,20 +12,20 @@
 
 
 /* ------------ STRUCTS --------*/
+typedef enum {
+    MENSAJE,
+    PAQUETE,
+} op_codigo;
 
 typedef struct{
 	int size;
 	void* stream;
 } t_buffer;
 typedef struct{
-	op_code codigo_operacion;
+	op_codigo codigo_operacion;
 	t_buffer* buffer;
 } t_paquete;
 
-typedef enum {
-    MENSAJE,
-    PAQUETE,
-} op_codigo
 
 /*
 Iniciamos el servidor
@@ -60,8 +60,19 @@ void liberar_conexion(int socket);
 /*
 Envia un mensaje string hacia el servidor indicado
 mensaje = string a enviar
-socket_servidor = socket al cual enviar el mensaje
+socket_cliente = socket por el cual enviar el mensaje
 */
 void enviar_mensaje(char* mensaje, int socket_servidor);
+/*
+Serializa un paquete
+paquete = paquete a serializar
+bytes = bytes del contenido del paquete (tamaño buffer [sizeof(int)], buffer, tamaño codigo de op[sizeof(int)])
+*/
+void* serializar_paquete(t_paquete* paquete, int bytes);
+/*
+Elimina un paquete
+paquete = paquete a eliminar de la memoria
+*/
+void eliminar_paquete(t_paquete* paquete);
 
 #endif

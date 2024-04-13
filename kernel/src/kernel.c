@@ -1,6 +1,22 @@
 #include "./kernel.h"
 
 int main(int argc, char* argv[]){
+    // Inicializar variables
+    inicializarVariables();
+    
+    // Handshake
+    enviar_handshake();
+
+    // Escucho las conexiones entrantes
+    while(escucharServer());
+
+    // Liberar espacio de memoria
+    terminarPrograma();
+    
+    return 0;
+}
+
+void inicializarVariables(){
     // Creacion de logs
     crearLogs();
     
@@ -8,17 +24,21 @@ int main(int argc, char* argv[]){
     iniciarConfig();
 
     // Inicializacion servidor
-    fd_escucha = iniciar_servidor(PUERTO_ESCUCHA, logs_auxiliares);
+    socket_servidor = iniciar_servidor(PUERTO_ESCUCHA, logs_auxiliares);
 
     // Crear las conexiones hacia cpu y memoria
-    if ( crearConexiones() == true ) {
+    if ( crearConexiones() ) {
         log_info(logs_auxiliares, "Conexiones creadas correctamente");
     }
-    // Handshake
-    enviar_handshake();
-    // Liberar espacio de memoria
-    terminarPrograma();
-    return 0;
+}
+
+bool escucharServer(int socket_servidor) {
+    int socket_cliente = esperar_cliente(socket_servidor, logs_auxiliares);
+    if ( socket_cliente != -1 ) {
+        // TODO: Escuchar peticion del cliente y hacer lo que pide    
+        return true;
+    }
+    return false;
 }
 
 void enviar_handshake() {
@@ -88,7 +108,7 @@ void terminarPrograma() {
     log_destroy(logs_obligatorios);
     log_destroy(logs_auxiliares);
     config_destroy(config);
-    liberar_conexion(fd_escucha);
+    liberar_conexion(socket_servidor);
     liberar_conexion(fd_memoria);
     liberar_conexion(fd_cpu_dispatch);
     liberar_conexion(fd_cpu_interrupt);

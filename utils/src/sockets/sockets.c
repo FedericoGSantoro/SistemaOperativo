@@ -72,16 +72,15 @@ int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar) {
 	socket_cliente = accept(socket_servidor, NULL, NULL);
 	if (socket_cliente == -1) {
 		log_info(loggerAuxiliar, "No se pudo conectar el cliente");
-		abort();
 	}
-	log_info(loggerAuxiliar, "Se conecto un cliente!");
-
+	else {
+		log_info(loggerAuxiliar, "Se conecto un cliente!");
+	}
 	return socket_cliente;
 }
 
-//A CHEQUEAR 
 int recibir_operacion(int socket_cliente) {
-	int cod_op; //esto es lo raro
+	int cod_op;
 
 	if (recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) > 0)
 		return cod_op;
@@ -95,8 +94,7 @@ void liberar_conexion(int socket_cliente) {
 	close(socket_cliente);
 }
 
-
-void enviar_mensaje(char* mensaje, int socket_servidor) {
+void enviar_mensaje(char* mensaje, int socket_cliente) {
 	t_paquete* paquete = malloc(sizeof(t_paquete));
 
 	paquete->codigo_operacion = MENSAJE;
@@ -113,4 +111,24 @@ void enviar_mensaje(char* mensaje, int socket_servidor) {
 
 	free(a_enviar);
 	eliminar_paquete(paquete);
+}
+
+void* serializar_paquete(t_paquete* paquete, int bytes) {
+	void * magic = malloc(bytes);
+	int desplazamiento = 0;
+
+	memcpy(magic + desplazamiento, &(paquete->codigo_operacion), sizeof(int));
+	desplazamiento+= sizeof(int);
+	memcpy(magic + desplazamiento, &(paquete->buffer->size), sizeof(int));
+	desplazamiento+= sizeof(int);
+	memcpy(magic + desplazamiento, paquete->buffer->stream, paquete->buffer->size);
+	desplazamiento+= paquete->buffer->size;
+
+	return magic;
+}
+
+void eliminar_paquete(t_paquete* paquete) {
+	free(paquete->buffer->stream);
+	free(paquete->buffer);
+	free(paquete);
 }
