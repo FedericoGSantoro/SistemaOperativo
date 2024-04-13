@@ -1,7 +1,6 @@
 #include "./sockets.h"
 
-int iniciar_servidor(char* puerto, t_log* loggerAuxiliar)
-{
+int iniciar_servidor(char* puerto, t_log* loggerAuxiliar) {
 	int socket_servidor;
 
 	struct addrinfo hints, *servinfo, *p;
@@ -35,8 +34,7 @@ int iniciar_servidor(char* puerto, t_log* loggerAuxiliar)
 	return socket_servidor;
 }
 
-int crear_conexion(char *ip, char* puerto, t_log* loggerAuxiliar)
-{
+int crear_conexion(char *ip, char* puerto, t_log* loggerAuxiliar) {
     int socket_cliente;
 
 	struct addrinfo hints;
@@ -67,8 +65,7 @@ int crear_conexion(char *ip, char* puerto, t_log* loggerAuxiliar)
 	return socket_cliente;
 }
 
-int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar)
-{
+int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar) {
     int socket_cliente;
 
 	// Aceptamos un nuevo cliente
@@ -82,8 +79,8 @@ int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar)
 	return socket_cliente;
 }
 
-int recibir_operacion(int socket_cliente) //A CHEQUEAR 
-{
+//A CHEQUEAR 
+int recibir_operacion(int socket_cliente) {
 	int cod_op; //esto es lo raro
 
 	if (recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) > 0)
@@ -92,4 +89,8 @@ int recibir_operacion(int socket_cliente) //A CHEQUEAR
 		close(socket_cliente);
 		return -1;
 	}
+}
+
+void liberar_conexion(int socket_cliente) {
+	close(socket_cliente);
 }
