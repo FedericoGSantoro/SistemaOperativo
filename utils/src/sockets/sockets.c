@@ -107,7 +107,7 @@ void enviar_mensaje(char* mensaje, int socket_cliente) {
 
 	void* a_enviar = serializar_paquete(paquete, bytes);
 
-	send(socket_servidor, a_enviar, bytes, 0);
+	send(socket_cliente, a_enviar, bytes, 0);
 
 	free(a_enviar);
 	eliminar_paquete(paquete);

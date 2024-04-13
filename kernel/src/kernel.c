@@ -8,7 +8,7 @@ int main(int argc, char* argv[]){
     enviar_handshake();
 
     // Escucho las conexiones entrantes
-    while(escucharServer());
+    while(escucharServer(socket_servidor));
 
     // Liberar espacio de memoria
     terminarPrograma();
