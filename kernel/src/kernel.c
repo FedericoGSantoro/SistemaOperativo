@@ -2,6 +2,32 @@
 
 int main(int argc, char* argv[]){
     // Creacion de logs
+    crearLogs();
+    
+    // Leer y almacenar los datos de la configuracion
+    iniciarConfig();
+
+    // Inicializacion servidor
+    fd_escucha = iniciar_servidor(PUERTO_ESCUCHA, logs_auxiliares);
+
+    // Crear las conexiones hacia cpu y memoria
+    if ( crearConexiones() == true ) {
+        log_info(logs_auxiliares, "Conexiones creadas correctamente");
+    }
+    // Handshake
+    enviar_handshake();
+    // Liberar espacio de memoria
+    terminarPrograma();
+    return 0;
+}
+
+void enviar_handshake() {
+    enviar_mensaje("Soy Kernel!", fd_memoria);
+    enviar_mensaje("Soy Kernel!", fd_cpu_dispatch);
+    enviar_mensaje("Soy Kernel!", fd_cpu_interrupt);
+}
+
+void crearLogs() {
     logs_auxiliares = log_create("logsExtras.log", "[EXTRA]", true, LOG_LEVEL_INFO);
     logs_obligatorios = log_create("obligatoriosKernel.log", "[OBLIGATORIOS]", false, LOG_LEVEL_INFO);
     // Comprobacion de logs creador correctamente
@@ -9,25 +35,6 @@ int main(int argc, char* argv[]){
         terminarPrograma();
         abort();
     }
-    // Inicializacion configuracion
-    config = iniciar_config(rutaConfiguracion);
-    // Comprobacion de configuracion inicializada correctamente
-    if ( config == NULL ) {
-        terminarPrograma();
-        abort();
-    }
-    // Leer y almacenar los datos de la configuracion
-    leerConfig();
-    log_info(logs_auxiliares, "Configuracion cargada correctamente");
-    // Inicializacion servidor
-    fd_escucha = iniciar_servidor(PUERTO_ESCUCHA, logs_auxiliares);
-    // Crear las conexiones hacia cpu y memoria
-    if ( crearConexiones() == true ) {
-        log_info(logs_auxiliares, "Conexiones creadas correctamente");
-    }
-    // Liberar espacio de memoria
-    terminarPrograma();
-    return 0;
 }
 
 bool crearConexiones() {
@@ -35,6 +42,18 @@ bool crearConexiones() {
     fd_cpu_dispatch = crear_conexion(IP_CPU, PUERTO_CPU_DISPATCH, logs_auxiliares);
     fd_cpu_interrupt = crear_conexion(IP_CPU, PUERTO_CPU_INTERRUPT, logs_auxiliares);
     return true;
+}
+
+void iniciarConfig() {
+    // Inicializacion configuracion
+    config = iniciar_config(rutaConfiguracion);
+    // Comprobacion de configuracion inicializada correctamente
+    if ( config == NULL ) {
+        terminarPrograma();
+        abort();
+    }
+    leerConfig();
+    return;
 }
 
 void leerConfig() {
@@ -52,6 +71,7 @@ void leerConfig() {
     INSTANCIAS_RECURSOS = string_array_as_int_array(arrayInstancias);
     GRADO_MULTIPROGRAMACION = config_get_int_value(config, "GRADO_MULTIPROGRAMACION");
     string_array_destroy(arrayInstancias);
+    log_info(logs_auxiliares, "Configuracion cargada correctamente");
 }
 
 int* string_array_as_int_array(char** arrayInstancias) {
@@ -68,4 +88,8 @@ void terminarPrograma() {
     log_destroy(logs_obligatorios);
     log_destroy(logs_auxiliares);
     config_destroy(config);
+    liberar_conexion(fd_escucha);
+    liberar_conexion(fd_memoria);
+    liberar_conexion(fd_cpu_dispatch);
+    liberar_conexion(fd_cpu_interrupt);
 }

@@ -10,6 +10,23 @@
 #include <string.h>
 #include <commons/log.h>
 
+
+/* ------------ STRUCTS --------*/
+
+typedef struct{
+	int size;
+	void* stream;
+} t_buffer;
+typedef struct{
+	op_code codigo_operacion;
+	t_buffer* buffer;
+} t_paquete;
+
+typedef enum {
+    MENSAJE,
+    PAQUETE,
+} op_codigo
+
 /*
 Iniciamos el servidor
 puerto = puerto al cual escuchar
@@ -35,8 +52,16 @@ socket_cliente = socket por el cual se va a recibir informacion
 COMPROBAR QUE DEVOLVER
 */
 int recibir_operacion(int socket_cliente);
-
-// Liberamos la conexion de espacio de memoria
-void liberar_conexion(int socket_cliente);
+/*
+Liberamos la conexion de espacio de memoria
+socket = socket a liberar
+*/
+void liberar_conexion(int socket);
+/*
+Envia un mensaje string hacia el servidor indicado
+mensaje = string a enviar
+socket_servidor = socket al cual enviar el mensaje
+*/
+void enviar_mensaje(char* mensaje, int socket_servidor);
 
 #endif

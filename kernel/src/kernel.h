@@ -44,10 +44,14 @@ int fd_cpu_interrupt;
 int fd_escucha;
 
 /*---------FUNCIONES---------*/
-// Lee la configuracion y lo carga a las variables correspondientes
-void leerConfig(); 
+// Crea los logs obligatorios y auxiliares
+void crearLogs();
 // Crea los sockets y se conecta hacia los otros modulos
 bool crearConexiones();
+// Inicializa la config y lee los datos con leerConfig()
+void iniciarConfig();
+// Lee la configuracion y lo carga a las variables correspondientes
+void leerConfig(); 
 // Convierte un array de string a un array de enteros
 int* string_array_as_int_array(char** arrayInstancias); 
 // Libera los espacios de memoria
