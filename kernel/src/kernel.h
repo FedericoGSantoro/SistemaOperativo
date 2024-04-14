@@ -34,7 +34,7 @@ int GRADO_MULTIPROGRAMACION;
 t_config* config;
 t_log* logs_auxiliares;
 t_log* logs_obligatorios;
-
+t_log* logs_error;
 
 /*---------FILE DESCRIPTORS CONEXIONES---------*/
 
@@ -50,6 +50,8 @@ int socket_servidor;
 /*---------FUNCIONES---------*/
 // Inicializa las variables
 void inicializarVariables();
+// Atiende al cliente
+void atender_cliente(void* argumentoVoid);
 // Escucha el socket por peticiones
 bool escucharServer(int socket_servidor);
 // Crea los logs obligatorios y auxiliares
