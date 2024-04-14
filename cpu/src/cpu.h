@@ -65,7 +65,8 @@ fuera en paralelo para que no se bloqueen entre si.
 */
 void crearHiloKernelDispatch();
 void crearHiloKernelInterrupt();
-void crearHilosMemoria();
+void crearHiloCpuMemoria();
+void crearHiloMemoriaCpu();
 
 // Liberaramos espacio de memoria
 void terminarPrograma();
