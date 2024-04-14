@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
     leerConfig();
 
     iniciarServidoresCpu();
-    iniciarConexionCpuMemoria();
+    //iniciarConexionCpuMemoria();
     while(esperarClientes());
     
     terminarPrograma();
@@ -28,11 +28,6 @@ void iniciarLogs() {
 
 void iniciarConfig() {
     configuracion_cpu = iniciar_config(rutaConfiguracionCpu);
-    // Comprobamos que se haya creado correctamente
-    if (configuracion_cpu == NULL) {
-        terminarPrograma();
-        abort();
-    }
 }
 
 void leerConfig() {
@@ -56,10 +51,7 @@ void iniciarServidoresCpu() {
 
 void iniciarConexionCpuMemoria() {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error_cpu);
-    // Comprobamos que se haya creado correctamente
-    if (fd_memoria != -1){
-        crearHilosMemoria();
-    }
+    crearHiloCpuMemoria();
 }
 
 bool esperarClientes() {
