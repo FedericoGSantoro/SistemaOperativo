@@ -5,9 +5,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <pthread.h>
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/sockets/sockets.h"
+#include "../../utils/src/hilos/hilos.h"
 #include <commons/config.h>
 #include <commons/string.h>
 
@@ -48,6 +48,12 @@ int socket_servidor;
 
 
 
+/*---------HILOS---------*/
+
+pthread_t thread_cpu_dispatch;
+pthread_t thread_cpu_interrupt;
+pthread_t thread_memoria;
+
 /*---------FUNCIONES---------*/
 // Inicializa las variables
 void inicializarVariables();
@@ -55,6 +61,8 @@ void inicializarVariables();
 void atender_cliente(void* argumentoVoid);
 // Escucha el socket por peticiones
 bool escucharServer(int socket_servidor);
+// Envia mensaje inicial 
+void enviar_handshake();
 // Crea los logs obligatorios y auxiliares
 void crearLogs();
 // Crea los sockets y se conecta hacia los otros modulos
@@ -64,8 +72,7 @@ void iniciarConfig();
 // Lee la configuracion y lo carga a las variables correspondientes
 void leerConfig(); 
 // Convierte un array de string a un array de enteros
-int* string_array_as_int_array(char** arrayInstancias); 
-void enviar_handshake();
+int* string_array_as_int_array(char** arrayInstancias);
 // Libera los espacios de memoria
 void terminarPrograma(); 
 
