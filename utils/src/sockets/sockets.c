@@ -1,6 +1,6 @@
 #include "./sockets.h"
 
-int iniciar_servidor(char* puerto, t_log* loggerAuxiliar) {
+int iniciar_servidor(char* puerto, t_log* loggerAuxiliar, t_log* loggerError) {
 	int socket_servidor;
 
 	struct addrinfo hints, *servinfo, *p;
@@ -15,16 +15,19 @@ int iniciar_servidor(char* puerto, t_log* loggerAuxiliar) {
 	// Creamos el socket de escucha del servidor
 	socket_servidor = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
 	if (socket_servidor == -1) {
+		log_info(loggerError, "El socket no pudo ser creado");
 		abort();
 	}
 
 	// Asociamos el socket a un puerto
 	if (bind(socket_servidor, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
+		log_info(loggerError, "El socket no pudo ser asociado a un puerto");
 		abort();
 	}
 
 	// Escuchamos las conexiones entrantes
 	if (listen(socket_servidor, SOMAXCONN) == -1) { 
+		log_info(loggerError, "El socket no puede escuchar las conexiones entrantes");
 		abort();
 	}
 
@@ -34,7 +37,7 @@ int iniciar_servidor(char* puerto, t_log* loggerAuxiliar) {
 	return socket_servidor;
 }
 
-int crear_conexion(char *ip, char* puerto, t_log* loggerAuxiliar) {
+int crear_conexion(char *ip, char* puerto, t_log* loggerError) {
     int socket_cliente;
 
 	struct addrinfo hints;
@@ -50,13 +53,13 @@ int crear_conexion(char *ip, char* puerto, t_log* loggerAuxiliar) {
 	// Creamos el socket
 	socket_cliente = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
 	if (socket_cliente == -1) {
-		log_info(loggerAuxiliar, "Error al crear el socket del IP: %s", ip);
+		log_info(loggerError, "Error al crear el socket del IP: %s", ip);
 		abort();
 	}
 
 	// Conectamos el socket
 	if (connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen) == -1) {
-		log_info(loggerAuxiliar, "Error al conectarse al IP: %s", ip);
+		log_info(loggerError, "Error al conectarse al IP: %s", ip);
 		abort();
 	}
 
@@ -65,13 +68,13 @@ int crear_conexion(char *ip, char* puerto, t_log* loggerAuxiliar) {
 	return socket_cliente;
 }
 
-int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar) {
+int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar, t_log* loggerError) {
     int socket_cliente;
 
 	// Aceptamos un nuevo cliente
 	socket_cliente = accept(socket_servidor, NULL, NULL);
 	if (socket_cliente == -1) {
-		log_info(loggerAuxiliar, "No se pudo conectar el cliente");
+		log_info(loggerError, "Error no se pudo conectar el cliente");
 	}
 	else {
 		log_info(loggerAuxiliar, "Se conecto un cliente!");
