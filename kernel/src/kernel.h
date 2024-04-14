@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/sockets/sockets.h"
 #include <commons/config.h>
@@ -64,6 +65,7 @@ void iniciarConfig();
 void leerConfig(); 
 // Convierte un array de string a un array de enteros
 int* string_array_as_int_array(char** arrayInstancias); 
+void enviar_handshake();
 // Libera los espacios de memoria
 void terminarPrograma(); 
 

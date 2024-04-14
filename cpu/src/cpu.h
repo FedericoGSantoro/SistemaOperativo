@@ -13,6 +13,7 @@
 
 t_log* logger_obligatorio_cpu;
 t_log* logger_aux_cpu;
+t_log* logger_error_cpu;
 t_config* configuracion_cpu;
 
 //datos de la configuracion
@@ -48,7 +49,7 @@ void iniciarServidoresCpu();
 // Nos conectamos como cliente a Memoria
 void iniciarConexionCpuMemoria();
 // Esperaramos conexion del cliente kernel modo dispatch y modo interrupt
-void esperarClientes();
+bool esperarClientes();
 
 // Atendemos al cliente Kernel modo Dispatch, recibimos mensajes
 void atenderKernelDispatch();
@@ -62,7 +63,6 @@ Las funciones atenderKernelDispatch, atenderKernelInterrup y atenderMemoria dent
 es por eso que necesitamos crear 3 hilos. Cada uno de los hilos ejecutara cada uno de estos procesos como si
 fuera en paralelo para que no se bloqueen entre si.
 */
-void crearHilos();
 void crearHiloKernelDispatch();
 void crearHiloKernelInterrupt();
 void crearHilosMemoria();
