@@ -6,7 +6,8 @@
 			"cstddef": "c",
 			"limits": "c",
 			"cstdlib": "c",
-			"type_traits": "c"
+			"type_traits": "c",
+			"executor": "c"
 		},
 		"C_Cpp.errorSquiggles": "disabled",
 	},

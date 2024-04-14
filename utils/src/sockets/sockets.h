@@ -31,21 +31,23 @@ typedef struct{
 Iniciamos el servidor
 puerto = puerto al cual escuchar
 loggerAuxiliar = logger para cargar datos extras
+loggerError = logger para cargar los errores
 */
-int iniciar_servidor(char* puerto, t_log* logger);
+int iniciar_servidor(char* puerto, t_log* loggerAuxiliar, t_log* loggerError);
 /*
 Creamos conexion contra el servidor
 ip = ip a la cual conectarse
 puerto = puerto al cual conectarse
-loggerAuxiliar = logger para cargar datos extras
+loggerError = logger para cargar los errores
 */
-int crear_conexion(char *ip, char* puerto, t_log* loggerAuxiliar);
+int crear_conexion(char *ip, char* puerto, t_log* loggerError);
 /*
 Esperamos a que el cliente se conecte
 socket_servidor = socket al cual se van a conectar
 loggerAuxiliar = logger para cargar datos extras
+loggerError = logger para cargar los errores
 */
-int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar);
+int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar, t_log* loggerError);
 /*
 Recibimos mensaje del cliente
 socket_cliente = socket por el cual se va a recibir informacion
