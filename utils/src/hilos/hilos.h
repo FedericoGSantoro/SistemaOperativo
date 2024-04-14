@@ -1,8 +1,14 @@
-#ifndef KERNEL_H_
-#define KERNEL_H_
+#ifndef HILOS_H_
+#define HILOS_H_
 
 /*---------LIBRERIAS---------*/
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <pthread.h>
 #include <commons/log.h>
 

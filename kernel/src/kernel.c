@@ -64,7 +64,7 @@ bool escucharServer(int socket_servidor) {
     if ( socket_cliente != -1 ) {
         // Creo hilo y le asigno atender_cliente pasandole el socket como parametro
         pthread_t thread_cliente;
-        crearHilo(&thread_cliente, (void*) atender_cliente, (void*) &socket_cliente, "Cliente");
+        crearHilo(&thread_cliente, (void*) atender_cliente, (void*) &socket_cliente, "Cliente", logs_auxiliares, logs_error);
         return true;
     }
     return false;
@@ -91,13 +91,13 @@ void crearLogs() {
 bool crearConexiones() {
 
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_error);
-    crearHilo(&thread_memoria, (void*) atender_cliente, (void*) &fd_memoria, "Memoria");
+    crearHilo(&thread_memoria, (void*) atender_cliente, (void*) &fd_memoria, "Memoria", logs_auxiliares, logs_error);
 
     fd_cpu_dispatch = crear_conexion(IP_CPU, PUERTO_CPU_DISPATCH, logs_error);
-    crearHilo(&thread_cpu_dispatch, (void*) atender_cliente, (void*) &fd_cpu_dispatch, "CPU Dispatch");
+    crearHilo(&thread_cpu_dispatch, (void*) atender_cliente, (void*) &fd_cpu_dispatch, "CPU Dispatch", logs_auxiliares, logs_error);
 
     fd_cpu_interrupt = crear_conexion(IP_CPU, PUERTO_CPU_INTERRUPT, logs_error);
-    crearHilo(&thread_cpu_interrupt, (void*) atender_cliente, (void*) &fd_cpu_interrupt, "CPU Interrupt");
+    crearHilo(&thread_cpu_interrupt, (void*) atender_cliente, (void*) &fd_cpu_interrupt, "CPU Interrupt", logs_auxiliares, logs_error);
 
     return true;
 }
