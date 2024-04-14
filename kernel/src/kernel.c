@@ -42,7 +42,7 @@ bool escucharServer(int socket_servidor) {
 }
 
 void enviar_handshake() {
-    enviar_mensaje("Soy Kernel!", fd_memoria);
+    //enviar_mensaje("Soy Kernel!", fd_memoria);
     enviar_mensaje("Soy Kernel!", fd_cpu_dispatch);
     enviar_mensaje("Soy Kernel!", fd_cpu_interrupt);
 }
@@ -58,7 +58,7 @@ void crearLogs() {
 }
 
 bool crearConexiones() {
-    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_auxiliares);
+    //fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_auxiliares);
     fd_cpu_dispatch = crear_conexion(IP_CPU, PUERTO_CPU_DISPATCH, logs_auxiliares);
     fd_cpu_interrupt = crear_conexion(IP_CPU, PUERTO_CPU_INTERRUPT, logs_auxiliares);
     return true;

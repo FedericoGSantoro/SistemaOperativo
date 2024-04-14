@@ -81,7 +81,8 @@ int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar) {
 
 int recibir_operacion(int socket_cliente) {
 	int cod_op;
-
+	// El recibir operacion es bloquante, se queda esperando hasta recibir algo
+    // Si se recibe algo menor a 0 se toma que como que el cliente se desconecto
 	if (recv(socket_cliente, &cod_op, sizeof(int), MSG_WAITALL) > 0)
 		return cod_op;
 	else {
@@ -125,6 +126,27 @@ void* serializar_paquete(t_paquete* paquete, int bytes) {
 	desplazamiento+= paquete->buffer->size;
 
 	return magic;
+}
+
+void *recibir_buffer(int *size, int socket_cliente)
+{
+	void *buffer;
+	// Recibo el tamanio del void*
+	recv(socket_cliente, size, sizeof(int), MSG_WAITALL);
+	// Creo en memoria el void* segun el tamanio
+	buffer = malloc(*size);
+	// Recibo void*
+	recv(socket_cliente, buffer, *size, MSG_WAITALL);
+
+	return buffer;
+}
+
+void recibir_mensaje(int socket_cliente, t_log* loggerAuxiliar)
+{
+	int size;
+	char *buffer = recibir_buffer(&size, socket_cliente);
+	log_info(loggerAuxiliar, "Me llego el mensaje: %s", buffer);
+	free(buffer);
 }
 
 void eliminar_paquete(t_paquete* paquete) {
