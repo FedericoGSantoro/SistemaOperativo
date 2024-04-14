@@ -65,7 +65,7 @@ bool escucharServer(int socket_servidor) {
 }
 
 void enviar_handshake() {
-    enviar_mensaje("Soy Kernel!", fd_memoria);
+    //enviar_mensaje("Soy Kernel!", fd_memoria);
     enviar_mensaje("Soy Kernel!", fd_cpu_dispatch);
     enviar_mensaje("Soy Kernel!", fd_cpu_interrupt);
 }
@@ -86,9 +86,9 @@ bool crearConexiones() {
     pthread_t thread_cpu_interrupt;
     pthread_t thread_memoria;
 
-    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_error);
-    pthread_create(&thread_memoria, NULL, (void*) atender_cliente, fd_memoria); // Cambiar atenderCliente creo
-    pthread_detach(thread_memoria);
+    //fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_error);
+    //pthread_create(&thread_memoria, NULL, (void*) atender_cliente, fd_memoria); // Cambiar atenderCliente creo
+    //pthread_detach(thread_memoria);
 
     fd_cpu_dispatch = crear_conexion(IP_CPU, PUERTO_CPU_DISPATCH, logs_error);
     pthread_create(&thread_cpu_dispatch, NULL, (void*) atender_cliente, fd_cpu_dispatch); // Cambiar atenderCliente creo
