@@ -33,10 +33,14 @@ void inicializarVariables(){
 }
 
 void atender_cliente(void* argumentoVoid){
+    // Paso el void* a int*
     int* argumentoInt = (int*) argumentoVoid;
+    // Me quedo con el dato del int*
     int socket_cliente = *argumentoInt;
     int codigoOperacion;
+    // Reviso que haya conexion
     while( socket_cliente != -1 ) {
+        // Leo el codigo de operacion enviado
         codigoOperacion = recibir_operacion(socket_cliente);
         if ( codigoOperacion == -1 ) {
             log_info(logs_auxiliares, "El cliente se desconecto de Kernel");
@@ -54,18 +58,21 @@ void atender_cliente(void* argumentoVoid){
 }
 
 bool escucharServer(int socket_servidor) {
+    // Escucho el socket constantemente ya que es bloqueante
     int socket_cliente = esperar_cliente(socket_servidor, logs_auxiliares, logs_error);
+    // Si aparece alguien:
     if ( socket_cliente != -1 ) {
+        // Creo hilo y le asigno atender_cliente pasandole el socket como parametro
         pthread_t thread_cliente;
-        pthread_create(&thread_cliente, NULL, (void*) atender_cliente, (void*) &socket_cliente);
-        pthread_detach(thread_cliente); 
+        crearHilo(&thread_cliente, (void*) atender_cliente, (void*) &socket_cliente, "Cliente");
         return true;
     }
     return false;
 }
 
 void enviar_handshake() {
-    //enviar_mensaje("Soy Kernel!", fd_memoria);
+    // Envio los mensajes iniciales
+    enviar_mensaje("Soy Kernel!", fd_memoria);
     enviar_mensaje("Soy Kernel!", fd_cpu_dispatch);
     enviar_mensaje("Soy Kernel!", fd_cpu_interrupt);
 }
@@ -82,21 +89,15 @@ void crearLogs() {
 }
 
 bool crearConexiones() {
-    pthread_t thread_cpu_dispatch;
-    pthread_t thread_cpu_interrupt;
-    pthread_t thread_memoria;
 
-    //fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_error);
-    //pthread_create(&thread_memoria, NULL, (void*) atender_cliente, fd_memoria); // Cambiar atenderCliente creo
-    //pthread_detach(thread_memoria);
+    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_error);
+    crearHilo(&thread_memoria, (void*) atender_cliente, (void*) &fd_memoria, "Memoria");
 
     fd_cpu_dispatch = crear_conexion(IP_CPU, PUERTO_CPU_DISPATCH, logs_error);
-    pthread_create(&thread_cpu_dispatch, NULL, (void*) atender_cliente, fd_cpu_dispatch); // Cambiar atenderCliente creo
-    pthread_detach(thread_cpu_dispatch);
+    crearHilo(&thread_cpu_dispatch, (void*) atender_cliente, (void*) &fd_cpu_dispatch, "CPU Dispatch");
 
     fd_cpu_interrupt = crear_conexion(IP_CPU, PUERTO_CPU_INTERRUPT, logs_error);
-    pthread_create(&thread_cpu_interrupt, NULL, (void*) atender_cliente, fd_cpu_interrupt); // Cambiar atenderCliente creo
-    pthread_detach(thread_cpu_interrupt);
+    crearHilo(&thread_cpu_interrupt, (void*) atender_cliente, (void*) &fd_cpu_interrupt, "CPU Interrupt");
 
     return true;
 }
@@ -106,6 +107,7 @@ void iniciarConfig() {
     config = iniciar_config(rutaConfiguracion);
     // Comprobacion de configuracion inicializada correctamente
     if ( config == NULL ) {
+        log_error(logs_error, "La configuracion no pudo ser iniciada");
         terminarPrograma();
         abort();
     }
@@ -144,6 +146,7 @@ int* string_array_as_int_array(char** arrayInstancias) {
 void terminarPrograma() {
     log_destroy(logs_obligatorios);
     log_destroy(logs_auxiliares);
+    log_destroy(logs_error);
     config_destroy(config);
     liberar_conexion(socket_servidor);
     liberar_conexion(fd_memoria);
