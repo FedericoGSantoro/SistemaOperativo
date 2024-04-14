@@ -16,7 +16,7 @@ typedef enum {
     MENSAJE,
     PAQUETE,
 } op_codigo;
-
+// t_buffer para enviar y recibir mensajes
 typedef struct{
 	int size;
 	void* stream;
@@ -69,6 +69,15 @@ paquete = paquete a serializar
 bytes = bytes del contenido del paquete (tamaño buffer [sizeof(int)], buffer, tamaño codigo de op[sizeof(int)])
 */
 void* serializar_paquete(t_paquete* paquete, int bytes);
+/*
+Recibe size y void* del mensaje
+size = lo que pesa en bytes el void*
+*/
+void *recibir_buffer(int *size, int socket_cliente);
+/*
+Recibe mensaje del cliente
+*/
+void recibir_mensaje(int socket_cliente, t_log* loggerAuxiliar);
 /*
 Elimina un paquete
 paquete = paquete a eliminar de la memoria
