@@ -1,7 +1,5 @@
 #include "./memoria.h"
 
-//TODO: HACER CONEXION DE SOCKETS -11/4 20hs: avanzado, falta ver hilos aún.
-
 int main(void) {
 
     config = iniciar_config("../memoria.config");
