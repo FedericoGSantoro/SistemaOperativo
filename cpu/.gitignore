@@ -1,7 +1,8 @@
-# Generated files
+# Generated files (agregado .exe's por comodidad)
 bin/
 obj/
 *.log
+*.exe
 
 # Eclipse files
 .settings/

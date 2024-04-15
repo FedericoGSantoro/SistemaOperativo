@@ -1,7 +1,5 @@
 #include "./memoria.h"
 
-//TODO: HACER CONEXION DE SOCKETS -11/4 20hs: avanzado, falta ver hilos aún.
-
 int main(void) {
 
     loggerOblig = log_create("memoria.log", "Modulo_Memoria", 1, LOG_LEVEL_INFO); 
