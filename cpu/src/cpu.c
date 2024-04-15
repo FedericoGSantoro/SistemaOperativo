@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
     leerConfig();
 
     iniciarServidoresCpu();
-    //iniciarConexionCpuMemoria();
+    iniciarConexionCpuMemoria();
     while(esperarClientes());
     
     terminarPrograma();
