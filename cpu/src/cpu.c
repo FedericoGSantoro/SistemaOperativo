@@ -19,15 +19,16 @@ int main(int argc, char* argv[]) {
 void iniciarLogs() {
     logger_obligatorio_cpu = log_create("logsObligatoriosCPU.log", "LOG_OBLIGATORIO_CPU", true, LOG_LEVEL_INFO);
     logger_aux_cpu = log_create("logsExtrasCPU.log", "LOG_EXTRA_CPU", true, LOG_LEVEL_INFO);
+    logger_error_cpu = log_create("logsExtrasCPU.log", "LOG_ERROR_CPU", true, LOG_LEVEL_INFO);
     // Comprobamos que los logs se hayan creado correctamente
-    if (logger_aux_cpu == NULL || logger_obligatorio_cpu == NULL) {
+    if ( logger_aux_cpu == NULL || logger_obligatorio_cpu == NULL || logger_error_cpu == NULL ) {
         terminarPrograma();
         abort();
     }
 }
 
 void iniciarConfig() {
-    configuracion_cpu = iniciar_config(rutaConfiguracionCpu, logger_aux_cpu, (void*)terminarPrograma);
+    configuracion_cpu = iniciar_config(rutaConfiguracionCpu, logger_error_cpu, (void*)terminarPrograma);
 }
 
 void leerConfig() {
@@ -51,15 +52,15 @@ void iniciarServidoresCpu() {
 
 void iniciarConexionCpuMemoria() {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error_cpu);
-    crearHiloCpuMemoria();
+    crearHiloJoin(&hilo_memoria_cpu, (void*)enviarMsjMemoria, NULL, "Memoria", logger_aux_cpu, logger_error_cpu);
 }
 
 bool esperarClientes() {
     fd_kernel_dispatch = esperar_cliente(fd_cpu_dispatch, logger_aux_cpu, logger_error_cpu);
     fd_kernel_interrupt = esperar_cliente(fd_cpu_interrupt, logger_aux_cpu, logger_error_cpu);
     if (fd_kernel_dispatch != -1 && fd_kernel_interrupt != -1){
-        crearHiloKernelDispatch();
-        crearHiloKernelInterrupt();
+        crearHiloDetach(&hilo_kernel_dispatch_cpu, (void*)atenderKernelDispatch, NULL, "Kernel Dispatch", logger_aux_cpu, logger_error_cpu);
+        crearHiloDetach(&hilo_kernel_interrumpt_cpu, (void*)atenderKernelInterrupt, NULL, "Kernel Interrupt", logger_aux_cpu, logger_error_cpu);
         return true;
     }
     return false;
@@ -142,66 +143,10 @@ void enviarMsjMemoria(){
     enviar_mensaje("Hola, soy CPU!", fd_memoria);
 }
 
-void crearHiloKernelDispatch() {
-    // Creamos hilo y le decimos que ejecute atenderKernelDispatch en ese hilo (en el 3er argumento puntero a funcion)
-    // Comprobamos que el hilo se haya creado correctamente
-    if (pthread_create(&hilo_kernel_dispatch_cpu, NULL, (void*)atenderKernelDispatch, NULL) == 0){ // NULL en el segundo argumento para que se seteen los valores por defecto, y NULL en el ultimo argumento porque la funcion no recibe parametros
-        log_info(logger_aux_cpu, "El hilo Kernel Dispatch fue creado correctamente");
-
-        // Hacemos que el hilo hilo_kernel_dispatch_cpu se desacople del hilo principal y que se siga ejecutando aparte para que el principal pueda seguir ejecutando
-        // Una vez que se finalice la ejecucion, liberara aumatomicamente los recursos del hilo
-        // Comprobamos que el hilo se haya desacoplado correctamente
-        if (pthread_detach(hilo_kernel_dispatch_cpu) == 0){
-            log_info(logger_aux_cpu, "El hilo Kernel Dispatch fue desacoplado correctamente");
-        } else {
-            log_error(logger_error_cpu, "El hilo Kernel Dispatch no se desacoplo correctamente");
-        }
-
-    } else {
-        log_error(logger_error_cpu, "El hilo Kernel Dispatch no fue creado correctamente");
-    }
-}
-
-void crearHiloKernelInterrupt() {
-    if (pthread_create(&hilo_kernel_interrumpt_cpu, NULL, (void*)atenderKernelInterrupt, NULL) == 0) {
-        log_info(logger_aux_cpu, "El hilo Kernel Interrupt fue creado correctamente");
-        if (pthread_detach(hilo_kernel_interrumpt_cpu) == 0) {
-            log_info(logger_aux_cpu, "El hilo Kernel Interrupt fue desacoplado correctamente");
-        } else {
-            log_error(logger_error_cpu, "El hilo Kernel Interrupt no se desacoplo correctamente");
-        }
-    } else {
-        log_error(logger_error_cpu, "El hilo Kernel Interrupt no fue creado correctamente");
-    }
-}
-
-void crearHiloCpuMemoria() {
-    if (pthread_create(&hilo_cpu_memoria, NULL, (void*)enviarMsjMemoria, NULL) == 0) {
-        log_info(logger_aux_cpu, "El hilo Memoria fue creado correctamente");
-        if (pthread_detach(hilo_cpu_memoria) == 0) {
-        log_info(logger_aux_cpu, "El hilo cpu-memoria fue desacoplado correctamente");
-        } else {
-            log_error(logger_error_cpu, "El hilo cpu-memoria no se desacoplo correctamente");
-        }
-    } else {
-        log_error(logger_error_cpu, "El hilo Memoria no fue creado correctamente");
-    }
-}
-
-void crearHiloMemoriaCpu() {
-    if (pthread_create(&hilo_memoria_cpu, NULL, (void*)atenderMemoria, NULL) == 0) {
-        log_info(logger_aux_cpu, "El hilo Memoria fue creado correctamente");
-        // Aca no hacemos detach porque no necesitamos que se desacople del principal por ser el ultimo proceso a llamarse
-        // Lo que hacemos es decirle al hilo principal que frene aca y no siga hasta que el hilo memoria no termine
-        pthread_join(hilo_memoria_cpu, NULL);
-    } else {
-        log_error(logger_error_cpu, "El hilo Memoria no fue creado correctamente");
-    }
-}
-
 void terminarPrograma() {
     log_destroy(logger_obligatorio_cpu);
     log_destroy(logger_aux_cpu);
+    log_destroy(logger_error_cpu);
     config_destroy(configuracion_cpu);
     liberar_conexion(fd_cpu_dispatch);
     liberar_conexion(fd_cpu_interrupt);
