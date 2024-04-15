@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
     leerConfig();
 
     iniciarServidoresCpu();
-    //iniciarConexionCpuMemoria();
+    iniciarConexionCpuMemoria();
     while(esperarClientes());
     
     terminarPrograma();
@@ -27,7 +27,7 @@ void iniciarLogs() {
 }
 
 void iniciarConfig() {
-    configuracion_cpu = iniciar_config(rutaConfiguracionCpu);
+    configuracion_cpu = iniciar_config(rutaConfiguracionCpu, logger_aux_cpu, (void*)terminarPrograma);
 }
 
 void leerConfig() {

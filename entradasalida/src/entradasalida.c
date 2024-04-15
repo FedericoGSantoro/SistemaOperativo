@@ -30,7 +30,7 @@ void inicializarLogs(){
 }
 
 void inicializarConfig(){
-    configuracion = iniciar_config(rutaConfiguracion);
+    configuracion = iniciar_config(rutaConfiguracion, logger_error, (void*)terminarPrograma);
     leerConfig();
 }
 
