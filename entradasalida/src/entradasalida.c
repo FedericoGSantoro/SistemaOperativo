@@ -1,10 +1,18 @@
 #include "entradasalida.h"
 
+void enviarMsj(){
+    enviar_mensaje(comandoLeido, fd_kernel);
+}
+
 int main(int argc, char* argv[]) {
     //Inicializa todo
     inicializar();
-    system("sleep 5");
-
+    comandoLeido = readline("<Comando> ");
+    while(strcmp(comandoLeido, "exit")) {
+        crearHiloJoin(&hilo_kernel, (void*)enviarMsj, NULL, "Kernel", logger_auxiliar, logger_error);
+        comandoLeido = readline("<Comando> ");
+    }
+    free(comandoLeido);
     terminarPrograma();
 
     return 0;
@@ -54,13 +62,13 @@ void inicializarConexiones(){
 void inicializarConexionKernel()
 {
     fd_kernel = crear_conexion(IP_KERNEL, PUERTO_KERNEL, logger_error);
-    crearHilo(&hilo_kernel, (void*)enviarMsjKernel, NULL, "Kernel", logger_auxiliar, logger_error);
+    crearHiloDetach(&hilo_kernel, (void*)enviarMsjKernel, NULL, "Kernel", logger_auxiliar, logger_error);
 }
 
 void inicializarConexionMemoria()
 {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error);
-    crearHilo(&hilo_memoria, (void*)enviarMsjMemoria, NULL, "Memoria", logger_auxiliar, logger_error);
+    crearHiloDetach(&hilo_memoria, (void*)enviarMsjMemoria, NULL, "Memoria", logger_auxiliar, logger_error);
 
 }
 

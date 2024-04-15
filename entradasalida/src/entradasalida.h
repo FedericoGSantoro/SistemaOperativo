@@ -10,6 +10,7 @@
 #include "../../utils/src/hilos/hilos.h"
 #include <commons/config.h>
 #include <commons/string.h>
+#include <readline/readline.h>
 
 /*---------DEFINES---------*/
 
@@ -42,7 +43,7 @@ int fd_kernel;
 
 /*---------VARIABLES---------*/
 
-
+char* comandoLeido;
 
 /*---------HILOS---------*/
 
