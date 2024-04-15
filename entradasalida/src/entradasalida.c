@@ -1,7 +1,7 @@
 #include "entradasalida.h"
 
 int main(int argc, char* argv[]) {
-    
+    //Inicializa todo
     inicializar();
     system("sleep 5");
 
