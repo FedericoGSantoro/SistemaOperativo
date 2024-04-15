@@ -1,7 +1,7 @@
 #include "entradasalida.h"
 
 int main(int argc, char* argv[]) {
-    
+    //Inicializa todo
     inicializar();
     system("sleep 5");
 
@@ -30,7 +30,7 @@ void inicializarLogs(){
 }
 
 void inicializarConfig(){
-    configuracion = iniciar_config(rutaConfiguracion);
+    configuracion = iniciar_config(rutaConfiguracion, logger_error, (void*)terminarPrograma);
     leerConfig();
 }
 

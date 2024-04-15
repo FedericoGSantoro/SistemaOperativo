@@ -4,17 +4,11 @@
 
 int main(void) {
 
-    config = iniciar_config("../memoria.config");
     loggerOblig = log_create("memoria.log", "Modulo_Memoria", 1, LOG_LEVEL_INFO); 
     loggerAux = log_create("memoriaAuxiliar.log", "Modulo_Memoria_AUXILIAR", 1, LOG_LEVEL_INFO);
     loggerError = log_create("memoriaAuxiliar.log", "Modulo_Memoria_ERROR", 1, LOG_LEVEL_INFO);
-    if(config == NULL){
-        log_error(loggerAux, "No se encontró el archivo");
-        terminar_programa();
-        abort();
-    }
+    config = iniciar_config(rutaConfiguracion, loggerError, (void*)terminar_programa);
     leer_config();
-
     socket_fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, loggerAux, loggerError);
     log_info(loggerAux, "Se crearon los sockets carajo. fede puto");
     while (server_escuchar(socket_fd_memoria)); //server escuchar devuelve 0 o 1 (false o true basicamente)
@@ -50,23 +44,30 @@ void gestionar_conexion(void * puntero_fd_cliente){
     int fd_cliente = *transformado; //fd_cliente recuperado de crearHilo
 
     int op_recibida;
-    op_recibida = recibir_operacion(fd_cliente);
 
-    switch (op_recibida)
-    {
-    case MENSAJE:
-        recibir_mensaje(fd_cliente, loggerAux);
-        break;
+    while( fd_cliente != -1 ) {
+        op_recibida = recibir_operacion(fd_cliente);
 
-    case PAQUETE:
-        //recibir_paquete
-        //deserializar
-        //operar
-        break;
-    default:
-        log_error(loggerError, "NO ENTIENDO QUE ME DECIS PA, BANEADO");
+        if ( op_recibida == -1 ) {
+            log_info(loggerAux, "El cliente se desconecto de Memoria");
+            return;
+        }
 
-        break;
+        switch (op_recibida){
+        case MENSAJE:
+            recibir_mensaje(fd_cliente, loggerAux);
+            break;
+
+        case PAQUETE:
+            //recibir_paquete
+            //deserializar
+            //operar
+            break;
+        default:
+            log_error(loggerError, "NO ENTIENDO QUE ME DECIS PA, BANEADO");
+
+            break;
+        }
     }
 };
 

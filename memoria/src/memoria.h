@@ -8,6 +8,7 @@
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
 
+#define rutaConfiguracion "../memoria.config"
 
 //GLobales del Config
 char* PUERTO_ESCUCHA;

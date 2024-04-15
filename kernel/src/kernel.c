@@ -104,13 +104,7 @@ bool crearConexiones() {
 
 void iniciarConfig() {
     // Inicializacion configuracion
-    config = iniciar_config(rutaConfiguracion);
-    // Comprobacion de configuracion inicializada correctamente
-    if ( config == NULL ) {
-        log_error(logs_error, "La configuracion no pudo ser iniciada");
-        terminarPrograma();
-        abort();
-    }
+    config = iniciar_config(rutaConfiguracion, logs_error, (void*)terminarPrograma); 
     leerConfig();
     return;
 }
