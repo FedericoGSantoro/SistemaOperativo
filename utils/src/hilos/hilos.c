@@ -1,6 +1,6 @@
 #include "./hilos.h"
 
-void crearHilo(pthread_t* thread, void* (*funcion)(), void* fd_, char* nombre, t_log* loggerAuxiliar, t_log* loggerError) {
+void crearHiloDetach(pthread_t* thread, void* (*funcion)(), void* fd_, char* nombre, t_log* loggerAuxiliar, t_log* loggerError) {
     if ( !pthread_create(thread, NULL, funcion, fd_) ) {
         log_info(loggerAuxiliar, "Hilo %s creado correctamente", nombre);
         if ( !pthread_detach(*thread) ) {
@@ -9,6 +9,16 @@ void crearHilo(pthread_t* thread, void* (*funcion)(), void* fd_, char* nombre, t
         else {
             log_error(loggerError, "Hilo %s no pudo ser desacoplado", nombre);
         }
+    }
+    else {
+        log_error(loggerError, "Hilo %s no pudo ser creado", nombre);
+    }
+}
+
+void crearHiloJoin(pthread_t* thread, void* (*funcion)(), void* fd_, char* nombre, t_log* loggerAuxiliar, t_log* loggerError) {
+    if ( !pthread_create(thread, NULL, funcion, fd_) ) {
+        log_info(loggerAuxiliar, "Hilo %s creado correctamente", nombre);
+        pthread_join(*thread, NULL);
     }
     else {
         log_error(loggerError, "Hilo %s no pudo ser creado", nombre);
