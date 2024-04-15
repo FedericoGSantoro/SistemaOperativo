@@ -31,7 +31,7 @@ int server_escuchar(int fd_memoria){
 
         if (fd_cliente != -1)  {
             pthread_t hilo_cliente;
-            crearHilo(&hilo_cliente, (void *) gestionar_conexion, (void *) &fd_cliente, "Cliente conectado", loggerAux, loggerError);
+            crearHiloDetach(&hilo_cliente, (void *) gestionar_conexion, (void *) &fd_cliente, "Cliente conectado", loggerAux, loggerError);
 
             return 1;
         }
