@@ -8,7 +8,6 @@ int main(void) {
     loggerOblig = log_create("memoria.log", "Modulo_Memoria", 1, LOG_LEVEL_INFO); 
     loggerAux = log_create("memoriaAuxiliar.log", "Modulo_Memoria_AUXILIAR", 1, LOG_LEVEL_INFO);
     loggerError = log_create("memoriaAuxiliar.log", "Modulo_Memoria_ERROR", 1, LOG_LEVEL_INFO);
-    log_info(loggerAux, "Se crearon los sockets carajo. fede puto");
     if(config == NULL){
         log_error(loggerAux, "No se encontró el archivo");
         terminar_programa();
@@ -17,6 +16,7 @@ int main(void) {
     leer_config();
 
     socket_fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, loggerAux, loggerError);
+    log_info(loggerAux, "Se crearon los sockets carajo. fede puto");
     while (server_escuchar(socket_fd_memoria)); //server escuchar devuelve 0 o 1 (false o true basicamente)
 
     terminar_programa();
@@ -31,7 +31,7 @@ void leer_config(){
     PATH_INSTRUCCIONES = config_get_string_value(config, "PATH_INSTRUCCIONES");
 };
 
-int server_escuchar(fd_memoria){
+int server_escuchar(int fd_memoria){
     int fd_cliente = esperar_cliente(socket_fd_memoria, loggerAux, loggerError);
         log_info(loggerAux, "Che loco, se me conectó un cliente");
 
