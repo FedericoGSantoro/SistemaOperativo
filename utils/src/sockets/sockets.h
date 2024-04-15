@@ -50,8 +50,7 @@ loggerError = logger para cargar los errores
 int esperar_cliente(int socket_servidor, t_log* loggerAuxiliar, t_log* loggerError);
 /*
 Recibimos mensaje del cliente
-socket_cliente = socket por el cual se va a recibir informacion
-COMPROBAR QUE DEVOLVER
+socket_cliente = socket por el cual se va a recibir información
 */
 int recibir_operacion(int socket_cliente);
 /*

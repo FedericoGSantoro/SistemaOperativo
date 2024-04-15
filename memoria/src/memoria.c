@@ -7,6 +7,7 @@ int main(void) {
     config = iniciar_config("../memoria.config");
     loggerOblig = log_create("memoria.log", "Modulo_Memoria", 1, LOG_LEVEL_INFO); 
     loggerAux = log_create("memoriaAuxiliar.log", "Modulo_Memoria_AUXILIAR", 1, LOG_LEVEL_INFO);
+    loggerError = log_create("memoriaAuxiliar.log", "Modulo_Memoria_ERROR", 1, LOG_LEVEL_INFO);
     log_info(loggerAux, "Se crearon los sockets carajo. fede puto");
     if(config == NULL){
         log_error(loggerAux, "No se encontró el archivo");
@@ -15,7 +16,7 @@ int main(void) {
     }
     leer_config();
 
-    socket_fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, loggerAux);
+    socket_fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, loggerAux, loggerError);
     while (server_escuchar(socket_fd_memoria)); //server escuchar devuelve 0 o 1 (false o true basicamente)
 
     terminar_programa();
@@ -31,35 +32,49 @@ void leer_config(){
 };
 
 int server_escuchar(fd_memoria){
-    int fd_cliente = esperar_cliente(socket_fd_memoria, loggerAux);
+    int fd_cliente = esperar_cliente(socket_fd_memoria, loggerAux, loggerError);
         log_info(loggerAux, "Che loco, se me conectó un cliente");
 
         if (fd_cliente != -1)  {
-            //MAURO: creo que hay que usar hilos para manejar la triple conexión,
-            //tengo que chusmear como funciona la libreria de hilos. Lo siguiente es ""pseudocodigo""
-            /*
-            1)declarar un dato tipo hilo,
-            2/3)reservar memoria y guardar el puntero del fd_cliente que llegue
-            4)crear el hilo y mandarlo a resolver el mensaje que reciba del cliente. Ver operaciones futuras.
-            5) ¿¿free del (2/3)?? ver bien como funcionan los hilos para evitar memory leaks
-            */
-
-            //2)
-            int *fd_conexion = malloc(sizeof(int));
-            fd_conexion = &fd_cliente;
+            pthread_t hilo_cliente;
+            crearHilo(&hilo_cliente, (void *) gestionar_conexion, (void *) &fd_cliente, "Cliente conectado", loggerAux, loggerError);
 
             return 1;
         }
-        else{
-            return 0;
-        }
+        
+        return 0;
 }
 
-void gestionar_conexion(/*unaOperacion? Handshake? ver */);
+void gestionar_conexion(void * puntero_fd_cliente){
+    int* transformado = (int *) puntero_fd_cliente;
+    int fd_cliente = *transformado; //fd_cliente recuperado de crearHilo
+
+    int op_recibida;
+    op_recibida = recibir_operacion(fd_cliente);
+
+    switch (op_recibida)
+    {
+    case MENSAJE:
+        recibir_mensaje(fd_cliente, loggerAux);
+        break;
+
+    case PAQUETE:
+        //recibir_paquete
+        //deserializar
+        //operar
+        break;
+    default:
+        log_error(loggerError, "NO ENTIENDO QUE ME DECIS PA, BANEADO");
+
+        break;
+    }
+};
 
 
 void terminar_programa(){
     log_destroy(loggerAux);
     log_destroy(loggerOblig);
-    config_destroy(config);    
+    log_destroy(loggerError);
+    config_destroy(config);
+    liberar_conexion(socket_fd_memoria);    
 };
