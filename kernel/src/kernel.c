@@ -51,7 +51,7 @@ void atender_cliente(void* argumentoVoid){
             recibir_mensaje(socket_cliente, logs_auxiliares);
             break;
         default:
-            log_info(logs_error, "Codigo de operacion no reconocido: %d", codigoOperacion);
+            log_error(logs_error, "Codigo de operacion no reconocido: %d", codigoOperacion);
             break;
         }
     }
