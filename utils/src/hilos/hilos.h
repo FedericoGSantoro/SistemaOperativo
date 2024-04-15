@@ -18,7 +18,7 @@
 Crea un hilo y lo desacopla
 thread = variable hilo [&nombre_hilo]
 funcion = funcion a aplicar en el hilo [(void*) nombre_funcion]
-fd_ = fileDescriptor o socket de la conexion [(void*) fd_conexion]
+fd_ = fileDescriptor o socket de la conexion [(void*) &fd_conexion]
 nombre = nombre de la conexion [Ejemplo: "Memoria"]
 loggerAuxiliar = logger para cargar datos extra
 loggerError = logger para cargar errores
