@@ -40,7 +40,9 @@ int fd_kernel;
 
 /*---------VARIABLES---------*/
 
-char* comandoLeido;
+char* operacionLeida;
+char* enviarA;
+pthread_t hiloAEnviar;
 
 /*---------HILOS---------*/
 
@@ -62,4 +64,5 @@ void enviarMsjKernel();
 
 // Liberaramos espacio de memoria
 void terminarPrograma();
+
 #endif

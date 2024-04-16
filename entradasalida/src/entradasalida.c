@@ -1,18 +1,102 @@
 #include "entradasalida.h"
 
 void enviarMsj(){
-    enviar_mensaje(comandoLeido, fd_kernel);
+    char* comandoLeido = readline("String > ");
+    enviar_mensaje(comandoLeido, hiloAEnviar);
+    log_info(logger_auxiliar, "Mensaje enviado");
+    free(comandoLeido);
+}
+
+void enviarPaquete() {
+    char* comandoLeido;
+	t_paquete* paquete = crear_paquete();
+
+	// Leemos y esta vez agregamos las lineas al paquete
+	comandoLeido = readline("String > "); // Leo de consola
+	while (strcmp(comandoLeido, "")){ // Mientras no sea cadena vacia
+		agregar_a_paquete(paquete, comandoLeido, strlen(comandoLeido)+1); // Agregamos al paquete el stream
+		comandoLeido = readline("String > "); // Leo nueva linea
+	}
+	enviar_paquete(paquete, hiloAEnviar); // Enviamos el paquete
+    log_info(logger_auxiliar, "Paquete enviado");
+	free(comandoLeido);
+	eliminar_paquete(paquete);
+}
+
+void enviarMensajeA() {
+    if ( !strcmp(enviarA, "KERNEL") ) {
+        hiloAEnviar = fd_kernel;
+        crearHiloJoin(&hilo_kernel, (void*)enviarMsj, NULL, "Kernel", logger_auxiliar, logger_error);
+    }
+    else if ( !strcmp(enviarA, "MEMORIA") ) {
+        hiloAEnviar = fd_memoria;
+        crearHiloJoin(&hilo_memoria, (void*)enviarMsj, NULL, "Memoria", logger_auxiliar, logger_error);
+    }
+    else {
+        log_error(logger_error, "Destino Incorrecto");
+    }
+}
+
+void enviarPaqueteA() {
+    if ( !strcmp(enviarA, "KERNEL") ) {
+        hiloAEnviar = fd_kernel;
+        crearHiloJoin(&hilo_kernel, (void*)enviarPaquete, NULL, "Kernel", logger_auxiliar, logger_error);
+    }
+    else if ( !strcmp(enviarA, "MEMORIA") ) {
+        hiloAEnviar = fd_memoria;
+        crearHiloJoin(&hilo_memoria, (void*)enviarPaquete, NULL, "Memoria", logger_auxiliar, logger_error);
+    }
+    else {
+        log_error(logger_error, "Destino Incorrecto");
+    }
+}
+
+char* mensajeAMayus(char* mensaje) {
+    // Esto se puede hacer con #include <ctype.h>
+    // funcion toupper() quizas
+    char* resultado = mensaje;
+    while(*mensaje) {
+        if ( *mensaje <= 'z' && *mensaje >= 'a' ) {
+            (*mensaje) -= ('a' - 'A');
+        }
+        mensaje++;
+    }
+    return resultado;
+}
+
+op_codigo transformarAOperacion(char* operacionLeida) {
+    char* resultado = mensajeAMayus(operacionLeida);
+    if ( !strcmp(resultado, "MENSAJE") ) { // strcmp devuelve 0 si son iguales
+        return MENSAJE;
+    } else if ( !strcmp(resultado, "PAQUETE") ) {
+        return PAQUETE;
+    } else {
+        return -1; // Valor por defecto para indicar error
+    }
 }
 
 int main(int argc, char* argv[]) {
     //Inicializa todo
     inicializar();
-    comandoLeido = readline("<Comando> ");
-    while(strcmp(comandoLeido, "exit")) {
-        crearHiloJoin(&hilo_kernel, (void*)enviarMsj, NULL, "Kernel", logger_auxiliar, logger_error);
-        comandoLeido = readline("<Comando> ");
+    operacionLeida = readline("OPERACION > ");
+    while(strcmp(operacionLeida, "exit")) {
+        enviarA = readline("DESTINO > ");
+        char* resultado = mensajeAMayus(enviarA);
+        switch ( transformarAOperacion(operacionLeida) ) {
+        case MENSAJE:
+            enviarMensajeA();
+            break;
+        case PAQUETE:
+            enviarPaqueteA();
+            break;
+        default:
+            log_error(logger_error, "Comando no reconocido");
+            break;
+        }
+        operacionLeida = readline("OPERACION > ");
     }
-    free(comandoLeido);
+    free(operacionLeida);
+    free(enviarA);
     terminarPrograma();
 
     return 0;
