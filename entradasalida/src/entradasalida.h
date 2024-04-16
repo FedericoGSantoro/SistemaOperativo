@@ -3,12 +3,9 @@
 
 /*---------LIBRERIAS---------*/
 
-#include <stdlib.h>
-#include <stdio.h>
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
-#include <commons/config.h>
 #include <commons/string.h>
 #include <readline/readline.h>
 

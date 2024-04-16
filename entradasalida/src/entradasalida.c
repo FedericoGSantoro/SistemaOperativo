@@ -73,7 +73,6 @@ void inicializarConexionMemoria()
 }
 
 void enviarMsjMemoria(){
-    log_info(logger_auxiliar, "ENTRE BIEN");
     enviar_mensaje("Hola, soy I/O!", fd_memoria);
 }
 
