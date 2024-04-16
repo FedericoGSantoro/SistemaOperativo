@@ -2,8 +2,6 @@
 #define MEMORIA_H_
 
 /*---------LIBRERIAS---------*/
-#include <commons/log.h>
-#include <commons/config.h>
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
