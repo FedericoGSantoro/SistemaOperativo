@@ -1,11 +1,6 @@
 #ifndef CPU_H_
 #define CPU_H_
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <commons/log.h>
-#include <commons/config.h>
-#include <pthread.h>
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/hilos/hilos.h"

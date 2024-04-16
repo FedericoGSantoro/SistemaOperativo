@@ -67,7 +67,6 @@ bool esperarClientes() {
 }
 
 void atenderKernelDispatch() {
-    log_info(logger_aux_cpu, "Entre a atenderKernelDispatch: ");
     bool aux_control = 1;
     
     // While infinito mientras kernel dispatch este conectado al servidor
