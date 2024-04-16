@@ -50,11 +50,19 @@ void atender_cliente(void* argumentoVoid){
         case MENSAJE:
             recibir_mensaje(socket_cliente, logs_auxiliares);
             break;
+        case PAQUETE:
+            t_list* valoresPaquete = recibir_paquete(socket_cliente);
+            list_iterate(valoresPaquete, (void*) iteradorPaquete);
+            break;
         default:
             log_error(logs_error, "Codigo de operacion no reconocido: %d", codigoOperacion);
             break;
         }
     }
+}
+
+void iteradorPaquete(char* value) {
+	log_info(logs_auxiliares,"%s", value);
 }
 
 bool escucharServer(int socket_servidor) {
