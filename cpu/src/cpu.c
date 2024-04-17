@@ -77,6 +77,10 @@ void atenderKernelDispatch() {
 		case MENSAJE:
 			recibir_mensaje(fd_kernel_dispatch, logger_aux_cpu);
 			break;
+        case PAQUETE:
+            t_list* valoresPaquete = recibir_paquete(fd_kernel_dispatch);
+            list_iterate(valoresPaquete, (void*) iteradorPaquete);
+            break;
         // Case -1 para salir del while infinito
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Kernel Modo Dispatch");
@@ -90,6 +94,10 @@ void atenderKernelDispatch() {
 	}
 }
 
+void iteradorPaquete(char* value) {
+	log_info(logger_aux_cpu,"%s", value);
+}
+
 void atenderKernelInterrupt() {
     bool aux_control = 1;
 
@@ -101,6 +109,10 @@ void atenderKernelInterrupt() {
 		case MENSAJE:
 			recibir_mensaje(fd_kernel_interrupt, logger_aux_cpu);
 			break;
+        case PAQUETE:
+            t_list* valoresPaquete = recibir_paquete(fd_kernel_interrupt);
+            list_iterate(valoresPaquete, (void*) iteradorPaquete);
+            break;
         // Case -1 para salir del while infinito
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Kernel Modo Interrupt");
@@ -125,6 +137,10 @@ void atenderMemoria() {
 		case MENSAJE:
 			recibir_mensaje(fd_memoria, logger_aux_cpu);
 			break;
+        case PAQUETE:
+            t_list* valoresPaquete = recibir_paquete(fd_memoria);
+            list_iterate(valoresPaquete, (void*) iteradorPaquete);
+            break;
         // Case -1 para salir del while infinito
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Memoria");
