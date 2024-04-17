@@ -14,6 +14,10 @@ int main(void) {
     terminar_programa();
     return 0;
 }
+
+void iteradorPaquete(char* value) {
+	log_info(loggerAux,"%s", value);
+}
  
 void leer_config(){
     PUERTO_ESCUCHA = config_get_string_value(config, "PUERTO_ESCUCHA");
@@ -60,6 +64,8 @@ void gestionar_conexion(void * puntero_fd_cliente){
             //recibir_paquete
             //deserializar
             //operar
+            t_list* valoresPaquete = recibir_paquete(fd_cliente);
+            list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
         default:
             log_error(loggerError, "NO ENTIENDO QUE ME DECIS PA, BANEADO");
