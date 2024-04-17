@@ -1,31 +1,24 @@
 #include "./memoria.h"
 
 int main(void) {
-
-    loggerOblig = log_create("memoria.log", "Modulo_Memoria", 1, LOG_LEVEL_INFO); 
-    loggerAux = log_create("memoriaAuxiliar.log", "Modulo_Memoria_AUXILIAR", 1, LOG_LEVEL_INFO);
-    loggerError = log_create("memoriaAuxiliar.log", "Modulo_Memoria_ERROR", 1, LOG_LEVEL_INFO);
-    config = iniciar_config(rutaConfiguracion, loggerError, (void*)terminar_programa);
-    leer_config();
+    //inicializando ando
+    inicializar_loggers();
+    inicializar_config();
     socket_fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, loggerAux, loggerError);
-    log_info(loggerAux, "Se crearon los sockets carajo. fede puto");
-    while (server_escuchar(socket_fd_memoria)); //server escuchar devuelve 0 o 1 (false o true basicamente)
+    // comentario con valor sentimental // log_info(loggerAux, "Se crearon los sockets carajo. fede puto"); 
 
+    while (server_escuchar(socket_fd_memoria)); //server escuchar devuelve 0 o 1 (false o true basicamente)
     terminar_programa();
     return 0;
 }
 
-void iteradorPaquete(char* value) {
-	log_info(loggerAux,"%s", value);
-}
- 
 void leer_config(){
     PUERTO_ESCUCHA = config_get_string_value(config, "PUERTO_ESCUCHA");
     TAM_MEMORIA = config_get_int_value(config, "TAM_MEMORIA");
     TAM_PAGINA = config_get_int_value(config, "TAM_PAGINA");
     RETARDO_RESPUESTA = config_get_int_value(config, "RETARDO_RESPUESTA");
     PATH_INSTRUCCIONES = config_get_string_value(config, "PATH_INSTRUCCIONES");
-};
+}
 
 int server_escuchar(int fd_memoria){
     int fd_cliente = esperar_cliente(socket_fd_memoria, loggerAux, loggerError);
@@ -73,8 +66,22 @@ void gestionar_conexion(void * puntero_fd_cliente){
             break;
         }
     }
-};
+}
 
+void iteradorPaquete(char* value) {
+	log_info(loggerAux,"%s", value);
+}
+
+void inicializar_loggers(){
+    loggerOblig = log_create("memoria.log", "Modulo_Memoria", 1, LOG_LEVEL_INFO); 
+    loggerAux = log_create("memoriaAuxiliar.log", "Modulo_Memoria_AUXILIAR", 1, LOG_LEVEL_INFO);
+    loggerError = log_create("memoriaAuxiliar.log", "Modulo_Memoria_ERROR", 1, LOG_LEVEL_INFO);
+}
+
+void inicializar_config(){
+    config = iniciar_config(rutaConfiguracion, loggerError, (void*)terminar_programa);
+    leer_config();
+}
 
 void terminar_programa(){
     log_destroy(loggerAux);
@@ -82,4 +89,4 @@ void terminar_programa(){
     log_destroy(loggerError);
     config_destroy(config);
     liberar_conexion(socket_fd_memoria);    
-};
+}
