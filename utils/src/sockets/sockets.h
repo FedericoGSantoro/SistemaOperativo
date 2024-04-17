@@ -117,7 +117,6 @@ void crear_buffer(t_paquete* paquete);
 /*
 Itera sobre el paquete (Pasar esto a list_iterate)
 value = valor sobre el que se va a aplicar la funcion [(void*) iteradorPaquete]
-loggerAuxiliar = logger para cargar datos
 */
 void iteradorPaquete(char* value);
 
