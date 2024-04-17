@@ -43,7 +43,7 @@ void atender_cliente(void* argumentoVoid){
         // Leo el codigo de operacion enviado
         codigoOperacion = recibir_operacion(socket_cliente);
         if ( codigoOperacion == -1 ) {
-            log_info(logs_auxiliares, "El cliente se desconecto de Kernel");
+            log_warning(logs_auxiliares, "El cliente se desconecto de Kernel");
             return;
         }
         switch (codigoOperacion) {
