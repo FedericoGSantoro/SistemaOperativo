@@ -40,9 +40,14 @@ int fd_kernel;
 
 /*---------VARIABLES---------*/
 
+// Variable para leer la operacion (Actualmente = mensaje, paquete, exit)
 char* operacionLeida;
+// Variable para leer a quien enviar la operacion
 char* enviarA;
-pthread_t hiloAEnviar;
+// Variable para guardar donde se va a enviar la operacion
+int socketAEnviar;
+// Puntero a funcion para indicar que debe hacer el hilo
+void (*tipoOperacion)();
 
 /*---------HILOS---------*/
 
@@ -50,6 +55,15 @@ pthread_t hilo_memoria;
 pthread_t hilo_kernel;
 
 /*---------FUNCIONES---------*/
+// Envia un mensaje al socket indicado despues de leer la cadena
+void enviarMsj();
+// Envia un paquete al socket indicado despues de leer cadenas
+void enviarPaquete();
+// Determina si enviar la operacion a kernel o memoria
+void enviarOperacionA();
+// Transforma la operacionLeida en un codigo de operacion para utilizar en un switch por ejemplo
+op_codigo transformarAOperacion(char* operacionLeida);
+
 // Inicializa las variables
 void inicializar();
 void inicializarLogs();

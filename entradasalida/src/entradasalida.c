@@ -1,8 +1,38 @@
 #include "entradasalida.h"
 
+int main(int argc, char* argv[]) {
+    //Inicializa todo
+    inicializar();
+    operacionLeida = readline("OPERACION > ");
+    while(strcmp(operacionLeida, "exit")) {
+        enviarA = readline("DESTINO > ");
+        string_to_upper(enviarA);
+        switch ( transformarAOperacion(operacionLeida) ) {
+        case MENSAJE:
+            tipoOperacion = enviarMsj;
+            enviarOperacionA();
+            break;
+        case PAQUETE:
+            tipoOperacion = enviarPaquete;
+            enviarOperacionA();
+            break;
+        default:
+            log_error(logger_error, "Comando no reconocido");
+            break;
+        }
+        operacionLeida = readline("OPERACION > ");
+    }
+    free(operacionLeida);
+    free(enviarA);
+    terminarPrograma();
+
+    return 0;
+}
+
+
 void enviarMsj(){
     char* comandoLeido = readline("String > ");
-    enviar_mensaje(comandoLeido, hiloAEnviar);
+    enviar_mensaje(comandoLeido, socketAEnviar);
     log_info(logger_auxiliar, "Mensaje enviado");
     free(comandoLeido);
 }
@@ -17,90 +47,43 @@ void enviarPaquete() {
 		agregar_a_paquete(paquete, comandoLeido, strlen(comandoLeido)+1); // Agregamos al paquete el stream
 		comandoLeido = readline("String > "); // Leo nueva linea
 	}
-	enviar_paquete(paquete, hiloAEnviar); // Enviamos el paquete
+	enviar_paquete(paquete, socketAEnviar); // Enviamos el paquete
     log_info(logger_auxiliar, "Paquete enviado");
 	free(comandoLeido);
 	eliminar_paquete(paquete);
 }
 
-void enviarMensajeA() {
+void enviarOperacionA() {
+    char* moduloNombre; // No hace falta liberar ya que es cadena literal
+    pthread_t hiloAEnviar;
     if ( !strcmp(enviarA, "KERNEL") ) {
-        hiloAEnviar = fd_kernel;
-        crearHiloJoin(&hilo_kernel, (void*)enviarMsj, NULL, "Kernel", logger_auxiliar, logger_error);
+        hiloAEnviar = hilo_kernel;
+        socketAEnviar = fd_kernel;
+        moduloNombre = "Kernel";
     }
     else if ( !strcmp(enviarA, "MEMORIA") ) {
-        hiloAEnviar = fd_memoria;
-        crearHiloJoin(&hilo_memoria, (void*)enviarMsj, NULL, "Memoria", logger_auxiliar, logger_error);
+        hiloAEnviar = hilo_memoria;
+        socketAEnviar = fd_memoria;
+        moduloNombre = "Memoria";
     }
     else {
         log_error(logger_error, "Destino Incorrecto");
+        return;
     }
-}
-
-void enviarPaqueteA() {
-    if ( !strcmp(enviarA, "KERNEL") ) {
-        hiloAEnviar = fd_kernel;
-        crearHiloJoin(&hilo_kernel, (void*)enviarPaquete, NULL, "Kernel", logger_auxiliar, logger_error);
-    }
-    else if ( !strcmp(enviarA, "MEMORIA") ) {
-        hiloAEnviar = fd_memoria;
-        crearHiloJoin(&hilo_memoria, (void*)enviarPaquete, NULL, "Memoria", logger_auxiliar, logger_error);
-    }
-    else {
-        log_error(logger_error, "Destino Incorrecto");
-    }
-}
-
-char* mensajeAMayus(char* mensaje) {
-    // Esto se puede hacer con #include <ctype.h>
-    // funcion toupper() quizas
-    char* resultado = mensaje;
-    while(*mensaje) {
-        if ( *mensaje <= 'z' && *mensaje >= 'a' ) {
-            (*mensaje) -= ('a' - 'A');
-        }
-        mensaje++;
-    }
-    return resultado;
+    crearHiloJoin(&hiloAEnviar, (void*) tipoOperacion, NULL, moduloNombre, logger_auxiliar, logger_error);
 }
 
 op_codigo transformarAOperacion(char* operacionLeida) {
-    char* resultado = mensajeAMayus(operacionLeida);
-    if ( !strcmp(resultado, "MENSAJE") ) { // strcmp devuelve 0 si son iguales
+    string_to_upper(operacionLeida);
+    if ( !strcmp(operacionLeida, "MENSAJE") ) { // strcmp devuelve 0 si son iguales
         return MENSAJE;
-    } else if ( !strcmp(resultado, "PAQUETE") ) {
+    } else if ( !strcmp(operacionLeida, "PAQUETE") ) {
         return PAQUETE;
     } else {
         return -1; // Valor por defecto para indicar error
     }
 }
 
-int main(int argc, char* argv[]) {
-    //Inicializa todo
-    inicializar();
-    operacionLeida = readline("OPERACION > ");
-    while(strcmp(operacionLeida, "exit")) {
-        enviarA = readline("DESTINO > ");
-        char* resultado = mensajeAMayus(enviarA);
-        switch ( transformarAOperacion(operacionLeida) ) {
-        case MENSAJE:
-            enviarMensajeA();
-            break;
-        case PAQUETE:
-            enviarPaqueteA();
-            break;
-        default:
-            log_error(logger_error, "Comando no reconocido");
-            break;
-        }
-        operacionLeida = readline("OPERACION > ");
-    }
-    free(operacionLeida);
-    free(enviarA);
-    terminarPrograma();
-
-    return 0;
-}
 
 void inicializar(){
     inicializarLogs();
