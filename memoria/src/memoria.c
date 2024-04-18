@@ -22,8 +22,10 @@ void leer_config(){
 
 int server_escuchar(int fd_memoria){
     int fd_cliente = esperar_cliente(socket_fd_memoria, loggerAux, loggerError);
-        log_info(loggerAux, "Che loco, se me conectó un cliente");
-
+        // en memoria considero  (POR AHORA) que no hace falta almacenar en var globales los fd de los otros modulos.
+        // en caso de necesitar "seguridad", deberia hacer que solo kernel me envie cosas para tocar la memoria
+        // y para eso debería de reconocer el fd de kernel en algun lado y darle alguna funcion de gestionar_conexion_adminkernel
+        // (ASUMO INTUYO PROPONGO SUPONGO), problema a futuro. -Mauro
         if (fd_cliente != -1)  {
             pthread_t hilo_cliente;
             crearHiloDetach(&hilo_cliente, (void *) gestionar_conexion, (void *) &fd_cliente, "Cliente conectado", loggerAux, loggerError);
@@ -44,7 +46,7 @@ void gestionar_conexion(void * puntero_fd_cliente){
         op_recibida = recibir_operacion(fd_cliente);
 
         if ( op_recibida == -1 ) {
-            log_info(loggerAux, "El cliente se desconecto de Memoria");
+            log_warning(loggerAux, "El cliente se desconecto de Memoria");
             return;
         }
 
