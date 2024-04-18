@@ -129,13 +129,13 @@ void inicializarConexiones(){
 void inicializarConexionKernel()
 {
     fd_kernel = crear_conexion(IP_KERNEL, PUERTO_KERNEL, logger_error);
-    crearHiloDetach(&hilo_kernel, (void*)enviarMsjKernel, NULL, "Kernel", logger_auxiliar, logger_error);
+    //crearHiloDetach(&hilo_kernel, (void*)enviarMsjKernel, NULL, "Kernel", logger_auxiliar, logger_error);
 }
 
 void inicializarConexionMemoria()
 {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error);
-    crearHiloDetach(&hilo_memoria, (void*)enviarMsjMemoria, NULL, "Memoria", logger_auxiliar, logger_error);
+    //crearHiloDetach(&hilo_memoria, (void*)enviarMsjMemoria, NULL, "Memoria", logger_auxiliar, logger_error);
 
 }
 
