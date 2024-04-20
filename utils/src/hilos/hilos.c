@@ -19,6 +19,7 @@ void crearHiloJoin(pthread_t* thread, void* (*funcion)(), void* fd_, char* nombr
     if ( !pthread_create(thread, NULL, funcion, fd_) ) {
         log_info(loggerAuxiliar, "Hilo %s creado correctamente", nombre);
         pthread_join(*thread, NULL);
+        pthread_exit(thread);
     }
     else {
         log_error(loggerError, "Hilo %s no pudo ser creado", nombre);
