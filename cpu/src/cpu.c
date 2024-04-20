@@ -81,6 +81,8 @@ void atenderKernelDispatch() {
             t_list* valoresPaquete = recibir_paquete(fd_kernel_dispatch);
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
+        case CONTEXTO_EJECUCION:
+            break;
         // Case -1 para salir del while infinito
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Kernel Modo Dispatch");
