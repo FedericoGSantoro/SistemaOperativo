@@ -7,6 +7,9 @@ int main(int argc, char* argv[]){
     // Handshake
     enviar_handshake();
 
+    // Inicializar consola interactiva
+    iniciarConsolaInteractiva();
+
     // Escucho las conexiones entrantes
     while(escucharServer(socket_servidor));
 
@@ -14,6 +17,24 @@ int main(int argc, char* argv[]){
     terminarPrograma();
     
     return 0;
+}
+
+void crear_pcb() {
+    t_pcb* pcb = malloc(sizeof(t_pcb));
+    pcb->pid = pid_siguiente;
+    pid_siguiente++;
+    pcb->quantum = ???;
+    pcb->io_identifier = socket_cliente;
+    pcb->motivo_bloqueo = NULL;
+    pcb->contexto_ejecucion->instruction_pointer = ???;
+    pcb->contexto_ejecucion->registro_estados = 0;
+    iniciarRegistrosCPU(pcb);
+    //pcb->contexto_ejecucion->punteros_memoria;
+    pcb->contexto_ejecucion->state = NEW;
+}
+
+void iniciarRegistrosCPU(t_pcb* pcb) {
+    pcb->contexto_ejecucion->registros_cpu->ax = 0;
 }
 
 void inicializarVariables(){
@@ -27,12 +48,88 @@ void inicializarVariables(){
     socket_servidor = iniciar_servidor(PUERTO_ESCUCHA, logs_auxiliares, logs_error);
 
     // Crear las conexiones hacia cpu y memoria
-    if ( crearConexiones() ) {
-        log_info(logs_auxiliares, "Conexiones creadas correctamente");
+    // if ( crearConexiones() ) {
+    //     log_info(logs_auxiliares, "Conexiones creadas correctamente");
+    // }
+}
+
+void iniciarConsolaInteractiva() {
+    crearHiloDetach(&thread_consola_interactiva, (void*) atender_consola_interactiva, NULL, "Consola interactiva", logs_auxiliares, logs_error);
+}
+
+void atender_consola_interactiva() {
+    while(1) {
+        char* leido = readline("COMANDO > ");
+        char** arrayComando = string_split(leido, " ");
+        ejecutar_comando_consola(arrayComando);
+        free(arrayComando); // Hace falta?
+        free(leido); // Hace falta?
     }
 }
 
-void atender_cliente(void* argumentoVoid){
+void ejecutar_comando_consola(char** arrayComando) {
+    comando_consola comando = transformarAOperacion(arrayComando[0]);
+    char* path;
+    switch (comando) {
+    case EJECUTAR_SCRIPT:
+        path = arrayComando[1];
+        // Que hace?
+        log_info(logs_auxiliares, "Script de ' %s ' ejecutado", path);
+        break;
+    case INICIAR_PROCESO:
+        char* path = arrayComando[1];
+        // Crea el pcb del proceso indicado
+        log_info(logs_auxiliares, "Proceso inicializado con el id: XX"); // Cambiar
+        break;
+    case FINALIZAR_PROCESO:
+        uint32_t pid = atoi(arrayComando[1]);
+        // (deberá liberar recursos, archivos y memoria)
+        log_info(logs_auxiliares, "Proceso %d finalizado", pid);
+        break;
+    case DETENER_PLANIFICACION:
+        // Variable planificacion_ejecutando = false;
+        // El proceso que se encuentra en ejecución NO es desalojado, 
+        // pero una vez que salga de EXEC se va a pausar el manejo de su motivo de desalojo. 
+        // De la misma forma, los procesos bloqueados van a pausar su transición a la cola de Ready.
+        break;
+    case INICIAR_PLANIFICACION:
+        // Variable planificacion_ejecutando = true;
+        break;
+    case MULTIPROGRAMACION:
+        GRADO_MULTIPROGRAMACION = atoi(arrayComando[1]);
+        log_info(logs_auxiliares, "Grado de multiprogramacion cambiado a: %d", GRADO_MULTIPROGRAMACION);
+        break;
+    case PROCESO_ESTADO:
+        // Listar los procesos por su estado
+        break;
+    default:
+        log_info(logs_auxiliares, "Comando desconocido");
+        break;
+    }
+}
+
+comando_consola transformarAOperacion(char* operacionLeida) {
+    string_to_upper(operacionLeida);
+    if ( !strcmp(operacionLeida, "EJECUTAR_SCRIPT") ) { // strcmp devuelve 0 si son iguales
+        return EJECUTAR_SCRIPT;
+    } else if ( !strcmp(operacionLeida, "INICIAR_PROCESO") ) {
+        return INICIAR_PROCESO;
+    } else if ( !strcmp(operacionLeida, "FINALIZAR_PROCESO") ) {
+        return FINALIZAR_PROCESO;
+    } else if ( !strcmp(operacionLeida, "DETENER_PLANIFICACION") ) {
+        return DETENER_PLANIFICACION;
+    } else if ( !strcmp(operacionLeida, "INICIAR_PLANIFICACION") ) {
+        return INICIAR_PLANIFICACION;
+    } else if ( !strcmp(operacionLeida, "MULTIPROGRAMACION") ) {
+        return MULTIPROGRAMACION;
+    } else if ( !strcmp(operacionLeida, "PROCESO_ESTADO") ) {
+        return PROCESO_ESTADO;
+    } else {
+        return -1; // Valor por defecto para indicar error
+    }
+}
+
+void atender_cliente(void* argumentoVoid) {
     // Paso el void* a int*
     int* argumentoInt = (int*) argumentoVoid;
     // Me quedo con el dato del int*
@@ -99,13 +196,13 @@ void crearLogs() {
 bool crearConexiones() {
 
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_error);
-    crearHiloDetach(&thread_memoria, (void*) atender_cliente, (void*) &fd_memoria, "Memoria", logs_auxiliares, logs_error);
+    //crearHiloDetach(&thread_memoria, (void*) atender_cliente, (void*) &fd_memoria, "Memoria", logs_auxiliares, logs_error);
 
     fd_cpu_dispatch = crear_conexion(IP_CPU, PUERTO_CPU_DISPATCH, logs_error);
-    crearHiloDetach(&thread_cpu_dispatch, (void*) atender_cliente, (void*) &fd_cpu_dispatch, "CPU Dispatch", logs_auxiliares, logs_error);
+    //crearHiloDetach(&thread_cpu_dispatch, (void*) atender_cliente, (void*) &fd_cpu_dispatch, "CPU Dispatch", logs_auxiliares, logs_error);
 
     fd_cpu_interrupt = crear_conexion(IP_CPU, PUERTO_CPU_INTERRUPT, logs_error);
-    crearHiloDetach(&thread_cpu_interrupt, (void*) atender_cliente, (void*) &fd_cpu_interrupt, "CPU Interrupt", logs_auxiliares, logs_error);
+    //crearHiloDetach(&thread_cpu_interrupt, (void*) atender_cliente, (void*) &fd_cpu_interrupt, "CPU Interrupt", logs_auxiliares, logs_error);
 
     return true;
 }

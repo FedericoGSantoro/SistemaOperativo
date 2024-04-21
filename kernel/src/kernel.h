@@ -7,10 +7,23 @@
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
 #include <commons/string.h>
+#include <readline/readline.h>
 
 /*---------DEFINES---------*/
 
 #define rutaConfiguracion "../kernel.config"
+
+/*---------DATOS DE LA CONFIGURACION---------*/
+
+typedef enum {
+    EJECUTAR_SCRIPT,
+    INICIAR_PROCESO,
+    FINALIZAR_PROCESO,
+    DETENER_PLANIFICACION,
+    INICIAR_PLANIFICACION,
+    MULTIPROGRAMACION,
+    PROCESO_ESTADO,
+} comando_consola;
 
 /*---------DATOS DE LA CONFIGURACION---------*/
 
@@ -43,17 +56,26 @@ int socket_servidor;
 
 /*---------VARIABLES---------*/
 
-
+int pid_siguiente = 1;
 
 /*---------HILOS---------*/
 
 pthread_t thread_cpu_dispatch;
 pthread_t thread_cpu_interrupt;
 pthread_t thread_memoria;
+pthread_t thread_consola_interactiva;
 
 /*---------FUNCIONES---------*/
 // Inicializa las variables
 void inicializarVariables();
+// Inicializa la consola interactiva
+void iniciarConsolaInteractiva();
+// Atiende las peticiones de la consola interactiva
+void atender_consola_interactiva();
+// Ejecuta el comando correspondiente
+void ejecutar_comando_consola(char** arrayComando);
+// Devuelve el comando del enum correspondiente
+comando_consola transformarAOperacion(char* operacionLeida);
 // Atiende al cliente
 void atender_cliente(void* argumentoVoid);
 // Escucha el socket por peticiones
@@ -71,6 +93,6 @@ void leerConfig();
 // Convierte un array de string a un array de enteros
 int* string_array_as_int_array(char** arrayInstancias);
 // Libera los espacios de memoria
-void terminarPrograma(); 
+void terminarPrograma();
 
 #endif
