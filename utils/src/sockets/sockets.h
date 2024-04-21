@@ -37,6 +37,7 @@ typedef enum{
 
 // Estados de los procesos
 typedef enum{
+	NEW,
 	READY,
 	RUNNING,
 	BLOCKED,
@@ -78,7 +79,7 @@ typedef struct{
 } t_punteros_memoria;
 // Contexto de ejecucion
 typedef struct{
-	uint64_t ip; // instruction pointer
+	uint64_t instruction_pointer; // instruction pointer
 	uint64_t registro_estados; // registros con los flags
 	t_registros_cpu registros_cpu;
 	t_punteros_memoria punteros_memoria;
