@@ -59,6 +59,7 @@ bool esperarClientes() {
     fd_kernel_dispatch = esperar_cliente(fd_cpu_dispatch, logger_aux_cpu, logger_error_cpu);
     fd_kernel_interrupt = esperar_cliente(fd_cpu_interrupt, logger_aux_cpu, logger_error_cpu);
     if (fd_kernel_dispatch != -1 && fd_kernel_interrupt != -1){
+        // Posibilidad de crear hilo join con Kernel Dispatch - REVISAR
         crearHiloDetach(&hilo_kernel_dispatch_cpu, (void*)atenderKernelDispatch, NULL, "Kernel Dispatch", logger_aux_cpu, logger_error_cpu);
         crearHiloDetach(&hilo_kernel_interrumpt_cpu, (void*)atenderKernelInterrupt, NULL, "Kernel Interrupt", logger_aux_cpu, logger_error_cpu);
         return true;
@@ -82,6 +83,11 @@ void atenderKernelDispatch() {
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
         case CONTEXTO_EJECUCION:
+            recv_contexto_ejecucion(fd_kernel_dispatch);
+            // TO-DO ejecutar ciclo de instruccion
+
+            // TO-DO enviar el contexto de ejecucion a Kernel si interrumpen a la CPU
+            // Posible solucion con while, mientras no me interrumpan ejecutas ciclo de instruccion, sino sale del while y se envia contexto a Kernel
             break;
         // Case -1 para salir del while infinito
 		case -1:
@@ -103,8 +109,6 @@ void iteradorPaquete(char* value) {
 void atenderKernelInterrupt() {
     bool aux_control = 1;
 
-    // While infinito mientras kernel interrupt este conectado al servidor
-    // Sale del while cuando se desconecta o si se encuentra con una operacion desconocida
     while (aux_control) {
 		int cod_op = recibir_operacion(fd_kernel_interrupt);
 		switch (cod_op) {
@@ -115,10 +119,14 @@ void atenderKernelInterrupt() {
             t_list* valoresPaquete = recibir_paquete(fd_kernel_interrupt);
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
-        // Case -1 para salir del while infinito
+        case INTERRUPCION_FIN_EVENTO:
+            break;
+        case INTERRUPCION_RELOJ:
+            break;
+        case LLAMADA_SISTEMA:
+            break;
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Kernel Modo Interrupt");
-			// Al setear en 0 en la proxima iteracion ya no entra en el while y sigue ejecutandose el programa
             aux_control = 0;
             break;
 		default:
@@ -131,8 +139,6 @@ void atenderKernelInterrupt() {
 void atenderMemoria() {
     bool aux_control = 1;
 
-    // While infinito mientras cpu este conectado a memoria
-    // Sale del while cuando se desconecta o si se encuentra con una operacion desconocida
     while (aux_control) {
 		int cod_op = recibir_operacion(fd_memoria);
 		switch (cod_op) {
@@ -143,10 +149,8 @@ void atenderMemoria() {
             t_list* valoresPaquete = recibir_paquete(fd_memoria);
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
-        // Case -1 para salir del while infinito
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Memoria");
-			// Al setear en 0 en la proxima iteracion ya no entra en el while y sigue ejecutandose el programa
             aux_control = 0;
             break;
 		default:
@@ -158,6 +162,23 @@ void atenderMemoria() {
 
 void enviarMsjMemoria(){
     enviar_mensaje("Hola, soy CPU!", fd_memoria);
+}
+
+void desempaquetar_contexto_ejecucion(t_list* paquete) {
+    registro_estados = paquete[0]->registro_estados;
+    registros_cpu = paquete[0]->registros_cpu;
+    instruction_pointer = paquete[0]->registros_cpu->pc;
+    // Aumento en 1 para que apunte a la siguiente instruccion
+    registros_cpu->pc++;
+    punteros_memoria = paquete[0]->punteros_memoria;
+}
+
+void recv_contexto_ejecucion(int fd_kernel_dispatch) {
+    t_list* paquete = recibir_paquete(fd_kernel_dispatch);
+
+    desempaquetar_contexto_ejecucion(paquete);
+    
+    list_destroy(paquete);
 }
 
 void terminarPrograma() {

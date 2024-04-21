@@ -72,10 +72,10 @@ typedef struct{
 } t_registros_cpu;
 // Punteros a memoria
 typedef struct{
-	uint64_t *stack_pointer; // puntero a pila del sistema
-	uint64_t *heap_pointer; // puntero a memoria dinamica
-	uint64_t *data_pointer; // puntero a memoria estatica
-	uint64_t *code_pointer; // puntero a instrucciones propias del programa
+	uint64_t* stack_pointer; // puntero a pila del sistema
+	uint64_t* heap_pointer; // puntero a memoria dinamica
+	uint64_t* data_pointer; // puntero a memoria estatica
+	uint64_t* code_pointer; // puntero a instrucciones propias del programa
 } t_punteros_memoria;
 // Contexto de ejecucion
 typedef struct{
@@ -88,10 +88,11 @@ typedef struct{
 // PCB
 typedef struct{
 	uint32_t pid; // process ID
-	uint64_t quantum; // duracion del tiempo de ejecucion
+	uint64_t quantum_faltante; // duracion restante del tiempo de ejecucion
 	int io_identifier; // identificador de la entrada/salida correspondiente
 	t_contexto_ejecucion contexto_ejecucion;
 	blocked_reason motivo_bloqueo;
+	char* path_archivo; // archivo con las instrucciones a ejecutar
 } t_pcb;
 
 /* ------------ FUNCIONES --------*/
