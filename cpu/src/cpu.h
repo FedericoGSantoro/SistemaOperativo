@@ -32,6 +32,13 @@ pthread_t hilo_kernel_dispatch_cpu;
 pthread_t hilo_kernel_interrumpt_cpu;
 pthread_t hilo_memoria_cpu;
 
+// registros de la cpu
+uint64_t instruction_pointer;
+uint64_t registro_estados;
+t_registros_cpu registros_cpu;
+t_punteros_memoria punteros_memoria;
+process_state state;
+
 // Inicializamos logs
 void iniciarLogs();
 // Inicializamos configuracion
@@ -51,14 +58,19 @@ Las funciones atenderKernelDispatch, atenderKernelInterrup y atenderMemoria dent
 es por eso que necesitamos crear 3 hilos. Cada uno de los hilos ejecutara cada uno de estos procesos como si
 fuera en paralelo para que no se bloqueen entre si.
 */
-// Atendemos al cliente Kernel modo Dispatch, recibimos mensajes
+// Atendemos al cliente Kernel modo Dispatch, recibimos mensajes ejecutamos ciclos de instrucciones y podemos enviar el contexto de ejecucion a Kernel
 void atenderKernelDispatch();
-// Atendemos al cliente Kernel modo Interrupt, recibimos mensajes
+// Atendemos al cliente Kernel modo Interrupt, UNICAMENTE recibimos mensajes, NO enviamos nada a Kernel
 void atenderKernelInterrupt();
 // Atendemos al server Memoria, recibimos mensajes
 void atenderMemoria();
 // Envia mensaje a memoria
 void enviarMsjMemoria();
+
+// Guardo en los registros del cpu lo que recibí en el contexto de ejecucion
+void desempaquetar_contexto_ejecucion(t_list* paquete);
+// Recibo el contexto de ejecucion que me manda Kernel
+void recv_contexto_ejecucion(int fd_kernel_dispatch);
 
 // Liberaramos espacio de memoria
 void terminarPrograma();
