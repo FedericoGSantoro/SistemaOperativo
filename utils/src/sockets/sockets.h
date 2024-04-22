@@ -42,9 +42,9 @@ typedef enum{
 typedef enum{
 	NEW,
 	READY,
-	RUNNING,
+	EXEC,
 	BLOCKED,
-	FINISHED,
+	EXIT,
 } process_state;
 
 /* ------------ STRUCTS --------*/
