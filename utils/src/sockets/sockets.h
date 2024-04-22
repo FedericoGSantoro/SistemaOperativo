@@ -58,7 +58,7 @@ typedef struct{
 } t_paquete;
 // Registros de la CPU
 typedef struct{
-	uint32_t pc;
+	uint32_t pc; // program counter es la siguiente instruccion a ejecutar
 	uint8_t ax;
 	uint8_t bx;
 	uint8_t cx;
@@ -79,7 +79,7 @@ typedef struct{
 } t_punteros_memoria;
 // Contexto de ejecucion
 typedef struct{
-	uint64_t instruction_pointer; // instruction pointer
+	uint32_t pid; // process ID
 	uint64_t registro_estados; // registros con los flags
 	t_registros_cpu registros_cpu;
 	t_punteros_memoria punteros_memoria;
@@ -87,7 +87,6 @@ typedef struct{
 } t_contexto_ejecucion;
 // PCB
 typedef struct{
-	uint32_t pid; // process ID
 	uint64_t quantum_faltante; // duracion restante del tiempo de ejecucion
 	int io_identifier; // identificador de la entrada/salida correspondiente
 	t_contexto_ejecucion contexto_ejecucion;
