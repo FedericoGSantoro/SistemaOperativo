@@ -66,13 +66,15 @@ int socket_servidor;
 int pid_siguiente = 1;
 comando_consola comando;
 char* pathArchivo;
+int numeroConsola = 1;
+bool planificacionEjecutandose = true;
 
 /*---------COLAS---------*/
 
 t_queue* cola_new;
 t_queue* cola_ready;
 t_queue* cola_exit;
-t_queue* cola_running;
+t_queue* cola_exec;
 t_queue* cola_blocked;
 
 /*---------HILOS---------*/
@@ -88,6 +90,16 @@ pthread_t thread_consola_interactiva;
 void iniciarPlanificacion();
 // Inicializa la planificacion a corto plazo
 void planificacionCortoPlazo();
+// Algoritmo para cola de blocked
+void corto_plazo_blocked();
+// Cambia el contexto del pcb con el recibido y lo asigna a la cola correspondiente
+void cambiarContexto(t_contexto_ejecucion contexto, t_pcb* pcb);
+// Maneja la conexion con el dispatch de CPU
+void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb);
+// Convierte el enum de estado a un string
+char* enumEstadoAString(process_state estado);
+// Cambia el estado y hace el log
+void cambiarEstado(process_state estadoNuevo, t_pcb* pcb);
 // Algoritmo para la cola de READY
 void corto_plazo_ready();
 // Inicializa la planificacion a largo plazo
@@ -97,9 +109,11 @@ void largo_plazo_new();
 // Algoritmo para la cola de EXIT
 void largo_plazo_exit();
 // Elimina el pcb en memoria
-bool eliminar_pcb(t_pcb* pcb);
+void eliminar_pcb(t_pcb* pcb);
 // Crea el pcb
-void crear_pcb(int quantum, char* nombreConsola, t_punteros_memoria punteros);
+void crear_pcb(int quantum);
+// Inicializa los punteros a memoria
+void iniciarPunterosMemoria(t_pcb* pcb);
 // Inicia registros de cpu en 0
 void iniciarRegistrosCPU(t_pcb* pcb);
 // Maneja la conexion con memoria
