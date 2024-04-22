@@ -32,12 +32,14 @@ pthread_t hilo_kernel_dispatch_cpu;
 pthread_t hilo_kernel_interrumpt_cpu;
 pthread_t hilo_memoria_cpu;
 
-// registros de la cpu
-uint64_t instruction_pointer;
+// Contexto de ejecucion
+uint32_t pid;
 uint64_t registro_estados;
 t_registros_cpu registros_cpu;
 t_punteros_memoria punteros_memoria;
 process_state state;
+// instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse
+char* ir; 
 
 // Inicializamos logs
 void iniciarLogs();
@@ -60,17 +62,25 @@ fuera en paralelo para que no se bloqueen entre si.
 */
 // Atendemos al cliente Kernel modo Dispatch, recibimos mensajes ejecutamos ciclos de instrucciones y podemos enviar el contexto de ejecucion a Kernel
 void atenderKernelDispatch();
-// Atendemos al cliente Kernel modo Interrupt, UNICAMENTE recibimos mensajes, NO enviamos nada a Kernel
+// Atendemos al cliente Kernel modo Interrupt, UNICAMENTE recibimos mensajes, NO enviamos nada a Kernel en modo interrumpt
 void atenderKernelInterrupt();
-// Atendemos al server Memoria, recibimos mensajes
-void atenderMemoria();
+// Atendemos al server Memoria
+void atenderMemoria(op_codigo codigoMemoria);
 // Envia mensaje a memoria
 void enviarMsjMemoria();
+void iteradorPaquete(char* value);
 
 // Guardo en los registros del cpu lo que recibí en el contexto de ejecucion
-void desempaquetar_contexto_ejecucion(t_list* paquete);
+void desempaquetarContextoEjecucion(t_list* paquete);
 // Recibo el contexto de ejecucion que me manda Kernel
-void recv_contexto_ejecucion(int fd_kernel_dispatch);
+void recvContextoEjecucion(int fd_kernel_dispatch);
+
+// Fetch (captura):
+// Se busca la proxima instruccion a ejecutar
+// La instruccion a ajecutar se le pide a Memoria utilizando la direccion de memoria del programa (contador de programa) para determinar qué instrucción se debe leer.
+void fetch(int fd_memoria);
+// Ejecutar ciclo de instruccion
+void ejecutarCicloInstruccion();
 
 // Liberaramos espacio de memoria
 void terminarPrograma();

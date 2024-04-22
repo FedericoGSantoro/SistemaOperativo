@@ -50,21 +50,18 @@ void iniciarServidoresCpu() {
     fd_cpu_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, logger_aux_cpu, logger_error_cpu);
 }
 
-void iniciarConexionCpuMemoria() {
-    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error_cpu);
-    crearHiloJoin(&hilo_memoria_cpu, (void*)enviarMsjMemoria, NULL, "Memoria", logger_aux_cpu, logger_error_cpu);
+void enviarMsjMemoria(){
+    enviar_mensaje("Hola, soy CPU!", fd_memoria);
 }
 
-bool esperarClientes() {
-    fd_kernel_dispatch = esperar_cliente(fd_cpu_dispatch, logger_aux_cpu, logger_error_cpu);
-    fd_kernel_interrupt = esperar_cliente(fd_cpu_interrupt, logger_aux_cpu, logger_error_cpu);
-    if (fd_kernel_dispatch != -1 && fd_kernel_interrupt != -1){
-        // Posibilidad de crear hilo join con Kernel Dispatch - REVISAR
-        crearHiloDetach(&hilo_kernel_dispatch_cpu, (void*)atenderKernelDispatch, NULL, "Kernel Dispatch", logger_aux_cpu, logger_error_cpu);
-        crearHiloDetach(&hilo_kernel_interrumpt_cpu, (void*)atenderKernelInterrupt, NULL, "Kernel Interrupt", logger_aux_cpu, logger_error_cpu);
-        return true;
-    }
-    return false;
+void iniciarConexionCpuMemoria() {
+    fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error_cpu);
+    enviarMsjMemoria();
+    //crearHiloDetach(&hilo_memoria_cpu, (void*)enviarMsjMemoria, NULL, "Memoria", logger_aux_cpu, logger_error_cpu);
+}
+
+void iteradorPaquete(char* value) {
+	log_info(logger_aux_cpu,"%s", value);
 }
 
 void atenderKernelDispatch() {
@@ -83,11 +80,12 @@ void atenderKernelDispatch() {
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
         case CONTEXTO_EJECUCION:
-            recv_contexto_ejecucion(fd_kernel_dispatch);
-            // TO-DO ejecutar ciclo de instruccion
+            //recvContextoEjecucion(fd_kernel_dispatch);
+            log_info(logger_aux_cpu, "Recibi el contexto de ejecucion");
+            log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
+            // IN-PROGRESS ejecutar ciclo de instruccion
+            //ejecutarCicloInstruccion();
 
-            // TO-DO enviar el contexto de ejecucion a Kernel si interrumpen a la CPU
-            // Posible solucion con while, mientras no me interrumpan ejecutas ciclo de instruccion, sino sale del while y se envia contexto a Kernel
             break;
         // Case -1 para salir del while infinito
 		case -1:
@@ -100,10 +98,6 @@ void atenderKernelDispatch() {
 			break;
 		}
 	}
-}
-
-void iteradorPaquete(char* value) {
-	log_info(logger_aux_cpu,"%s", value);
 }
 
 void atenderKernelInterrupt() {
@@ -119,12 +113,12 @@ void atenderKernelInterrupt() {
             t_list* valoresPaquete = recibir_paquete(fd_kernel_interrupt);
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
-        case INTERRUPCION_FIN_EVENTO:
-            break;
-        case INTERRUPCION_RELOJ:
-            break;
-        case LLAMADA_SISTEMA:
-            break;
+        // case INTERRUPCION_FIN_EVENTO:
+        //     break;
+        // case INTERRUPCION_RELOJ:
+        //     break;
+        // case LLAMADA_SISTEMA:
+        //     break;
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Kernel Modo Interrupt");
             aux_control = 0;
@@ -136,49 +130,83 @@ void atenderKernelInterrupt() {
 	}
 }
 
-void atenderMemoria() {
-    bool aux_control = 1;
-
-    while (aux_control) {
-		int cod_op = recibir_operacion(fd_memoria);
-		switch (cod_op) {
-		case MENSAJE:
-			recibir_mensaje(fd_memoria, logger_aux_cpu);
-			break;
-        case PAQUETE:
-            t_list* valoresPaquete = recibir_paquete(fd_memoria);
-            list_iterate(valoresPaquete, (void*) iteradorPaquete);
-            break;
-		case -1:
-			log_error(logger_aux_cpu, "Desconexion de Memoria");
-            aux_control = 0;
-            break;
-		default:
-			log_warning(logger_aux_cpu,"Operacion desconocida de Memoria");
-			break;
-		}
-	}
+bool esperarClientes() {
+    fd_kernel_dispatch = esperar_cliente(fd_cpu_dispatch, logger_aux_cpu, logger_error_cpu);
+    fd_kernel_interrupt = esperar_cliente(fd_cpu_interrupt, logger_aux_cpu, logger_error_cpu);
+    if (fd_kernel_dispatch != -1 && fd_kernel_interrupt != -1){
+        // Posibilidad de crear hilo join con Kernel Dispatch - REVISAR
+        crearHiloDetach(&hilo_kernel_dispatch_cpu, (void*)atenderKernelDispatch, NULL, "Kernel Dispatch", logger_aux_cpu, logger_error_cpu);
+        crearHiloDetach(&hilo_kernel_interrumpt_cpu, (void*)atenderKernelInterrupt, NULL, "Kernel Interrupt", logger_aux_cpu, logger_error_cpu);
+        return true;
+    }
+    return false;
 }
 
-void enviarMsjMemoria(){
-    enviar_mensaje("Hola, soy CPU!", fd_memoria);
+void desempaquetarContextoEjecucion(t_list* paquete) {
+    t_contexto_ejecucion* contexto = list_get(paquete, 0);
+    pid = contexto->pid;
+    registro_estados = contexto->registro_estados;
+    registros_cpu = contexto->registros_cpu;
+    punteros_memoria = contexto->punteros_memoria;
+    free(contexto);
 }
 
-void desempaquetar_contexto_ejecucion(t_list* paquete) {
-    registro_estados = paquete[0]->registro_estados;
-    registros_cpu = paquete[0]->registros_cpu;
-    instruction_pointer = paquete[0]->registros_cpu->pc;
-    // Aumento en 1 para que apunte a la siguiente instruccion
-    registros_cpu->pc++;
-    punteros_memoria = paquete[0]->punteros_memoria;
-}
-
-void recv_contexto_ejecucion(int fd_kernel_dispatch) {
+void recvContextoEjecucion(int fd_kernel_dispatch) {
     t_list* paquete = recibir_paquete(fd_kernel_dispatch);
-
-    desempaquetar_contexto_ejecucion(paquete);
-    
+    desempaquetarContextoEjecucion(paquete);
     list_destroy(paquete);
+}
+
+void fetch(int fd_memoria) {
+
+    uint32_t stream; // tamanio del pc
+    t_paquete* paquete = malloc(sizeof(t_paquete));
+    paquete->codigo_operacion = FETCH_INSTRUCCION;
+    paquete->buffer = malloc(sizeof(t_buffer));
+    paquete->buffer->size = sizeof(uint32_t);
+    paquete->buffer->stream = malloc(paquete->buffer->size);
+    memcpy(paquete->buffer->stream, registros_cpu.pc, paquete->buffer->size);
+    enviar_paquete(paquete, fd_memoria);
+    eliminar_paquete(paquete);
+
+    // Recibimos de memoria el pc y lo guardamos en ir
+    t_list* pc = recibir_paquete(fd_memoria);
+    t_registros_cpu* pc_aux = list_get(pc, 0);
+    ir = pc_aux->pc;
+    list_destroy(pc);
+    free(pc_aux);
+
+    // Aumento en 1 para que apunte a la siguiente instruccion
+    registros_cpu.pc++;
+}
+
+void atenderMemoria(op_codigo codigoMemoria) {
+    switch (codigoMemoria) {
+    case FETCH_INSTRUCCION:
+            fetch(fd_memoria);
+        break;
+    default:
+        log_warning(logger_aux_cpu,"Operacion desconocida de Memoria");
+        break;
+    }
+}
+
+void ejecutarCicloInstruccion() {
+
+    // Fetch (captura):
+    // Se busca la proxima instruccion a ejecutar
+    // La instruccion a ajecutar se le pide a Memoria utilizando la direccion de memoria del programa (contador de programa) para determinar qué instrucción se debe leer.
+    crearHiloJoin(&hilo_memoria_cpu, (void*)atenderMemoria, FETCH_INSTRUCCION, "Memoria", logger_aux_cpu, logger_error_cpu);
+
+    // Decode (decodificacion):
+    // Se interpreta que instrucción es la que se va a ejecutar y si la misma requiere de una traduccion de direccion logica a direccion fisica.
+
+    // Execute (ejecucion):
+    // Se ejecuta lo correspondiente a cada instruccion
+
+    // Check Interrupt:
+    // Se revisa si Kernel nos envio una interupcion al PID que se está ejecutando. En caso afirmativo, se envía a Kernel el Contexto de ejecucion con el motivo de la interrupcion (mediante el kernel dispatch).
+    // Posible solucion con while, mientras no me interrumpan ejecutas ciclo de instruccion, sino sale del while y se envia contexto a Kernel
 }
 
 void terminarPrograma() {

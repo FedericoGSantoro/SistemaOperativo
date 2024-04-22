@@ -62,6 +62,12 @@ void gestionar_conexion(void * puntero_fd_cliente){
             t_list* valoresPaquete = recibir_paquete(fd_cliente);
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
+        // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar
+        case FETCH_INSTRUCCION:
+            // CPU espera que se envie un t_list porque usa la funcion recibir_paquete
+            // La instruccion es una char, ejemplo SET AX 1
+            
+            break;
         default:
             log_error(loggerError, "NO ENTIENDO QUE ME DECIS PA, BANEADO");
 
