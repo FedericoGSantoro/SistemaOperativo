@@ -18,6 +18,7 @@ typedef enum {
     MENSAJE,
     PAQUETE,
 	CONTEXTO_EJECUCION,
+	FETCH_INSTRUCCION,
 } op_codigo;
 // Operaciones de Instrucciones de CPU
 typedef enum{
