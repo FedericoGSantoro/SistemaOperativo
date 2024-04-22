@@ -10,6 +10,9 @@ int main(int argc, char* argv[]){
     // Inicializar consola interactiva
     iniciarConsolaInteractiva();
 
+    // Inicia la planificacion
+    iniciarPlanificacion();
+
     // Escucho las conexiones entrantes
     while(escucharServer(socket_servidor));
 
@@ -19,22 +22,146 @@ int main(int argc, char* argv[]){
     return 0;
 }
 
-void crear_pcb() {
+void iniciarPlanificacion() {
+    planificacionLargoPlazo();
+    planificacionCortoPlazo();
+}
+
+void planificacionCortoPlazo() {
+    pthread_t CortoPlazoReady;
+    //pthread_t CortoPlazoBlocked;
+    //pthread_t CortoPlazoRunning;
+    crearHiloDetach(&CortoPlazoReady, (void*) corto_plazo_ready, NULL, "Planificacion corto plazo READY", logs_auxiliares, logs_error);
+    //crearHiloDetach(&CortoPlazoBlocked, (void*) corto_plazo_running, NULL, "Planificacion corto plazo RUNNING", logs_auxiliares, logs_error);
+    //crearHiloDetach(&CortoPlazoRunning, (void*) corto_plazo_blocked, NULL, "Planificacion corto plazo BLOCKED", logs_auxiliares, logs_error);
+}
+
+void corto_plazo_ready() {
+    while(1) {
+        if ( queue_is_empty(cola_running) ) {
+            switch (ALGORITMO_PLANIFICACION) {
+            case FIFO:
+                queue_push(cola_running, queue_pop(cola_ready));
+                //mensaje_cpu_dispatch();
+                break;
+            case RR:
+                break;
+            case VRR:
+                break;
+            default:
+                log_error(logs_error, "No se reconocio el algoritmo cargado");
+                break;
+            }
+        }
+        
+    }
+}
+
+void planificacionLargoPlazo() {
+    pthread_t LargoPlazoNew;
+    pthread_t LargoPlazoExit;
+    crearHiloDetach(&LargoPlazoNew, (void*) largo_plazo_new, NULL, "Planificacion largo plazo NEW", logs_auxiliares, logs_error);
+    crearHiloDetach(&LargoPlazoExit, (void*) largo_plazo_exit, NULL, "Planificacion largo plazo EXIT", logs_auxiliares, logs_error);
+}
+
+void largo_plazo_new() {
+    while(1) {
+        int programasActuales = queue_size(cola_ready) + queue_size(cola_blocked) + queue_size(cola_running);
+        if ( programasActuales < GRADO_MULTIPROGRAMACION ) {
+            if ( !queue_is_empty(cola_new) ) {
+                queue_push(cola_ready,queue_pop(cola_new));
+            }
+        }
+    }
+}
+
+void largo_plazo_exit() {
+    while(1) {
+        if ( !queue_is_empty(cola_exit) ) {
+            if ( eliminar_pcb(queue_peek(cola_exit)) ) {
+                queue_pop(cola_exit);
+            }
+        }
+    }
+}
+
+bool eliminar_pcb(t_pcb* pcb) {
+    return (bool) mensaje_memoria(ELIMINAR_PCB, pcb);
+}
+
+void crear_pcb(int quantum, char* nombreConsola, t_punteros_memoria punteros) {
+    
     t_pcb* pcb = malloc(sizeof(t_pcb));
-    pcb->pid = pid_siguiente;
+    pcb->contexto_ejecucion.pid = pid_siguiente;
     pid_siguiente++;
-    pcb->quantum = ???;
-    pcb->io_identifier = socket_cliente;
-    pcb->motivo_bloqueo = NULL;
-    pcb->contexto_ejecucion->instruction_pointer = ???;
-    pcb->contexto_ejecucion->registro_estados = 0;
+    pcb->quantum_faltante = quantum; // Como lo recibo o de donde vrga lo saco?
+    pcb->io_identifier = nombreConsola; // Cambiar
+    pcb->motivo_bloqueo = -1;
+    pcb->path_archivo = pathArchivo;
+    pcb->contexto_ejecucion.registro_estados = 0;
     iniciarRegistrosCPU(pcb);
-    //pcb->contexto_ejecucion->punteros_memoria;
-    pcb->contexto_ejecucion->state = NEW;
+    pcb->contexto_ejecucion.punteros_memoria = punteros;
+    //pcb->contexto_ejecucion.instruction_pointer = 0; 
+    pcb->contexto_ejecucion.registros_cpu.pc = pcb->contexto_ejecucion.punteros_memoria.code_pointer;
+    pcb->contexto_ejecucion.state = NEW;
+    queue_push(cola_new, pcb);
+    log_info(logs_obligatorios, "Se crea el proceso %d en NEW", pcb->contexto_ejecucion.pid);
 }
 
 void iniciarRegistrosCPU(t_pcb* pcb) {
-    pcb->contexto_ejecucion->registros_cpu->ax = 0;
+    pcb->contexto_ejecucion.registros_cpu.ax = 0;
+    pcb->contexto_ejecucion.registros_cpu.bx = 0;
+    pcb->contexto_ejecucion.registros_cpu.cx = 0;
+    pcb->contexto_ejecucion.registros_cpu.dx = 0;
+    pcb->contexto_ejecucion.registros_cpu.eax = 0;
+    pcb->contexto_ejecucion.registros_cpu.ebx = 0;
+    pcb->contexto_ejecucion.registros_cpu.ecx = 0;
+    pcb->contexto_ejecucion.registros_cpu.edx = 0;
+    pcb->contexto_ejecucion.registros_cpu.si = 0;
+    pcb->contexto_ejecucion.registros_cpu.di = 0;
+}
+
+void* mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
+    t_paquete* paquete;
+    switch (comandoMemoria) {
+    case CREAR_PCB:
+        t_punteros_memoria* stream;
+        paquete = malloc(sizeof(t_paquete));
+        paquete->codigo_operacion = CREAR_PCB;
+        paquete->buffer = malloc(sizeof(t_buffer));
+        paquete->buffer->size = strlen(pathArchivo) + 1;
+        paquete->buffer->stream = malloc(paquete->buffer->size);
+        memcpy(paquete->buffer->stream, pathArchivo, paquete->buffer->size);
+        enviar_paquete(paquete, fd_memoria);
+        recv(fd_memoria, &stream, sizeof(t_punteros_memoria), MSG_WAITALL); //recibo puntero a memoria (t_punteros_memoria)
+        eliminar_paquete(paquete);
+        return (void*) stream;
+        break;
+    case ELIMINAR_PCB:
+        bool eliminacionCorrecta; 
+        paquete = malloc(sizeof(t_paquete));
+        paquete->codigo_operacion = ELIMINAR_PCB;
+        paquete->buffer = malloc(sizeof(t_buffer));
+        paquete->buffer->size = sizeof(t_punteros_memoria);
+        paquete->buffer->stream = malloc(paquete->buffer->size);
+        memcpy(paquete->buffer->stream, &(pcb->contexto_ejecucion.punteros_memoria), paquete->buffer->size);
+        enviar_paquete(paquete, fd_memoria);
+        recv(fd_memoria, &eliminacionCorrecta, sizeof(bool), 0); //recibo puntero a memoria (t_punteros_memoria)
+        eliminar_paquete(paquete);
+        return (void*) eliminacionCorrecta;
+        break;
+    default:
+        log_error(logs_error, "Operacion desconocida");
+        break;
+    }
+}
+
+void inicializarColas() {
+    cola_new = queue_create();
+    cola_ready = queue_create();
+    cola_blocked = queue_create();
+    cola_running = queue_create();
+    cola_exit = queue_create();
 }
 
 void inicializarVariables(){
@@ -51,6 +178,9 @@ void inicializarVariables(){
     // if ( crearConexiones() ) {
     //     log_info(logs_auxiliares, "Conexiones creadas correctamente");
     // }
+    // Inicializar colas
+    inicializarColas();
+
 }
 
 void iniciarConsolaInteractiva() {
@@ -58,28 +188,36 @@ void iniciarConsolaInteractiva() {
 }
 
 void atender_consola_interactiva() {
+    char** arrayComando;
+    char* leido;
     while(1) {
-        char* leido = readline("COMANDO > ");
-        char** arrayComando = string_split(leido, " ");
+        leido = readline("COMANDO > ");
+        if ( !strcmp(leido, "exit") ) {
+            free(arrayComando);
+            free(leido);
+            break;
+        }
+        add_history(leido);
+        arrayComando = string_split(leido, " ");
         ejecutar_comando_consola(arrayComando);
-        free(arrayComando); // Hace falta?
-        free(leido); // Hace falta?
+        
     }
 }
 
 void ejecutar_comando_consola(char** arrayComando) {
-    comando_consola comando = transformarAOperacion(arrayComando[0]);
-    char* path;
+    comando = transformarAOperacion(arrayComando[0]);
     switch (comando) {
     case EJECUTAR_SCRIPT:
-        path = arrayComando[1];
+        //pathArchivo = arrayComando[1];
         // Que hace?
-        log_info(logs_auxiliares, "Script de ' %s ' ejecutado", path);
+        log_info(logs_auxiliares, "Script de ' %s ' ejecutado", pathArchivo);
         break;
     case INICIAR_PROCESO:
-        char* path = arrayComando[1];
+        char* pathArchivo = arrayComando[1];
+        //t_punteros_memoria punteros_memoria = mensaje_memoria();
+        //crear_pcb(80, );
+        //crearHiloDetach(&thread_memoria, (void*) mensaje_memoria, path, "Memoria", logs_auxiliares, logs_error);
         // Crea el pcb del proceso indicado
-        log_info(logs_auxiliares, "Proceso inicializado con el id: XX"); // Cambiar
         break;
     case FINALIZAR_PROCESO:
         uint32_t pid = atoi(arrayComando[1]);
@@ -151,6 +289,13 @@ void atender_cliente(void* argumentoVoid) {
             t_list* valoresPaquete = recibir_paquete(socket_cliente);
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
+        case CREAR_PCB:
+            // Recibir nombre de la consola y pathArchivo (Global)
+            char* nombre;
+            t_punteros_memoria* valorIntermedio =(t_punteros_memoria*) mensaje_memoria(CREAR_PCB, NULL);
+            t_punteros_memoria punteros_memoria = *valorIntermedio;
+            crear_pcb(80, nombre, punteros_memoria);
+            break;
         default:
             log_error(logs_error, "Codigo de operacion no reconocido: %d", codigoOperacion);
             break;
@@ -214,6 +359,20 @@ void iniciarConfig() {
     return;
 }
 
+alg_planificacion obtenerAlgoritmo() {
+    char* algoritmo = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    if ( !strcmp(algoritmo, "FIFO") ) {
+        return FIFO;
+    } else if ( !strcmp(algoritmo, "RR") ) {
+        return RR;
+    } else if ( !strcmp(algoritmo, "VRR") ) {
+        return VRR;
+    } else {
+        log_error(logs_error, "Algoritmo no reconocido: %s", algoritmo);
+        abort();
+    }
+}
+
 void leerConfig() {
     PUERTO_ESCUCHA = config_get_string_value(config, "PUERTO_ESCUCHA");
     IP_MEMORIA = config_get_string_value(config, "IP_MEMORIA");
@@ -221,7 +380,7 @@ void leerConfig() {
     IP_CPU = config_get_string_value(config, "IP_CPU");
     PUERTO_CPU_DISPATCH = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
     PUERTO_CPU_INTERRUPT = config_get_string_value(config, "PUERTO_CPU_INTERRUPT");
-    ALGORITMO_PLANIFICACION = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    ALGORITMO_PLANIFICACION = obtenerAlgoritmo();
     QUANTUM = config_get_int_value(config, "QUANTUM");
     RECURSOS = config_get_array_value(config, "RECURSOS");
     char** arrayInstancias = string_array_new();
@@ -251,4 +410,9 @@ void terminarPrograma() {
     liberar_conexion(fd_memoria);
     liberar_conexion(fd_cpu_dispatch);
     liberar_conexion(fd_cpu_interrupt);
+    queue_destroy(cola_new);
+    queue_destroy(cola_ready);
+    queue_destroy(cola_running);
+    queue_destroy(cola_blocked);
+    queue_destroy(cola_exit);
 }

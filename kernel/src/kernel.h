@@ -8,6 +8,7 @@
 #include "../../utils/src/hilos/hilos.h"
 #include <commons/string.h>
 #include <readline/readline.h>
+#include <commons/collections/queue.h>
 
 /*---------DEFINES---------*/
 
@@ -25,6 +26,12 @@ typedef enum {
     PROCESO_ESTADO,
 } comando_consola;
 
+typedef enum {
+    FIFO,
+    RR,
+    VRR,
+} alg_planificacion;
+
 /*---------DATOS DE LA CONFIGURACION---------*/
 
 char* PUERTO_ESCUCHA;
@@ -33,7 +40,7 @@ char* PUERTO_MEMORIA;
 char* IP_CPU;
 char* PUERTO_CPU_DISPATCH;
 char* PUERTO_CPU_INTERRUPT;
-char* ALGORITMO_PLANIFICACION;
+alg_planificacion ALGORITMO_PLANIFICACION;
 int QUANTUM;
 char** RECURSOS;
 int* INSTANCIAS_RECURSOS;
@@ -57,6 +64,16 @@ int socket_servidor;
 /*---------VARIABLES---------*/
 
 int pid_siguiente = 1;
+comando_consola comando;
+char* pathArchivo;
+
+/*---------COLAS---------*/
+
+t_queue* cola_new;
+t_queue* cola_ready;
+t_queue* cola_exit;
+t_queue* cola_running;
+t_queue* cola_blocked;
 
 /*---------HILOS---------*/
 
@@ -66,6 +83,29 @@ pthread_t thread_memoria;
 pthread_t thread_consola_interactiva;
 
 /*---------FUNCIONES---------*/
+
+// Inicializa la planificacion de kernel
+void iniciarPlanificacion();
+// Inicializa la planificacion a corto plazo
+void planificacionCortoPlazo();
+// Algoritmo para la cola de READY
+void corto_plazo_ready();
+// Inicializa la planificacion a largo plazo
+void planificacionLargoPlazo();
+// Algoritmo para la cola de NEW
+void largo_plazo_new();
+// Algoritmo para la cola de EXIT
+void largo_plazo_exit();
+// Elimina el pcb en memoria
+bool eliminar_pcb(t_pcb* pcb);
+// Crea el pcb
+void crear_pcb(int quantum, char* nombreConsola, t_punteros_memoria punteros);
+// Inicia registros de cpu en 0
+void iniciarRegistrosCPU(t_pcb* pcb);
+// Maneja la conexion con memoria
+void* mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb);
+// Inicializa las colas
+void inicializarColas();
 // Inicializa las variables
 void inicializarVariables();
 // Inicializa la consola interactiva
@@ -78,6 +118,8 @@ void ejecutar_comando_consola(char** arrayComando);
 comando_consola transformarAOperacion(char* operacionLeida);
 // Atiende al cliente
 void atender_cliente(void* argumentoVoid);
+// Itera el paquete y lo muestra por pantalla
+void iteradorPaquete(char* value);
 // Escucha el socket por peticiones
 bool escucharServer(int socket_servidor);
 // Envia mensaje inicial 
@@ -88,6 +130,8 @@ void crearLogs();
 bool crearConexiones();
 // Inicializa la config y lee los datos con leerConfig()
 void iniciarConfig();
+// Obtiene el algoritmo de la configuracion
+alg_planificacion obtenerAlgoritmo();
 // Lee la configuracion y lo carga a las variables correspondientes
 void leerConfig(); 
 // Convierte un array de string a un array de enteros
