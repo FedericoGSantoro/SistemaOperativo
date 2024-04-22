@@ -87,13 +87,13 @@ typedef struct{
 	t_registros_cpu registros_cpu;
 	t_punteros_memoria punteros_memoria;
 	process_state state;
+	blocked_reason motivo_bloqueo;
 } t_contexto_ejecucion;
 // PCB
 typedef struct{
 	uint64_t quantum_faltante; // duracion restante del tiempo de ejecucion
-	char* io_identifier; // identificador de la entrada/salida correspondiente
+	int io_identifier; // identificador de la entrada/salida correspondiente
 	t_contexto_ejecucion contexto_ejecucion;
-	blocked_reason motivo_bloqueo;
 	char* path_archivo; // archivo con las instrucciones a ejecutar
 } t_pcb;
 
