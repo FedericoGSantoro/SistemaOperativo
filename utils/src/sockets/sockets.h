@@ -18,6 +18,8 @@ typedef enum {
     MENSAJE,
     PAQUETE,
 	CONTEXTO_EJECUCION,
+	CREAR_PCB,
+	ELIMINAR_PCB,
 	FETCH_INSTRUCCION,
 } op_codigo;
 // Operaciones de Instrucciones de CPU
@@ -89,7 +91,7 @@ typedef struct{
 // PCB
 typedef struct{
 	uint64_t quantum_faltante; // duracion restante del tiempo de ejecucion
-	int io_identifier; // identificador de la entrada/salida correspondiente
+	char* io_identifier; // identificador de la entrada/salida correspondiente
 	t_contexto_ejecucion contexto_ejecucion;
 	blocked_reason motivo_bloqueo;
 	char* path_archivo; // archivo con las instrucciones a ejecutar
