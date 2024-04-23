@@ -45,11 +45,9 @@ void corto_plazo_blocked() {
     }
 }
 
-void cambiarContexto(t_contexto_ejecucion contexto, t_pcb* pcb) {
-    pcb->contexto_ejecucion = contexto;
-    // Cambiar, se tiene que revisar el motivo del bloqueo 
-    // y asi asignar el estado
-    switch (pcb->contexto_ejecucion.motivo_bloqueo) { 
+void cambiarContexto(t_list* contexto, blocked_reason bloqueadoPor, t_pcb* pcb) {
+    // Leer y asignar a contexto cada dato
+    switch (bloqueadoPor) { 
     case INTERRUPCION_RELOJ:
         queue_pop(cola_exec);
         cambiarEstado(READY, pcb);
@@ -72,23 +70,49 @@ void cambiarContexto(t_contexto_ejecucion contexto, t_pcb* pcb) {
     }
 }
 
+void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb) {
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.pc, sizeof(uint32_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.ax, sizeof(uint8_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.bx, sizeof(uint8_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.cx, sizeof(uint8_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.dx, sizeof(uint8_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.eax, sizeof(uint32_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.ebx, sizeof(uint32_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.ecx, sizeof(uint32_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.edx, sizeof(uint32_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.si, sizeof(uint32_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.di, sizeof(uint32_t));
+}
+
+void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb) {
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.punteros_memoria.stack_pointer, sizeof(uint64_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.punteros_memoria.heap_pointer, sizeof(uint64_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.punteros_memoria.data_pointer, sizeof(uint64_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.punteros_memoria.code_pointer, sizeof(uint64_t));
+}
+
+void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.pid, sizeof(uint32_t));
+    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registro_estados, sizeof(uint32_t));
+    empaquetar_registros_cpu(paquete, pcb);
+    // empaquetar_punteros_memoria(paquete, pcb);
+    // agregar_a_paquete(paquete, (int) pcb->contexto_ejecucion.state, sizeof(int));
+    agregar_a_paquete(paquete, (int) pcb->contexto_ejecucion.motivo_bloqueo, sizeof(int));
+}
+
 void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
     switch (codigoOperacion) {
     case CONTEXTO_EJECUCION:
         t_contexto_ejecucion* contexto;
-        paquete = malloc(sizeof(t_paquete));
-        paquete->codigo_operacion = CONTEXTO_EJECUCION;
-        paquete->buffer = malloc(sizeof(t_buffer));
-        paquete->buffer->size = sizeof(t_contexto_ejecucion);
-        paquete->buffer->stream = malloc(paquete->buffer->size);
-        memcpy(paquete->buffer->stream, &(pcb->contexto_ejecucion), paquete->buffer->size);
+        t_paquete* paquete = crear_paquete(CONTEXTO_EJECUCION);
+        empaquetar_contexto_ejecucion(paquete, pcb);
         enviar_paquete(paquete, fd_cpu_dispatch);
         eliminar_paquete(paquete);
         cambiarEstado(EXEC, pcb);
-        t_list* listaContexto = recibir_paquete(fd_cpu_dispatch);
-        contexto = list_get(listaContexto, 0);
-        cambiarContexto(*contexto, pcb);
+        blocked_reason bloqueadoPor = recibir_operacion(fd_cpu_dispatch);
+        t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
+        cambiarContexto(contextoNuevo, bloqueadoPor, pcb);
         break;
     default:
         break;
@@ -97,6 +121,8 @@ void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
 
 char* enumEstadoAString(process_state estado) {
     switch (estado) {
+    case NEW:
+        return "NEW";
     case READY:
         return "READY";
     case EXEC:
@@ -175,9 +201,7 @@ void largo_plazo_new() {
         if ( programasActuales < GRADO_MULTIPROGRAMACION ) {
             if ( !queue_is_empty(cola_new) ) {
                 t_pcb* pcb = queue_pop(cola_new);
-                t_punteros_memoria* punteros = (t_punteros_memoria*) mensaje_memoria(CREAR_PCB, pcb);
-                pcb->contexto_ejecucion.punteros_memoria = *punteros;
-                pcb->contexto_ejecucion.registros_cpu.pc = *punteros->code_pointer;
+                //mensaje_memoria(CREAR_PCB, pcb);
                 cambiarEstado(READY, pcb);
                 queue_push(cola_ready, pcb);
             }
@@ -207,7 +231,6 @@ void largo_plazo_exit() {
 
 void eliminar_pcb(t_pcb* pcb) {
     mensaje_memoria(ELIMINAR_PCB, pcb);
-    free(pcb);
 }
 
 void crear_pcb(int quantum) {
@@ -250,30 +273,44 @@ void iniciarRegistrosCPU(t_pcb* pcb) {
 
 void* mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
     t_paquete* paquete;
+    int codigoOperacion;
     switch (comandoMemoria) {
     case CREAR_PCB:
-        t_punteros_memoria* punteros;
-        paquete = malloc(sizeof(t_paquete));
-        paquete->codigo_operacion = CREAR_PCB;
-        paquete->buffer = malloc(sizeof(t_buffer));
-        paquete->buffer->size = strlen(pathArchivo) + 1;
-        paquete->buffer->stream = malloc(paquete->buffer->size);
-        memcpy(paquete->buffer->stream, pathArchivo, paquete->buffer->size);
+        paquete = crear_paquete(CREAR_PCB);
+        agregar_a_paquete(paquete, pathArchivo, strlen(pathArchivo) + 1);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
-        t_list* listaPunteros = recibir_paquete(fd_memoria);
-        punteros = list_get(listaPunteros, 0);
-        return (void*) punteros;
+        codigoOperacion = recibir_operacion(fd_memoria);
+        switch (codigoOperacion) {
+        case OK_OPERACION:
+            t_list* punteros = recibir_paquete(fd_memoria);
+            pcb->contexto_ejecucion.punteros_memoria.stack_pointer = list_get(punteros, 0);
+            pcb->contexto_ejecucion.punteros_memoria.heap_pointer = list_get(punteros, 1);
+            pcb->contexto_ejecucion.punteros_memoria.data_pointer = list_get(punteros, 2);
+            pcb->contexto_ejecucion.punteros_memoria.code_pointer = list_get(punteros, 3);
+            pcb->contexto_ejecucion.registros_cpu.pc = pcb->contexto_ejecucion.punteros_memoria.code_pointer;    
+            break;
+        case ERROR_OPERACION:
+            log_error(logs_error, "Operacion asignacion de memoria no pudo ser realizada");
+            //mensaje_memoria(CREAR_PCB, pcb);
+            break;
+        }
         break;
     case ELIMINAR_PCB:
-        paquete = malloc(sizeof(t_paquete));
-        paquete->codigo_operacion = ELIMINAR_PCB;
-        paquete->buffer = malloc(sizeof(t_buffer));
-        paquete->buffer->size = sizeof(t_punteros_memoria);
-        paquete->buffer->stream = malloc(paquete->buffer->size);
-        memcpy(paquete->buffer->stream, &(pcb->contexto_ejecucion.punteros_memoria), paquete->buffer->size);
+        paquete = crear_paquete(ELIMINAR_PCB);
+        empaquetar_punteros_memoria(paquete, pcb);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
+        codigoOperacion = recibir_operacion(fd_memoria);
+        switch (codigoOperacion) {
+        case OK_OPERACION:
+            free(pcb);
+            break;
+        case ERROR_OPERACION:
+            log_error(logs_error, "Operacion eliminacion de memoria de pid %d no pudo ser realizada", pcb->contexto_ejecucion.pid);
+            mensaje_memoria(ELIMINAR_PCB, pcb);
+            break;
+        }
         break;
     default:
         log_error(logs_error, "Operacion desconocida");
@@ -433,14 +470,14 @@ bool escucharServer(int socket_servidor) {
 void enviar_handshake() {
     // Envio los mensajes iniciales
     enviar_mensaje("Soy Kernel!", fd_memoria);
-    enviar_mensaje("Soy Kernel!", fd_cpu_dispatch);
-    enviar_mensaje("Soy Kernel!", fd_cpu_interrupt);
+    enviar_mensaje("Soy Kernel por dispatch!", fd_cpu_dispatch);
+    enviar_mensaje("Soy Kernel por interrupt!", fd_cpu_interrupt);
 }
 
 void crearLogs() {
-    logs_auxiliares = log_create("logsExtras.log", "[EXTRA]", true, LOG_LEVEL_INFO);
+    logs_auxiliares = log_create("logsExtras.log", "[EXTRA]", false, LOG_LEVEL_INFO);
     logs_obligatorios = log_create("obligatoriosKernel.log", "[OBLIGATORIOS]", false, LOG_LEVEL_INFO);
-    logs_error = log_create("logsExtras.log", "[ERROR]", true, LOG_LEVEL_INFO);
+    logs_error = log_create("logsExtras.log", "[ERROR]", false, LOG_LEVEL_INFO);
     // Comprobacion de logs creador correctamente
     if ( logs_auxiliares == NULL || logs_obligatorios == NULL || logs_error == NULL) {
         terminarPrograma();

@@ -93,7 +93,7 @@ void planificacionCortoPlazo();
 // Algoritmo para cola de blocked
 void corto_plazo_blocked();
 // Cambia el contexto del pcb con el recibido y lo asigna a la cola correspondiente
-void cambiarContexto(t_contexto_ejecucion contexto, t_pcb* pcb);
+void cambiarContexto(t_list* contexto, blocked_reason bloqueadoPor, t_pcb* pcb);
 // Maneja la conexion con el dispatch de CPU
 void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb);
 // Convierte el enum de estado a un string
