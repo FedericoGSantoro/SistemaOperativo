@@ -38,6 +38,7 @@ uint64_t registro_estados;
 t_registros_cpu registros_cpu;
 t_punteros_memoria punteros_memoria;
 process_state state;
+blocked_reason motivo_bloqueo;
 // instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse
 char* ir; 
 
@@ -73,7 +74,7 @@ void iteradorPaquete(char* value);
 // Guardo en los registros del cpu lo que recibí en el contexto de ejecucion
 void desempaquetarContextoEjecucion(t_list* paquete);
 // Recibo el contexto de ejecucion que me manda Kernel
-void recvContextoEjecucion(int fd_kernel_dispatch);
+void recvContextoEjecucion();
 
 // Fetch (captura):
 // Se busca la proxima instruccion a ejecutar
