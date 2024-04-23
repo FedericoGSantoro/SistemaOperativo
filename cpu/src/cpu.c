@@ -156,7 +156,7 @@ void desempaquetarContextoEjecucion(t_list* paquete) {
     registros_cpu.edx = list_get(paquete, 10);
     registros_cpu.si = list_get(paquete, 11);
     registros_cpu.di = list_get(paquete, 12);
-    motivo_bloqueo = list_get(paquete, 13);
+    motivo_bloqueo = (blocked_reason) list_get(paquete, 13);
 
     //TO-DO: para no bloquearnos con lo que sigue, probar primero empaquetar contexto y enviarlo a kernel
 }
