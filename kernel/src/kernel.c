@@ -30,7 +30,7 @@ void iniciarPlanificacion() {
 void planificacionCortoPlazo() {
     pthread_t CortoPlazoReady;
     pthread_t CortoPlazoBlocked;
-    //pthread_t CortoPlazoRunning; // Creo que solo comprueba quantum para desalojar?
+    //pthread_t CortoPlazoRunning; // Creo que solo comprueba quantum para desalojar a ready y exit
     crearHiloDetach(&CortoPlazoReady, (void*) corto_plazo_ready, NULL, "Planificacion corto plazo READY", logs_auxiliares, logs_error);
     crearHiloDetach(&CortoPlazoBlocked, (void*) corto_plazo_blocked, NULL, "Planificacion corto plazo RUNNING", logs_auxiliares, logs_error);
     //crearHiloDetach(&CortoPlazoRunning, (void*) corto_plazo_running, NULL, "Planificacion corto plazo BLOCKED", logs_auxiliares, logs_error);
@@ -61,12 +61,12 @@ void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.edx = list_get(contexto, 10);
     pcb->contexto_ejecucion.registros_cpu.si = list_get(contexto, 11);
     pcb->contexto_ejecucion.registros_cpu.di = list_get(contexto, 12);
+    pcb->contexto_ejecucion.motivo_bloqueo = (blocked_reason) list_get(contexto, 13);
 }
 
-void cambiarContexto(t_list* contexto, blocked_reason bloqueadoPor, t_pcb* pcb) {
+void cambiarContexto(t_list* contexto, t_pcb* pcb) {
     cargar_contexto_recibido(contexto, pcb);
-    pcb->contexto_ejecucion.motivo_bloqueo = bloqueadoPor;
-    switch (bloqueadoPor) { 
+    switch (pcb->contexto_ejecucion.motivo_bloqueo) { 
     case INTERRUPCION_RELOJ:
         queue_pop(cola_exec);
         queue_push(cola_ready, pcb);
@@ -128,9 +128,13 @@ void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
         enviar_paquete(paquete, fd_cpu_dispatch);
         eliminar_paquete(paquete);
         cambiarEstado(EXEC, pcb);
-        blocked_reason bloqueadoPor = recibir_operacion(fd_cpu_dispatch);
-        t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
-        cambiarContexto(contextoNuevo, bloqueadoPor, pcb);
+        op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
+        if ( codigoOperacion == OK_OPERACION ) {
+            t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
+            cambiarContexto(contextoNuevo, pcb);
+        } else {
+            log_error(logs_error, "Problema con la operacion");
+        }
         break;
     default:
         break;
@@ -407,7 +411,12 @@ void ejecutar_comando_consola(char** arrayComando) {
     case FINALIZAR_PROCESO:
         uint32_t pid = atoi(arrayComando[1]);
         // (deberá liberar recursos, archivos y memoria)
+        planificacionEjecutandose = false;
+        // Encontrar en que cola esta
+        // Sacarlo de la cola y eliminarlo
+        // si esta en exec Mando interrupcion
         log_info(logs_auxiliares, "Proceso %d finalizado", pid);
+        planificacionEjecutandose = true;
         break;
     case DETENER_PLANIFICACION:
         planificacionEjecutandose = false;

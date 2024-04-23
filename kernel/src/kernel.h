@@ -96,7 +96,7 @@ void corto_plazo_blocked();
 // Carga el contexto actual del pcb por el recibido
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb);
 // Cambia el contexto del pcb con el recibido y lo asigna a la cola correspondiente
-void cambiarContexto(t_list* contexto, blocked_reason bloqueadoPor, t_pcb* pcb);
+void cambiarContexto(t_list* contexto, t_pcb* pcb);
 // Empaqueta los registros de la cpu del contexto para enviarlos
 void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb);
 // Empaqueta los punteros de memoria para enviarlos
