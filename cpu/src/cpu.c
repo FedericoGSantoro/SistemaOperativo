@@ -80,7 +80,7 @@ void atenderKernelDispatch() {
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
         case CONTEXTO_EJECUCION:
-            //recvContextoEjecucion(fd_kernel_dispatch);
+            recvContextoEjecucion();
             log_info(logger_aux_cpu, "Recibi el contexto de ejecucion");
             log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
             // IN-PROGRESS ejecutar ciclo de instruccion
@@ -143,15 +143,25 @@ bool esperarClientes() {
 }
 
 void desempaquetarContextoEjecucion(t_list* paquete) {
-    t_contexto_ejecucion* contexto = list_get(paquete, 0);
-    pid = contexto->pid;
-    registro_estados = contexto->registro_estados;
-    registros_cpu = contexto->registros_cpu;
-    punteros_memoria = contexto->punteros_memoria;
-    free(contexto);
+    pid = list_get(paquete, 0);
+    registro_estados = list_get(paquete, 1);
+    registros_cpu.pc = list_get(paquete, 2);
+    registros_cpu.ax = list_get(paquete, 3);
+    registros_cpu.bx = list_get(paquete, 4);
+    registros_cpu.cx = list_get(paquete, 5);
+    registros_cpu.dx = list_get(paquete, 6);
+    registros_cpu.eax = list_get(paquete, 7);
+    registros_cpu.ebx = list_get(paquete, 8);
+    registros_cpu.ecx = list_get(paquete, 9);
+    registros_cpu.edx = list_get(paquete, 10);
+    registros_cpu.si = list_get(paquete, 11);
+    registros_cpu.di = list_get(paquete, 12);
+    motivo_bloqueo = list_get(paquete, 13);
+
+    //TO-DO: para no bloquearnos con lo que sigue, probar primero empaquetar contexto y enviarlo a kernel
 }
 
-void recvContextoEjecucion(int fd_kernel_dispatch) {
+void recvContextoEjecucion() {
     t_list* paquete = recibir_paquete(fd_kernel_dispatch);
     desempaquetarContextoEjecucion(paquete);
     list_destroy(paquete);
@@ -159,6 +169,7 @@ void recvContextoEjecucion(int fd_kernel_dispatch) {
 
 void fetch(int fd_memoria) {
 
+    // TO-DO: usar la funcion crear paquete aca en vez de hacerlo a mano
     uint32_t stream; // tamanio del pc
     t_paquete* paquete = malloc(sizeof(t_paquete));
     paquete->codigo_operacion = FETCH_INSTRUCCION;
