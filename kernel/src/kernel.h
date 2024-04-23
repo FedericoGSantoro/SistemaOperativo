@@ -76,6 +76,7 @@ t_queue* cola_ready;
 t_queue* cola_exit;
 t_queue* cola_exec;
 t_queue* cola_blocked;
+t_queue* cola_ready_aux;
 
 /*---------HILOS---------*/
 
@@ -92,8 +93,16 @@ void iniciarPlanificacion();
 void planificacionCortoPlazo();
 // Algoritmo para cola de blocked
 void corto_plazo_blocked();
+// Carga el contexto actual del pcb por el recibido
+void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb);
 // Cambia el contexto del pcb con el recibido y lo asigna a la cola correspondiente
-void cambiarContexto(t_contexto_ejecucion contexto, t_pcb* pcb);
+void cambiarContexto(t_list* contexto, blocked_reason bloqueadoPor, t_pcb* pcb);
+// Empaqueta los registros de la cpu del contexto para enviarlos
+void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb);
+// Empaqueta los punteros de memoria para enviarlos
+void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb);
+// Empaqueta el contexto de ejecucion para enviarlo
+void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb);
 // Maneja la conexion con el dispatch de CPU
 void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb);
 // Convierte el enum de estado a un string
@@ -126,6 +135,8 @@ void inicializarVariables();
 void iniciarConsolaInteractiva();
 // Atiende las peticiones de la consola interactiva
 void atender_consola_interactiva();
+// Obtiene los pids de la cola
+char* obtenerPids (t_queue* cola);
 // Ejecuta el comando correspondiente
 void ejecutar_comando_consola(char** arrayComando);
 // Devuelve el comando del enum correspondiente
