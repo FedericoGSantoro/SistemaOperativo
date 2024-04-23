@@ -300,9 +300,9 @@ void inicializarVariables(){
     socket_servidor = iniciar_servidor(PUERTO_ESCUCHA, logs_auxiliares, logs_error);
 
     // Crear las conexiones hacia cpu y memoria
-    // if ( crearConexiones() ) {
-    //     log_info(logs_auxiliares, "Conexiones creadas correctamente");
-    // }
+    if ( crearConexiones() ) {
+        log_info(logs_auxiliares, "Conexiones creadas correctamente");
+    }
     // Inicializar colas
     inicializarColas();
 
