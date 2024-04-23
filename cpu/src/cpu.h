@@ -40,7 +40,7 @@ t_punteros_memoria punteros_memoria;
 process_state state;
 blocked_reason motivo_bloqueo;
 // instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse
-char* ir; 
+char* ir;
 
 // Inicializamos logs
 void iniciarLogs();
@@ -75,6 +75,10 @@ void iteradorPaquete(char* value);
 void desempaquetarContextoEjecucion(t_list* paquete);
 // Recibo el contexto de ejecucion que me manda Kernel
 void recvContextoEjecucion();
+// Empaqueto el contexto de ejecucion
+void empaquetarContextoEjecucion(t_paquete* paquete);
+// Envio contexto de ejecucion
+void enviarContextoEjecucion();
 
 // Fetch (captura):
 // Se busca la proxima instruccion a ejecutar

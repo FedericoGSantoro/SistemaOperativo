@@ -81,10 +81,18 @@ void atenderKernelDispatch() {
             break;
         case CONTEXTO_EJECUCION:
             recvContextoEjecucion();
-            log_info(logger_aux_cpu, "Recibi el contexto de ejecucion");
-            log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
+            log_info(logger_aux_cpu, "Recibi el contexto de ejecucion!");
+            //log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
+
             // IN-PROGRESS ejecutar ciclo de instruccion
             //ejecutarCicloInstruccion();
+
+            // Para no bloquearnos con lo que sigue, probamos primero empaquetar contexto y enviarlo a kernel
+            enviarContextoEjecucion();
+            log_info(logger_aux_cpu, "Envie el contexto de ejecucion!");
+
+            // Aumento en 1 al final del ciclo para que apunte a la siguiente instruccion
+            registros_cpu.pc++;
 
             break;
         // Case -1 para salir del while infinito
@@ -142,24 +150,45 @@ bool esperarClientes() {
     return false;
 }
 
+void empaquetarContextoEjecucion(t_paquete* paquete) {
+    agregar_a_paquete(paquete, &(pid), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(registro_estados), sizeof(uint64_t));
+    agregar_a_paquete(paquete, &(registros_cpu.pc), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(registros_cpu.ax), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(registros_cpu.bx), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(registros_cpu.cx), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(registros_cpu.dx), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(registros_cpu.eax), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(registros_cpu.ebx), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(registros_cpu.ecx), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(registros_cpu.edx), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(registros_cpu.si), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(registros_cpu.di), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(motivo_bloqueo), sizeof(int));
+}
+
+void enviarContextoEjecucion() {
+    t_paquete* paquete = crear_paquete(OK_OPERACION);
+    empaquetarContextoEjecucion(paquete);
+    enviar_paquete(paquete, fd_kernel_dispatch);
+    eliminar_paquete(paquete);
+}
+
 void desempaquetarContextoEjecucion(t_list* paquete) {
-    pid = list_get(paquete, 0);
-    registro_estados = list_get(paquete, 1);
-    registros_cpu.pc = list_get(paquete, 2);
-    registros_cpu.ax = list_get(paquete, 3);
-    registros_cpu.bx = list_get(paquete, 4);
-    registros_cpu.cx = list_get(paquete, 5);
-    registros_cpu.dx = list_get(paquete, 6);
-    registros_cpu.eax = list_get(paquete, 7);
-    registros_cpu.ebx = list_get(paquete, 8);
-    registros_cpu.ecx = list_get(paquete, 9);
-    registros_cpu.edx = list_get(paquete, 10);
-    registros_cpu.si = list_get(paquete, 11);
-    registros_cpu.di = list_get(paquete, 12);
-    motivo_bloqueo = (blocked_reason) list_get(paquete, 13);
-
-
-    //TO-DO: para no bloquearnos con lo que sigue, probar primero empaquetar contexto y enviarlo a kernel
+    pid = *(uint32_t*)list_get(paquete, 0);
+    registro_estados = *(uint64_t*)list_get(paquete, 1);
+    registros_cpu.pc = *(uint32_t*)list_get(paquete, 2);
+    registros_cpu.ax = *(uint8_t*)list_get(paquete, 3);
+    registros_cpu.bx = *(uint8_t*)list_get(paquete, 4);
+    registros_cpu.cx = *(uint8_t*)list_get(paquete, 5);
+    registros_cpu.dx = *(uint8_t*)list_get(paquete, 6);
+    registros_cpu.eax = *(uint32_t*)list_get(paquete, 7);
+    registros_cpu.ebx = *(uint32_t*)list_get(paquete, 8);
+    registros_cpu.ecx = *(uint32_t*)list_get(paquete, 9);
+    registros_cpu.edx = *(uint32_t*)list_get(paquete, 10);
+    registros_cpu.si = *(uint32_t*)list_get(paquete, 11);
+    registros_cpu.di = *(uint32_t*)list_get(paquete, 12);
+    motivo_bloqueo = *(blocked_reason*) list_get(paquete, 13);
 }
 
 void recvContextoEjecucion() {
@@ -169,27 +198,15 @@ void recvContextoEjecucion() {
 }
 
 void fetch(int fd_memoria) {
-
-    // TO-DO: usar la funcion crear paquete aca en vez de hacerlo a mano
-    uint32_t stream; // tamanio del pc
-    t_paquete* paquete = malloc(sizeof(t_paquete));
-    paquete->codigo_operacion = FETCH_INSTRUCCION;
-    paquete->buffer = malloc(sizeof(t_buffer));
-    paquete->buffer->size = sizeof(uint32_t);
-    paquete->buffer->stream = malloc(paquete->buffer->size);
-    memcpy(paquete->buffer->stream, registros_cpu.pc, paquete->buffer->size);
+    t_paquete* paquete = crear_paquete(FETCH_INSTRUCCION);
+    agregar_a_paquete(paquete, &(registros_cpu.pc), sizeof(uint32_t));
     enviar_paquete(paquete, fd_memoria);
     eliminar_paquete(paquete);
 
     // Recibimos de memoria el pc y lo guardamos en ir
     t_list* pc = recibir_paquete(fd_memoria);
-    t_registros_cpu* pc_aux = list_get(pc, 0);
-    ir = pc_aux->pc;
+    ir = (char*)list_get(pc, 0);
     list_destroy(pc);
-    free(pc_aux);
-
-    // Aumento en 1 para que apunte a la siguiente instruccion
-    registros_cpu.pc++;
 }
 
 void atenderMemoria(op_codigo codigoMemoria) {
@@ -208,7 +225,7 @@ void ejecutarCicloInstruccion() {
     // Fetch (captura):
     // Se busca la proxima instruccion a ejecutar
     // La instruccion a ajecutar se le pide a Memoria utilizando la direccion de memoria del programa (contador de programa) para determinar qué instrucción se debe leer.
-    crearHiloJoin(&hilo_memoria_cpu, (void*)atenderMemoria, FETCH_INSTRUCCION, "Memoria", logger_aux_cpu, logger_error_cpu);
+    atenderMemoria(FETCH_INSTRUCCION);
 
     // Decode (decodificacion):
     // Se interpreta que instrucción es la que se va a ejecutar y si la misma requiere de una traduccion de direccion logica a direccion fisica.
