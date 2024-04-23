@@ -30,7 +30,7 @@ void iniciarPlanificacion() {
 void planificacionCortoPlazo() {
     pthread_t CortoPlazoReady;
     pthread_t CortoPlazoBlocked;
-    //pthread_t CortoPlazoRunning;
+    //pthread_t CortoPlazoRunning; // Creo que solo comprueba quantum para desalojar?
     crearHiloDetach(&CortoPlazoReady, (void*) corto_plazo_ready, NULL, "Planificacion corto plazo READY", logs_auxiliares, logs_error);
     crearHiloDetach(&CortoPlazoBlocked, (void*) corto_plazo_blocked, NULL, "Planificacion corto plazo RUNNING", logs_auxiliares, logs_error);
     //crearHiloDetach(&CortoPlazoRunning, (void*) corto_plazo_running, NULL, "Planificacion corto plazo BLOCKED", logs_auxiliares, logs_error);
@@ -39,30 +39,49 @@ void planificacionCortoPlazo() {
 void corto_plazo_blocked() {
     while(1) {
         while( !planificacionEjecutandose ) {}
-        // Chequea si el motivo del bloqueo fue solucionado
-        // Si esta solucionado lo envia a ready, si no lo deja bloqueado
-        // Chequea para eliminarlo tambien
+        if ( !queue_is_empty(cola_ready) ) {
+            t_pcb* pcb = queue_peek(cola_ready);
+            // Chequea si el motivo del bloqueo fue solucionado
+            // Si esta solucionado lo envia a ready, si no lo deja bloqueado
+            // Chequea para eliminarlo tambien
+        }
     }
 }
 
+void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
+    pcb->contexto_ejecucion.registro_estados = list_get(contexto, 1);
+    pcb->contexto_ejecucion.registros_cpu.pc = list_get(contexto, 2);
+    pcb->contexto_ejecucion.registros_cpu.ax = list_get(contexto, 3);
+    pcb->contexto_ejecucion.registros_cpu.bx = list_get(contexto, 4);
+    pcb->contexto_ejecucion.registros_cpu.cx = list_get(contexto, 5);
+    pcb->contexto_ejecucion.registros_cpu.dx = list_get(contexto, 6);
+    pcb->contexto_ejecucion.registros_cpu.eax = list_get(contexto, 7);
+    pcb->contexto_ejecucion.registros_cpu.ebx = list_get(contexto, 8);
+    pcb->contexto_ejecucion.registros_cpu.ecx = list_get(contexto, 9);
+    pcb->contexto_ejecucion.registros_cpu.edx = list_get(contexto, 10);
+    pcb->contexto_ejecucion.registros_cpu.si = list_get(contexto, 11);
+    pcb->contexto_ejecucion.registros_cpu.di = list_get(contexto, 12);
+}
+
 void cambiarContexto(t_list* contexto, blocked_reason bloqueadoPor, t_pcb* pcb) {
-    // Leer y asignar a contexto cada dato
+    cargar_contexto_recibido(contexto, pcb);
+    pcb->contexto_ejecucion.motivo_bloqueo = bloqueadoPor;
     switch (bloqueadoPor) { 
     case INTERRUPCION_RELOJ:
         queue_pop(cola_exec);
+        queue_push(cola_ready, pcb);
         cambiarEstado(READY, pcb);
         log_info(logs_obligatorios, "PID: %d - Desalojado por fin de Quantum", pcb->contexto_ejecucion.pid);
-        queue_push(cola_ready, pcb);
         break;
     case LLAMADA_SISTEMA:
         queue_pop(cola_exec);
-        cambiarEstado(BLOCKED, pcb);
         queue_push(cola_blocked, pcb);
+        cambiarEstado(BLOCKED, pcb);
         break;
     case INTERRUPCION_FIN_EVENTO:
         queue_pop(cola_exec);
-        cambiarEstado(EXIT, pcb);
         queue_push(cola_exit, pcb);
+        cambiarEstado(EXIT, pcb);
         break;
     default:
         log_error(logs_error, "Error con estado recibido, no reconocido: %d", pcb->contexto_ejecucion.state);
@@ -71,17 +90,17 @@ void cambiarContexto(t_list* contexto, blocked_reason bloqueadoPor, t_pcb* pcb) 
 }
 
 void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb) {
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.pc, sizeof(uint32_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.ax, sizeof(uint8_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.bx, sizeof(uint8_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.cx, sizeof(uint8_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.dx, sizeof(uint8_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.eax, sizeof(uint32_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.ebx, sizeof(uint32_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.ecx, sizeof(uint32_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.edx, sizeof(uint32_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.si, sizeof(uint32_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registros_cpu.di, sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.pc), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.ax), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.bx), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.cx), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.dx), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.eax), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.ebx), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.ecx), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.edx), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.si), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.di), sizeof(uint32_t));
 }
 
 void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb) {
@@ -92,19 +111,18 @@ void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb) {
 }
 
 void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.pid, sizeof(uint32_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.registro_estados, sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registro_estados), sizeof(uint64_t));
     empaquetar_registros_cpu(paquete, pcb);
     // empaquetar_punteros_memoria(paquete, pcb);
     // agregar_a_paquete(paquete, (int) pcb->contexto_ejecucion.state, sizeof(int));
-    agregar_a_paquete(paquete, (int) pcb->contexto_ejecucion.motivo_bloqueo, sizeof(int));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.motivo_bloqueo), sizeof(int));
 }
 
 void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
     switch (codigoOperacion) {
     case CONTEXTO_EJECUCION:
-        t_contexto_ejecucion* contexto;
         t_paquete* paquete = crear_paquete(CONTEXTO_EJECUCION);
         empaquetar_contexto_ejecucion(paquete, pcb);
         enviar_paquete(paquete, fd_cpu_dispatch);
@@ -144,7 +162,7 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     switch (estadoNuevo) {
     case READY:
         pcb->contexto_ejecucion.state = READY;
-        //log_info(logs_obligatorios, "Cola Ready <COLA>: [<LISTA DE PIDS>]")
+        log_info(logs_obligatorios, "Cola Ready %s: [%s]", config_get_string_value(config, "ALGORITMO_PLANIFICACION"), obtenerPids(cola_ready));
         break;
     case EXEC:
         pcb->contexto_ejecucion.state = EXEC;
@@ -162,28 +180,26 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
 }
 
 void corto_plazo_ready() {
+    t_pcb* pcb;
     while(1) {
         while( !planificacionEjecutandose ) {}
         if ( queue_is_empty(cola_exec) ) {
-            switch (ALGORITMO_PLANIFICACION) {
-            case FIFO:
-                if ( !queue_is_empty(cola_ready) ) {
-                    t_pcb* pcb = queue_pop(cola_ready);
+            if ( ALGORITMO_PLANIFICACION == VRR ) {
+                if ( !queue_is_empty(cola_ready_aux) ) {
+                    pcb= queue_pop(cola_ready_aux);
                     pcb->contexto_ejecucion.state = EXEC;
                     queue_push(cola_exec, pcb);
                     mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
-                }
-                break;
-            case RR:
-                break;
-            case VRR:
-                break;
-            default:
-                log_error(logs_error, "No se reconocio el algoritmo cargado");
-                break;
+                    continue;
+                } 
+            }
+            if ( !queue_is_empty(cola_ready) ) {
+                pcb = queue_pop(cola_ready);
+                pcb->contexto_ejecucion.state = EXEC;
+                queue_push(cola_exec, pcb);
+                mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
             }
         }
-        
     }
 }
 
@@ -202,8 +218,8 @@ void largo_plazo_new() {
             if ( !queue_is_empty(cola_new) ) {
                 t_pcb* pcb = queue_pop(cola_new);
                 //mensaje_memoria(CREAR_PCB, pcb);
-                cambiarEstado(READY, pcb);
                 queue_push(cola_ready, pcb);
+                cambiarEstado(READY, pcb);
             }
         }
     }
@@ -223,8 +239,8 @@ void largo_plazo_exit() {
         */
        /*
        LOG OBLIGATORIO:
-       Fin de Proceso: “Finaliza el proceso <PID> - 
-       Motivo: <SUCCESS / INVALID_RESOURCE / INVALID_WRITE>”
+       Fin de Proceso: "Finaliza el proceso <PID> - 
+       Motivo: <SUCCESS / INVALID_RESOURCE / INVALID_WRITE>"
        */
     }
 }
@@ -324,6 +340,7 @@ void inicializarColas() {
     cola_blocked = queue_create();
     cola_exec = queue_create();
     cola_exit = queue_create();
+    cola_ready_aux = queue_create();
 }
 
 void inicializarVariables(){
@@ -362,6 +379,19 @@ void atender_consola_interactiva() {
     free(leido);
 }
 
+char* obtenerPids (t_queue* cola) {
+    char* pids = string_new();
+    for( int i = 0; i < list_size(cola->elements); i++ ) {
+        t_pcb* pcb = list_get(cola->elements, i);
+        if ( i < list_size(cola->elements) -1 ) {
+            string_append_with_format(&pids, "%d, ", pcb->contexto_ejecucion.pid);
+        } else {
+            string_append_with_format(&pids, "%d", pcb->contexto_ejecucion.pid);
+        }
+    }
+    return pids;
+}
+
 void ejecutar_comando_consola(char** arrayComando) {
     comando = transformarAOperacion(arrayComando[0]);
     switch (comando) {
@@ -392,7 +422,11 @@ void ejecutar_comando_consola(char** arrayComando) {
         log_info(logs_auxiliares, "Grado de multiprogramacion cambiado a: %d", GRADO_MULTIPROGRAMACION);
         break;
     case PROCESO_ESTADO:
-        // Listar los procesos por su estado
+        log_info(logs_obligatorios, "Cola NEW: [%s]", obtenerPids(cola_new));
+        log_info(logs_obligatorios, "Cola READY: [%s]", obtenerPids(cola_ready));
+        log_info(logs_obligatorios, "Cola EXEC: [%s]", obtenerPids(cola_exec));
+        log_info(logs_obligatorios, "Cola BLOCKED: [%s]", obtenerPids(cola_blocked));
+        log_info(logs_obligatorios, "Cola EXIT: [%s]", obtenerPids(cola_exit));
         break;
     default:
         log_info(logs_auxiliares, "Comando desconocido");
@@ -562,4 +596,5 @@ void terminarPrograma() {
     queue_destroy_and_destroy_elements(cola_exec, (void*)eliminar_pcb);
     queue_destroy_and_destroy_elements(cola_blocked, (void*)eliminar_pcb);
     queue_destroy_and_destroy_elements(cola_exit, (void*)eliminar_pcb);
+    queue_destroy_and_destroy_elements(cola_ready_aux, (void*)eliminar_pcb);
 }
