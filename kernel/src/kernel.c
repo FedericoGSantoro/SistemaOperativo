@@ -49,19 +49,19 @@ void corto_plazo_blocked() {
 }
 
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
-    pcb->contexto_ejecucion.registro_estados = list_get(contexto, 1);
-    pcb->contexto_ejecucion.registros_cpu.pc = list_get(contexto, 2);
-    pcb->contexto_ejecucion.registros_cpu.ax = list_get(contexto, 3);
-    pcb->contexto_ejecucion.registros_cpu.bx = list_get(contexto, 4);
-    pcb->contexto_ejecucion.registros_cpu.cx = list_get(contexto, 5);
-    pcb->contexto_ejecucion.registros_cpu.dx = list_get(contexto, 6);
-    pcb->contexto_ejecucion.registros_cpu.eax = list_get(contexto, 7);
-    pcb->contexto_ejecucion.registros_cpu.ebx = list_get(contexto, 8);
-    pcb->contexto_ejecucion.registros_cpu.ecx = list_get(contexto, 9);
-    pcb->contexto_ejecucion.registros_cpu.edx = list_get(contexto, 10);
-    pcb->contexto_ejecucion.registros_cpu.si = list_get(contexto, 11);
-    pcb->contexto_ejecucion.registros_cpu.di = list_get(contexto, 12);
-    pcb->contexto_ejecucion.motivo_bloqueo = (blocked_reason) list_get(contexto, 13);
+    pcb->contexto_ejecucion.registro_estados = *(uint64_t*)list_get(contexto, 1);
+    pcb->contexto_ejecucion.registros_cpu.pc = *(uint32_t*)list_get(contexto, 2);
+    pcb->contexto_ejecucion.registros_cpu.ax = *(uint8_t*)list_get(contexto, 3);
+    pcb->contexto_ejecucion.registros_cpu.bx = *(uint8_t*)list_get(contexto, 4);
+    pcb->contexto_ejecucion.registros_cpu.cx = *(uint8_t*)list_get(contexto, 5);
+    pcb->contexto_ejecucion.registros_cpu.dx = *(uint8_t*)list_get(contexto, 6);
+    pcb->contexto_ejecucion.registros_cpu.eax = *(uint32_t*)list_get(contexto, 7);
+    pcb->contexto_ejecucion.registros_cpu.ebx = *(uint32_t*)list_get(contexto, 8);
+    pcb->contexto_ejecucion.registros_cpu.ecx = *(uint32_t*)list_get(contexto, 9);
+    pcb->contexto_ejecucion.registros_cpu.edx = *(uint32_t*)list_get(contexto, 10);
+    pcb->contexto_ejecucion.registros_cpu.si = *(uint32_t*)list_get(contexto, 11);
+    pcb->contexto_ejecucion.registros_cpu.di = *(uint32_t*)list_get(contexto, 12);
+    pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, 13);
 }
 
 void cambiarContexto(t_list* contexto, t_pcb* pcb) {
