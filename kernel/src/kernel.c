@@ -186,7 +186,7 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
 void corto_plazo_ready() {
     t_pcb* pcb;
     while(1) {
-        while( !planificacionEjecutandose ) {}
+        while( !planificacionEjecutandose );
         if ( queue_is_empty(cola_exec) ) {
             if ( ALGORITMO_PLANIFICACION == VRR ) {
                 if ( !queue_is_empty(cola_ready_aux) ) {
@@ -216,7 +216,8 @@ void planificacionLargoPlazo() {
 
 void largo_plazo_new() {
     while(1) {
-        while( !planificacionEjecutandose ) {}
+        while( !planificacionEjecutandose );
+        // Sumar la cola de ready aux?
         int programasActuales = queue_size(cola_ready) + queue_size(cola_blocked) + queue_size(cola_exec);
         if ( programasActuales < GRADO_MULTIPROGRAMACION ) {
             if ( !queue_is_empty(cola_new) ) {
