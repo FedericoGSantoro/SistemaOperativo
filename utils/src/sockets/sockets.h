@@ -21,6 +21,8 @@ typedef enum {
 	CREAR_PCB,
 	ELIMINAR_PCB,
 	FETCH_INSTRUCCION,
+	OK_OPERACION,
+	ERROR_OPERACION,
 } op_codigo;
 // Operaciones de Instrucciones de CPU
 typedef enum{
@@ -75,10 +77,10 @@ typedef struct{
 } t_registros_cpu;
 // Punteros a memoria
 typedef struct{
-	uint64_t* stack_pointer; // puntero a pila del sistema
-	uint64_t* heap_pointer; // puntero a memoria dinamica
-	uint64_t* data_pointer; // puntero a memoria estatica
-	uint64_t* code_pointer; // puntero a instrucciones propias del programa
+	uint64_t stack_pointer; // puntero a pila del sistema
+	uint64_t heap_pointer; // puntero a memoria dinamica
+	uint64_t data_pointer; // puntero a memoria estatica
+	uint64_t code_pointer; // puntero a instrucciones propias del programa
 } t_punteros_memoria;
 // Contexto de ejecucion
 typedef struct{
@@ -177,7 +179,7 @@ void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio);
 /*
 Crea y devuelve un paquete
 */
-t_paquete* crear_paquete(void);
+t_paquete* crear_paquete(op_codigo codigo);
 /*
 Crea un buffer
 paquete = paquete al cual crearle el buffer
