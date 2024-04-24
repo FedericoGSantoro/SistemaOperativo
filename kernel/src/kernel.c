@@ -38,30 +38,37 @@ void planificacionCortoPlazo() {
 
 void corto_plazo_blocked() {
     while(1) {
-        while( !planificacionEjecutandose ) {}
+        while( !planificacionEjecutandose );
         if ( !queue_is_empty(cola_ready) ) {
-            t_pcb* pcb = queue_peek(cola_ready);
+            // Nueva idea:
+            // Creo que espera a recibir una interrupcion de que finalizo el evento
+            // que bloquea un proceso, cuando llega busca ese proceso y lo manda a ready
+            
+            // t_pcb* pcb = queue_peek(cola_ready);
+            
+            // Vieja idea:
             // Chequea si el motivo del bloqueo fue solucionado
             // Si esta solucionado lo envia a ready, si no lo deja bloqueado
+            
             // Chequea para eliminarlo tambien
         }
     }
 }
 
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
-    pcb->contexto_ejecucion.registro_estados = list_get(contexto, 1);
-    pcb->contexto_ejecucion.registros_cpu.pc = list_get(contexto, 2);
-    pcb->contexto_ejecucion.registros_cpu.ax = list_get(contexto, 3);
-    pcb->contexto_ejecucion.registros_cpu.bx = list_get(contexto, 4);
-    pcb->contexto_ejecucion.registros_cpu.cx = list_get(contexto, 5);
-    pcb->contexto_ejecucion.registros_cpu.dx = list_get(contexto, 6);
-    pcb->contexto_ejecucion.registros_cpu.eax = list_get(contexto, 7);
-    pcb->contexto_ejecucion.registros_cpu.ebx = list_get(contexto, 8);
-    pcb->contexto_ejecucion.registros_cpu.ecx = list_get(contexto, 9);
-    pcb->contexto_ejecucion.registros_cpu.edx = list_get(contexto, 10);
-    pcb->contexto_ejecucion.registros_cpu.si = list_get(contexto, 11);
-    pcb->contexto_ejecucion.registros_cpu.di = list_get(contexto, 12);
-    pcb->contexto_ejecucion.motivo_bloqueo = (blocked_reason) list_get(contexto, 13);
+    pcb->contexto_ejecucion.registro_estados = *(uint64_t*)list_get(contexto, 1);
+    pcb->contexto_ejecucion.registros_cpu.pc = *(uint32_t*)list_get(contexto, 2);
+    pcb->contexto_ejecucion.registros_cpu.ax = *(uint8_t*)list_get(contexto, 3);
+    pcb->contexto_ejecucion.registros_cpu.bx = *(uint8_t*)list_get(contexto, 4);
+    pcb->contexto_ejecucion.registros_cpu.cx = *(uint8_t*)list_get(contexto, 5);
+    pcb->contexto_ejecucion.registros_cpu.dx = *(uint8_t*)list_get(contexto, 6);
+    pcb->contexto_ejecucion.registros_cpu.eax = *(uint32_t*)list_get(contexto, 7);
+    pcb->contexto_ejecucion.registros_cpu.ebx = *(uint32_t*)list_get(contexto, 8);
+    pcb->contexto_ejecucion.registros_cpu.ecx = *(uint32_t*)list_get(contexto, 9);
+    pcb->contexto_ejecucion.registros_cpu.edx = *(uint32_t*)list_get(contexto, 10);
+    pcb->contexto_ejecucion.registros_cpu.si = *(uint32_t*)list_get(contexto, 11);
+    pcb->contexto_ejecucion.registros_cpu.di = *(uint32_t*)list_get(contexto, 12);
+    pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, 13);
 }
 
 void cambiarContexto(t_list* contexto, t_pcb* pcb) {
@@ -104,10 +111,10 @@ void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb) {
 }
 
 void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb) {
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.punteros_memoria.stack_pointer, sizeof(uint64_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.punteros_memoria.heap_pointer, sizeof(uint64_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.punteros_memoria.data_pointer, sizeof(uint64_t));
-    agregar_a_paquete(paquete, pcb->contexto_ejecucion.punteros_memoria.code_pointer, sizeof(uint64_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.stack_pointer), sizeof(uint64_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.heap_pointer), sizeof(uint64_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.data_pointer), sizeof(uint64_t));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.code_pointer), sizeof(uint64_t));
 }
 
 void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
@@ -119,11 +126,11 @@ void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.motivo_bloqueo), sizeof(int));
 }
 
-void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
+void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
     switch (codigoOperacion) {
     case CONTEXTO_EJECUCION:
-        t_paquete* paquete = crear_paquete(CONTEXTO_EJECUCION);
+        paquete = crear_paquete(CONTEXTO_EJECUCION);
         empaquetar_contexto_ejecucion(paquete, pcb);
         enviar_paquete(paquete, fd_cpu_dispatch);
         eliminar_paquete(paquete);
@@ -153,6 +160,9 @@ char* enumEstadoAString(process_state estado) {
         return "BLOCKED";
     case EXIT:
         return "EXIT";
+    default:
+        return "ERROR ESTADO";
+        break;
     }
 }
 
@@ -254,11 +264,11 @@ void eliminar_pcb(t_pcb* pcb) {
     mensaje_memoria(ELIMINAR_PCB, pcb);
 }
 
-void crear_pcb(int quantum) {
+void crear_pcb() {
     t_pcb* pcb = malloc(sizeof(t_pcb));
     pcb->contexto_ejecucion.pid = pid_siguiente;
     pid_siguiente++;
-    pcb->quantum_faltante = quantum; // Como lo recibo o de donde vrga lo saco?
+    pcb->quantum_faltante = QUANTUM;
     pcb->io_identifier = numeroConsola;
     numeroConsola++;
     pcb->contexto_ejecucion.motivo_bloqueo = -1;
@@ -292,7 +302,15 @@ void iniciarRegistrosCPU(t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.di = 0;
 }
 
-void* mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
+void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb) {
+    pcb->contexto_ejecucion.punteros_memoria.stack_pointer = *(uint64_t*) list_get(punteros, 0);
+    pcb->contexto_ejecucion.punteros_memoria.heap_pointer = *(uint64_t*) list_get(punteros, 1);
+    pcb->contexto_ejecucion.punteros_memoria.data_pointer = *(uint64_t*) list_get(punteros, 2);
+    pcb->contexto_ejecucion.punteros_memoria.code_pointer = *(uint64_t*) list_get(punteros, 3);
+    pcb->contexto_ejecucion.registros_cpu.pc = (uint32_t)pcb->contexto_ejecucion.punteros_memoria.code_pointer;
+}
+
+void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
     t_paquete* paquete;
     int codigoOperacion;
     switch (comandoMemoria) {
@@ -305,11 +323,7 @@ void* mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         switch (codigoOperacion) {
         case OK_OPERACION:
             t_list* punteros = recibir_paquete(fd_memoria);
-            pcb->contexto_ejecucion.punteros_memoria.stack_pointer = list_get(punteros, 0);
-            pcb->contexto_ejecucion.punteros_memoria.heap_pointer = list_get(punteros, 1);
-            pcb->contexto_ejecucion.punteros_memoria.data_pointer = list_get(punteros, 2);
-            pcb->contexto_ejecucion.punteros_memoria.code_pointer = list_get(punteros, 3);
-            pcb->contexto_ejecucion.registros_cpu.pc = pcb->contexto_ejecucion.punteros_memoria.code_pointer;    
+            asignar_punteros_memoria(punteros, pcb);   
             break;
         case ERROR_OPERACION:
             log_error(logs_error, "Operacion asignacion de memoria no pudo ser realizada");
@@ -407,7 +421,7 @@ void ejecutar_comando_consola(char** arrayComando) {
         break;
     case INICIAR_PROCESO:
         pathArchivo = arrayComando[1];
-        crear_pcb(80); // Quantum?
+        crear_pcb();
         break;
     case FINALIZAR_PROCESO:
         uint32_t pid = atoi(arrayComando[1]);

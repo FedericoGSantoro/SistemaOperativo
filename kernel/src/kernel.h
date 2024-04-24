@@ -8,6 +8,7 @@
 #include "../../utils/src/hilos/hilos.h"
 #include <commons/string.h>
 #include <readline/readline.h>
+#include <readline/history.h>
 #include <commons/collections/queue.h>
 
 /*---------DEFINES---------*/
@@ -104,7 +105,7 @@ void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb);
 // Empaqueta el contexto de ejecucion para enviarlo
 void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb);
 // Maneja la conexion con el dispatch de CPU
-void* mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb);
+void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb);
 // Convierte el enum de estado a un string
 char* enumEstadoAString(process_state estado);
 // Cambia el estado y hace el log
@@ -120,13 +121,15 @@ void largo_plazo_exit();
 // Elimina el pcb en memoria
 void eliminar_pcb(t_pcb* pcb);
 // Crea el pcb
-void crear_pcb(int quantum);
+void crear_pcb();
 // Inicializa los punteros a memoria
 void iniciarPunterosMemoria(t_pcb* pcb);
 // Inicia registros de cpu en 0
 void iniciarRegistrosCPU(t_pcb* pcb);
+// Asigna los punteros a memoria al pcb
+void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb);
 // Maneja la conexion con memoria
-void* mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb);
+void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb);
 // Inicializa las colas
 void inicializarColas();
 // Inicializa las variables
