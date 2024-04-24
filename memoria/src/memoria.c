@@ -1,27 +1,27 @@
-#include "./memoria.h"
+#include "./includes/memoria.h"
 
 int main(void) {
     //inicializando ando
     inicializar_loggers();
     inicializar_config();
-    socket_fd_memoria = iniciar_servidor(PUERTO_ESCUCHA, loggerAux, loggerError);
+    socketFdMemoria = iniciar_servidor(memConfig.puertoEscucha, loggerAux, loggerError);
     // comentario con valor sentimental // log_info(loggerAux, "Se crearon los sockets carajo. fede puto"); 
 
-    while (server_escuchar(socket_fd_memoria)); //server escuchar devuelve 0 o 1 (false o true basicamente)
+    while (server_escuchar(socketFdMemoria)); //server escuchar devuelve 0 o 1 (false o true basicamente)
     terminar_programa();
     return 0;
 }
 
 void leer_config(){
-    PUERTO_ESCUCHA = config_get_string_value(config, "PUERTO_ESCUCHA");
-    TAM_MEMORIA = config_get_int_value(config, "TAM_MEMORIA");
-    TAM_PAGINA = config_get_int_value(config, "TAM_PAGINA");
-    RETARDO_RESPUESTA = config_get_int_value(config, "RETARDO_RESPUESTA");
-    PATH_INSTRUCCIONES = config_get_string_value(config, "PATH_INSTRUCCIONES");
+    memConfig.puertoEscucha = config_get_string_value(config, "PUERTO_ESCUCHA");
+    memConfig.tamMemoria = config_get_int_value(config, "TAM_MEMORIA");
+    memConfig.tamPagina = config_get_int_value(config, "TAM_PAGINA");
+    memConfig.retardoRespuesta = config_get_int_value(config, "RETARDO_RESPUESTA");
+    memConfig.pathInstrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
 }
 
 int server_escuchar(int fd_memoria){
-    int fd_cliente = esperar_cliente(socket_fd_memoria, loggerAux, loggerError);
+    int fd_cliente = esperar_cliente(socketFdMemoria, loggerAux, loggerError);
         // en memoria considero  (POR AHORA) que no hace falta almacenar en var globales los fd de los otros modulos.
         // en caso de necesitar "seguridad", deberia hacer que solo kernel me envie cosas para tocar la memoria
         // y para eso debería de reconocer el fd de kernel en algun lado y darle alguna funcion de gestionar_conexion_adminkernel
@@ -64,8 +64,9 @@ void gestionar_conexion(void * puntero_fd_cliente){
             break;
         // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar
         case FETCH_INSTRUCCION:
+            int programCounter = recibirProgramCounter(fd_cliente);
             // La instruccion es una char, ejemplo SET AX 1
-            
+            //fetch_instruction(path)
             break;
         default:
             log_error(loggerError, "NO ENTIENDO QUE ME DECIS PA, BANEADO");
@@ -95,5 +96,5 @@ void terminar_programa(){
     log_destroy(loggerOblig);
     log_destroy(loggerError);
     config_destroy(config);
-    liberar_conexion(socket_fd_memoria);    
+    liberar_conexion(socketFdMemoria);    
 }
