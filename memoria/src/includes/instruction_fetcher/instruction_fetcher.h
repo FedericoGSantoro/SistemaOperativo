@@ -1,13 +1,11 @@
 #ifndef INSTRUCTION_FETCHER_H_
 #define INSTRUCTION_FETCHER_H_
 
+#include "../memoria_vars/memoria_vars.h"
+#include "../../../../utils/src/liberador/liberador.h"
+#include <stdio.h>
 
-#include "../../../../utils/src/config/configs.h"
-#include "../../../../utils/src/types/types.h"
-#include <commons/collections/queue.h>
-#include "../memoria_vars.h"
-
-t_list* fetch_instruction(char* path);
-t_list* mapear_instruciones_pseudocodigo(char* file_instructions);
+char* fetch_instruccion(int pid);
+void crear_instrucciones(char* path, int pid);
 
 #endif /* INSTRUCTION_FETCHER_H_ */

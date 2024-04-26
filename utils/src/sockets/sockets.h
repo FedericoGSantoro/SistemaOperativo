@@ -21,8 +21,10 @@ typedef enum {
 	CREAR_PCB,
 	ELIMINAR_PCB,
 	FETCH_INSTRUCCION,
+	DEVOLVER_INSTRUCCION,
 	OK_OPERACION,
 	ERROR_OPERACION,
+	CREAR_PROCESO,
 } op_codigo;
 // Operaciones de Instrucciones de CPU
 typedef enum{
@@ -190,5 +192,6 @@ Itera sobre el paquete (Pasar esto a list_iterate)
 value = valor sobre el que se va a aplicar la funcion [(void*) iteradorPaquete]
 */
 void iteradorPaquete(char* value);
+
 
 #endif

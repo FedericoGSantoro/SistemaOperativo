@@ -5,7 +5,9 @@
 
 #include "./client_handler/client_handler.h"
 #include "../../utils/src/hilos/hilos.h"
-#include "./memoria_vars.h"
+#include "./instruction_fetcher/instruction_fetcher.h"
+#include "./memoria_vars/memoria_vars.h"
+#include "../../../utils/src/liberador/liberador.h"
 
 /*---------FUNCIONES---------*/
 void leer_config();
@@ -14,6 +16,5 @@ void gestionar_conexion(void * puntero_fd_cliente);
 void terminar_programa();
 void inicializar_loggers();
 void inicializar_config();
-
 
 #endif
