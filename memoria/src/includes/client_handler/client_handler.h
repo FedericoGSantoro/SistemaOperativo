@@ -3,6 +3,6 @@
 
 #include "../../utils/src/sockets/sockets.h"
 
-int recibirProgramCounter(int* fd_cliente);
+int recibirPID(int fd_cliente);
 
 #endif /* CLIENT_HANDLER_H */
