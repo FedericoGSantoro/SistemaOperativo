@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <commons/config.h>
 #include <commons/log.h>
+#include <commons/string.h>
 
 t_config* iniciar_config(char* path, t_log* logger_error, void*(*terminar_programa)());
 

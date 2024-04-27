@@ -39,7 +39,7 @@ void enviarMsj(){
 
 void enviarPaquete() {
     char* comandoLeido;
-	t_paquete* paquete = crear_paquete();
+	t_paquete* paquete = crear_paquete(PAQUETE);
 
 	// Leemos y esta vez agregamos las lineas al paquete
 	comandoLeido = readline("String > "); // Leo de consola
