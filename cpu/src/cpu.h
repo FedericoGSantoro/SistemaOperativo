@@ -41,6 +41,15 @@ process_state state;
 blocked_reason motivo_bloqueo;
 // instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse
 char* ir;
+// Estructura de instruccion
+typedef struct
+{
+    t_nombre_instruccion nombre_instruccion;
+    int cant_parametros;
+    int p_length[5];
+    t_list* parametros;
+} t_instruccion;
+t_instruccion* instruccion;
 
 // Inicializamos logs
 void iniciarLogs();
@@ -83,7 +92,20 @@ void enviarContextoEjecucion();
 // Fetch (captura):
 // Se busca la proxima instruccion a ejecutar
 // La instruccion a ajecutar se le pide a Memoria utilizando la direccion de memoria del programa (contador de programa) para determinar qué instrucción se debe leer.
-void fetch(int fd_memoria);
+void fetch();
+
+// Transformamos el nombre de la instruccion al enum correspondiente
+t_nombre_instruccion mapear_nombre_instruccion(char *nombre_instruccion);
+// Asignamos el largo de cada parametro
+void add_param_size_to_instruction(t_list *parametros, t_instruccion *instruccion);
+// Creamos la estructura t_instruccion
+t_instruccion *new_instruction(t_nombre_instruccion nombre_instruccion, t_list *parametros);
+// Por cada linea que leemos, obtenemos los tokens y armamos la instruccion con sus parametros y la agregamos a la lista
+t_instruccion* process_line(char *line);
+// Decode (decodificacion):
+// Se interpreta que instrucción es la que se va a ejecutar y si la misma requiere de una traduccion de direccion logica a direccion fisica.
+void decode();
+
 // Ejecutar ciclo de instruccion
 void ejecutarCicloInstruccion();
 
