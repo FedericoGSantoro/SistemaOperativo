@@ -66,7 +66,9 @@ void gestionar_conexion(void *puntero_fd_cliente)
         switch (op_recibida)
         {
         case MENSAJE:
-            recibir_mensaje(fd_cliente, loggerAux);
+            char* mensaje = recibir_mensaje(fd_cliente);
+            log_info(loggerAux, "Me llegó el mensaje %s", mensaje);
+            free(mensaje);
             break;
 
         case PAQUETE:
@@ -109,7 +111,7 @@ char* fetch_instruccion_de_cliente(int fd_cliente) {
 void return_instruccion(char* instruccion, int fd_cliente) {
 
     t_paquete* paquete = crear_paquete(DEVOLVER_INSTRUCCION);
-    agregar_a_paquete(paquete, &(instruccion), strlen(instruccion));
+    agregar_a_paquete(paquete, &(instruccion), strlen(instruccion) +1); // le agrego +1 por el caracter nulo
     enviar_paquete(paquete, fd_cliente);
     eliminar_paquete(paquete);
     free(instruccion);
