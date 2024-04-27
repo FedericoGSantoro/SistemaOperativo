@@ -316,6 +316,7 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
     switch (comandoMemoria) {
     case CREAR_PCB:
         paquete = crear_paquete(CREAR_PCB);
+        //agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
         agregar_a_paquete(paquete, pathArchivo, strlen(pathArchivo) + 1);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
@@ -495,7 +496,9 @@ void atender_cliente(void* argumentoVoid) {
         }
         switch (codigoOperacion) {
         case MENSAJE:
-            recibir_mensaje(socket_cliente, logs_auxiliares);
+            char* mensaje = recibir_mensaje(socket_cliente);
+            log_info(logs_auxiliares, "Me llegó el mensaje %s", mensaje);
+            free(mensaje);
             break;
         case PAQUETE:
             t_list* valoresPaquete = recibir_paquete(socket_cliente);
