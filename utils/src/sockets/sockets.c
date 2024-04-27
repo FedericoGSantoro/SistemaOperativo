@@ -143,11 +143,10 @@ void *recibir_buffer(int *size, int socket_cliente) {
 	return buffer;
 }
 
-void recibir_mensaje(int socket_cliente, t_log* loggerAuxiliar) {
+char *recibir_mensaje(int socket_cliente) {
 	int size;
 	char *buffer = recibir_buffer(&size, socket_cliente);
-	log_info(loggerAuxiliar, "Me llego el mensaje: %s", buffer);
-	free(buffer);
+	return buffer;
 }
 
 t_list *recibir_paquete(int socket_cliente) {
