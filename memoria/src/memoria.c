@@ -1,6 +1,7 @@
 #include "./includes/memoria.h"
 
 void inicializar_diccionario();
+void crearProceso(int fd_cliente_kernel);
 char* fetch_instruccion_de_cliente(int fd_cliente);
 void return_instruccion(char* instruccion, int fd_cliente);
 
@@ -79,17 +80,10 @@ void gestionar_conexion(void *puntero_fd_cliente)
             list_iterate(valoresPaquete, (void *)iteradorPaquete);
             break;
         case CREAR_PROCESO: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
-            t_list *paquete_recibido = recibir_paquete(fd_cliente); 
-            // recibirPID
-            int pid = *(int*) list_get(paquete_recibido, 0);
-            // recibirPath
-            char *path = (char*) list_get(paquete_recibido, 1);
-            crear_instrucciones(path, pid);
-            //libero la lista generada del paquete deserializado
-            liberar_lista_de_datos_planos(paquete_recibido);
+            crearProceso(fd_cliente);
             break;
         // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar
-        case FETCH_INSTRUCCION: // la cpu envia el pid
+        case FETCH_INSTRUCCION: // la cpu envia el pid y el pc para obtener la instruccion deseada
             char* instruccion = fetch_instruccion_de_cliente(fd_cliente);
             return_instruccion(instruccion, fd_cliente);
             break;
@@ -100,10 +94,28 @@ void gestionar_conexion(void *puntero_fd_cliente)
     }
 }
 
-char* fetch_instruccion_de_cliente(int fd_cliente) {
+void crearProceso(int fd_cliente_kernel) {
+    
+    t_list *paquete_recibido = recibir_paquete(fd_cliente_kernel); 
+    // recibirPID
+    int pid = *(int*) list_get(paquete_recibido, 0);
+    // recibirPath
+    char *path = (char*) list_get(paquete_recibido, 1);
+    crear_instrucciones(path, pid);
+    //libero la lista generada del paquete deserializado
+    liberar_lista_de_datos_planos(paquete_recibido);
+}
 
-    int pid = recibirPID(fd_cliente);
-    char* instruccion = fetch_instruccion(pid);
+char* fetch_instruccion_de_cliente(int fd_cliente_cpu) {
+
+    t_list* paquete = recibir_paquete(fd_cliente_cpu);
+
+    int pc = *(int*) list_get(paquete, 0);
+    int pid = *(int*) list_get(paquete, 1);
+
+    char* instruccion = fetch_instruccion(pid, pc);
+
+    liberar_lista_de_datos_planos(paquete);
 
     return instruccion;
 }
