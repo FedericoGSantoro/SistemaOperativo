@@ -4,9 +4,9 @@
 
 #include "../../utils/src/config/configs.h"
 #include <commons/collections/dictionary.h>
-#include <commons/collections/queue.h>
+#include <commons/collections/list.h>
 
-//cache para almacenar queue de instrucciones
+//cache para almacenar lista de instrucciones (key = PID, value = lista de instrucciones)
 extern t_dictionary* cache_instrucciones;
 
 //Globales del Config

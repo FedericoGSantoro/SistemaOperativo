@@ -89,7 +89,7 @@ void gestionar_conexion(void *puntero_fd_cliente)
             liberar_lista_de_datos_planos(paquete_recibido);
             break;
         // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar
-        case FETCH_INSTRUCCION: // la cpu envia el pid
+        case FETCH_INSTRUCCION: // la cpu envia el pid y el pc para obtener la instruccion deseada
             char* instruccion = fetch_instruccion_de_cliente(fd_cliente);
             return_instruccion(instruccion, fd_cliente);
             break;
@@ -100,10 +100,16 @@ void gestionar_conexion(void *puntero_fd_cliente)
     }
 }
 
-char* fetch_instruccion_de_cliente(int fd_cliente) {
+char* fetch_instruccion_de_cliente(int fd_cliente_cpu) {
 
-    int pid = recibirPID(fd_cliente);
-    char* instruccion = fetch_instruccion(pid);
+    t_list* paquete = recibir_paquete(fd_cliente_cpu);
+
+    int pc = *(int*) list_get(paquete, 0);
+    int pid = *(int*) list_get(paquete, 1);
+
+    char* instruccion = fetch_instruccion(pid, pc);
+
+    list_destroy(paquete);
 
     return instruccion;
 }
