@@ -7,6 +7,8 @@ int main(int argc, char* argv[]) {
     iniciarConfig();
     leerConfig();
 
+    iniciarMutex();
+
     iniciarServidoresCpu();
     iniciarConexionCpuMemoria();
     while(esperarClientes());
@@ -45,6 +47,10 @@ void leerConfig() {
     }        
 }
 
+void iniciarMutex(){
+    pthread_mutex_init(&variableInterrupcion, NULL);
+}
+
 void iniciarServidoresCpu() {
     fd_cpu_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, logger_aux_cpu, logger_error_cpu);
     fd_cpu_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, logger_aux_cpu, logger_error_cpu);
@@ -57,7 +63,6 @@ void enviarMsjMemoria(){
 void iniciarConexionCpuMemoria() {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error_cpu);
     enviarMsjMemoria();
-    //crearHiloDetach(&hilo_memoria_cpu, (void*)enviarMsjMemoria, NULL, "Memoria", logger_aux_cpu, logger_error_cpu);
 }
 
 void iteradorPaquete(char* value) {
@@ -84,18 +89,22 @@ void atenderKernelDispatch() {
         case CONTEXTO_EJECUCION:
             recvContextoEjecucion();
             log_info(logger_aux_cpu, "Recibi el contexto de ejecucion!");
-            //log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
+            
+            // Mientras no exista interrupcion de kernel se ejecuta un ciclo de instruccion, sino sale del while y se envia contexto a Kernel
+            pthread_mutex_lock(&variableInterrupcion);
+            while(!hayInterrupcion){
+                pthread_mutex_unlock(&variableInterrupcion);
+                log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
+                ejecutarCicloInstruccion();
+                // Aumento en 1 al final del ciclo para que apunte a la siguiente instruccion
+                registros_cpu.pc++;
+                pthread_mutex_lock(&variableInterrupcion);
+            }
+            pthread_mutex_unlock(&variableInterrupcion);
 
-            // IN-PROGRESS ejecutar ciclo de instruccion
-            //ejecutarCicloInstruccion();
-
-            // Para no bloquearnos con lo que sigue, probamos primero empaquetar contexto y enviarlo a kernel
+            // Empaquetamos el contexto de ejecucion y se lo enviamos a Kernel
             enviarContextoEjecucion();
             log_info(logger_aux_cpu, "Envie el contexto de ejecucion!");
-
-            // Aumento en 1 al final del ciclo para que apunte a la siguiente instruccion
-            registros_cpu.pc++;
-
             break;
         // Case -1 para salir del while infinito
 		case -1:
@@ -125,12 +134,16 @@ void atenderKernelInterrupt() {
             t_list* valoresPaquete = recibir_paquete(fd_kernel_interrupt);
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             break;
-        // case INTERRUPCION_FIN_EVENTO:
-        //     break;
-        // case INTERRUPCION_RELOJ:
-        //     break;
-        // case LLAMADA_SISTEMA:
-        //     break;
+        // Caso de INTERRUPCION_RELOJ:
+        case INTERRUPCION:
+            char* interrupcion_kernel = recibir_mensaje(fd_kernel_interrupt);
+            log_info(logger_aux_cpu, "Me llegó la interrupción %s", interrupcion_kernel);
+            free(mensaje);
+            // 
+            pthread_mutex_lock(&variableInterrupcion);
+            hayInterrupcion = true;
+            pthread_mutex_unlock(&variableInterrupcion);
+            break;
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Kernel Modo Interrupt");
             aux_control = 0;
@@ -315,20 +328,18 @@ void decode() {
     instruccion = process_line(ir);
 }
 
+
 void ejecutarCicloInstruccion() {
 
     // Fetch:
     atenderMemoria(FETCH_INSTRUCCION);
 
-    // Decode: IN PROGRESS
+    // Decode: 
     decode();
 
-    // Execute (ejecucion):
+    // Execute:
     // Se ejecuta lo correspondiente a cada instruccion
 
-    // Check Interrupt:
-    // Se revisa si Kernel nos envio una interupcion al PID que se está ejecutando. En caso afirmativo, se envía a Kernel el Contexto de ejecucion con el motivo de la interrupcion (mediante el kernel dispatch).
-    // Posible solucion con while, mientras no me interrumpan ejecutas ciclo de instruccion, sino sale del while y se envia contexto a Kernel
 }
 
 void terminarPrograma() {

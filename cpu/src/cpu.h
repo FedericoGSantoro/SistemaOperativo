@@ -41,6 +41,11 @@ process_state state;
 blocked_reason motivo_bloqueo;
 // instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse
 char* ir;
+
+// Mutex
+pthread_mutex_t variableInterrupcion;
+bool hayInterrupcion = false;
+
 // Estructura de instruccion
 typedef struct
 {
@@ -57,6 +62,9 @@ void iniciarLogs();
 void iniciarConfig();
 // Leemos los valores del archivo de configuracion y los almacenamos en las variables segun el tipo de dato
 void leerConfig();
+
+// Iniciamos mutex
+void iniciarMutex();
 
 // Iniciamos servidor de cpu modo dispatch y servidor cpu modo interrupt
 void iniciarServidoresCpu();
