@@ -17,6 +17,7 @@ typedef enum {
 	OK_OPERACION,
 	ERROR_OPERACION,
 	CREAR_PROCESO,
+	INTERRUPCION,
 } op_codigo;
 
 // Operaciones de Instrucciones de CPU
