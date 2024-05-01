@@ -91,6 +91,7 @@ void atenderKernelDispatch() {
             log_info(logger_aux_cpu, "Recibi el contexto de ejecucion!");
             
             // Mientras no exista interrupcion de kernel se ejecuta un ciclo de instruccion, sino sale del while y se envia contexto a Kernel
+            // Leemos el estado de la interrupcion utilizando mutex por si el hilo Kernel Interrupt está modificando la variable
             pthread_mutex_lock(&variableInterrupcion);
             while(!hayInterrupcion){
                 pthread_mutex_unlock(&variableInterrupcion);
@@ -139,7 +140,8 @@ void atenderKernelInterrupt() {
             char* interrupcion_kernel = recibir_mensaje(fd_kernel_interrupt);
             log_info(logger_aux_cpu, "Me llegó la interrupción %s", interrupcion_kernel);
             free(mensaje);
-            // 
+
+            // Modificamos el estado de la interrupcion utilizando mutex por si el hilo Kernel Dispatch está leyendo la variable
             pthread_mutex_lock(&variableInterrupcion);
             hayInterrupcion = true;
             pthread_mutex_unlock(&variableInterrupcion);
