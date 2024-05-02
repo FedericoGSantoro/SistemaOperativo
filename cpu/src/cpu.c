@@ -101,7 +101,7 @@ void atenderKernelDispatch() {
                 registros_cpu.pc++;
                 pthread_mutex_lock(&variableInterrupcion);
             }
-            // Volvemos a setear en false el hayInterrupcion 
+            // Seteamos de nuevo en false el hayInterrupcion
             hayInterrupcion = false;
             pthread_mutex_unlock(&variableInterrupcion);
 

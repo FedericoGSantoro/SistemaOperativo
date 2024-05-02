@@ -16,7 +16,6 @@ typedef enum {
 	DEVOLVER_INSTRUCCION,
 	OK_OPERACION,
 	ERROR_OPERACION,
-	CREAR_PROCESO,
 	INTERRUPCION,
 } op_codigo;
 
@@ -62,19 +61,20 @@ typedef struct{
 	uint32_t si;
 	uint32_t di;
 } t_registros_cpu;
+
 // Punteros a memoria
-typedef struct{
-	uint64_t stack_pointer; // puntero a pila del sistema
-	uint64_t heap_pointer; // puntero a memoria dinamica
-	uint64_t data_pointer; // puntero a memoria estatica
-	uint64_t code_pointer; // puntero a instrucciones propias del programa
-} t_punteros_memoria;
-// Contexto de ejecucion
+// typedef struct{
+// 	uint64_t stack_pointer; // puntero a pila del sistema
+// 	uint64_t heap_pointer; // puntero a memoria dinamica
+// 	uint64_t data_pointer; // puntero a memoria estatica
+// 	uint64_t code_pointer; // puntero a instrucciones propias del programa
+// } t_punteros_memoria;
+// // Contexto de ejecucion
 typedef struct{
 	uint32_t pid; // process ID
 	uint64_t registro_estados; // registros con los flags
 	t_registros_cpu registros_cpu;
-	t_punteros_memoria punteros_memoria;
+	// t_punteros_memoria punteros_memoria;
 	process_state state;
 	blocked_reason motivo_bloqueo;
 } t_contexto_ejecucion;
