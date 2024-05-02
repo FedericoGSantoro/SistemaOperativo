@@ -16,7 +16,10 @@
 			"initializer_list": "c",
 			"utility": "c",
 			"cmath": "c",
-			"random": "c"
+			"random": "c",
+			"*.tcc": "c",
+			"string": "c",
+			"istream": "c"
 		},
 		"C_Cpp.errorSquiggles": "disabled",
 	},

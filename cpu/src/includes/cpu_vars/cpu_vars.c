@@ -29,7 +29,7 @@ pthread_t hilo_memoria_cpu;
 uint32_t pid;
 uint64_t registro_estados;
 t_registros_cpu registros_cpu;
-t_punteros_memoria punteros_memoria;
+//t_punteros_memoria punteros_memoria;
 process_state state;
 blocked_reason motivo_bloqueo;
 // instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse

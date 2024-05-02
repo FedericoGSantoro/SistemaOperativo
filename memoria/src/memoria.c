@@ -79,7 +79,7 @@ void gestionar_conexion(void *puntero_fd_cliente)
             t_list *valoresPaquete = recibir_paquete(fd_cliente);
             list_iterate(valoresPaquete, (void *)iteradorPaquete);
             break;
-        case CREAR_PROCESO: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
+        case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
             crearProceso(fd_cliente);
             break;
         // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar

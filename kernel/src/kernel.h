@@ -12,6 +12,7 @@
 #include <commons/collections/queue.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <signal.h>
 
 /*---------DEFINES---------*/
 
@@ -71,6 +72,7 @@ comando_consola comando;
 bool planificacionEjecutandose = true;
 char* pathArchivo;
 int numeroConsola = 1;
+uint32_t pcbADesalojar;
 
 /*---------COLAS---------*/
 
@@ -95,11 +97,13 @@ pthread_mutex_t sem_planificacion;
 pthread_cond_t condicion_planificacion;
 pthread_mutex_t sem_cola_new;
 pthread_mutex_t sem_cola_ready;
+pthread_mutex_t sem_cola_ready_aux;
 pthread_mutex_t sem_cola_exec;
 pthread_mutex_t sem_cola_blocked;
 pthread_mutex_t sem_cola_exit;
 sem_t semContadorColaNew;
 sem_t semContadorColaReady;
+sem_t semContadorColaReadyAux;
 sem_t semContadorColaExec;
 sem_t semContadorColaBlocked;
 sem_t semContadorColaExit;
@@ -127,6 +131,8 @@ void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb);
 void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb);
 // Empaqueta el contexto de ejecucion para enviarlo
 void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb);
+// Maneja la conexion con el interrupt de CPU para desalojar un pid
+void mensaje_cpu_interrupt();
 // Maneja la conexion con el dispatch de CPU
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb);
 // Convierte el enum de estado a un string
@@ -165,6 +171,8 @@ void iniciarConsolaInteractiva();
 void atender_consola_interactiva();
 // Obtiene los pids de la cola
 char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo);
+// Ejecuta el script indicado
+void ejecutar_script(char* pathScript);
 // Ejecuta el comando correspondiente
 void ejecutar_comando_consola(char** arrayComando);
 // Devuelve el comando del enum correspondiente

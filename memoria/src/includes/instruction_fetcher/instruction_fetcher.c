@@ -31,7 +31,7 @@ void rellenar_cache_de_instrucciones(FILE* file_instructions, int pid) {
 //(key = pid, value = lista de instrucciones)
 void crear_instrucciones(char* path, int pid) {
     
-    FILE* file_instructions = fopen(path, "rt");
+    FILE* file_instructions = fopen(path, "r");
 
     if (file_instructions == NULL)
     {

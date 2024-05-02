@@ -34,7 +34,7 @@ extern pthread_t hilo_memoria_cpu;
 extern uint32_t pid;
 extern uint64_t registro_estados;
 extern t_registros_cpu registros_cpu;
-extern t_punteros_memoria punteros_memoria;
+//extern t_punteros_memoria punteros_memoria;
 extern process_state state;
 extern blocked_reason motivo_bloqueo;
 // instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse
