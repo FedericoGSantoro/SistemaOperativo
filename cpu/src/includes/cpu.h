@@ -38,6 +38,11 @@ void atenderMemoria(op_codigo codigoMemoria);
 void enviarMsjMemoria();
 void iteradorPaquete(char* value);
 
+// Desempaquetamos la interrupcion de kernel y validamos que el pid que nos envia sea igual al pid que estamos ejecutando
+bool desempaquetarInterrupcion(t_list *paquete);
+// Recibimos interrupcion de kernel, nos envía el pid
+void recvInterrupcion();
+
 // Guardo en los registros del cpu lo que recibí en el contexto de ejecucion
 void desempaquetarContextoEjecucion(t_list* paquete);
 // Recibo el contexto de ejecucion que me manda Kernel

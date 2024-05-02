@@ -101,6 +101,8 @@ void atenderKernelDispatch() {
                 registros_cpu.pc++;
                 pthread_mutex_lock(&variableInterrupcion);
             }
+            // Volvemos a setear en false el hayInterrupcion 
+            hayInterrupcion = false;
             pthread_mutex_unlock(&variableInterrupcion);
 
             // Empaquetamos el contexto de ejecucion y se lo enviamos a Kernel
@@ -137,14 +139,8 @@ void atenderKernelInterrupt() {
             break;
         // Caso de INTERRUPCION_RELOJ:
         case INTERRUPCION:
-            char* interrupcion_kernel = recibir_mensaje(fd_kernel_interrupt);
-            log_info(logger_aux_cpu, "Me llegó la interrupción %s", interrupcion_kernel);
-            free(interrupcion_kernel);
-
-            // Modificamos el estado de la interrupcion utilizando mutex por si el hilo Kernel Dispatch está leyendo la variable
-            pthread_mutex_lock(&variableInterrupcion);
-            hayInterrupcion = true;
-            pthread_mutex_unlock(&variableInterrupcion);
+            recvInterrupcion();
+            log_info(logger_aux_cpu, "Me llegó una interrupción!");
             break;
 		case -1:
 			log_error(logger_aux_cpu, "Desconexion de Kernel Modo Interrupt");
@@ -167,6 +163,25 @@ bool esperarClientes() {
         return true;
     }
     return false;
+}
+
+bool desempaquetarInterrupcion(t_list *paquete) {
+    uint32_t pid_aux = *(uint32_t*)list_get(paquete, 0);
+    if (pid == pid_aux){
+        return true;
+    }
+    return false;
+}
+
+void recvInterrupcion() {
+    t_list* paquete = recibir_paquete(fd_kernel_interrupt);
+    if (desempaquetarInterrupcion(paquete)){
+        // Modificamos el estado de la interrupcion utilizando mutex por si el hilo Kernel Dispatch está leyendo la variable
+        pthread_mutex_lock(&variableInterrupcion);
+        hayInterrupcion = true;
+        pthread_mutex_unlock(&variableInterrupcion);
+    }
+    list_destroy(paquete);
 }
 
 void empaquetarContextoEjecucion(t_paquete* paquete) {
