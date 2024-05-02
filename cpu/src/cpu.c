@@ -260,8 +260,7 @@ void ejecutarCicloInstruccion() {
     execute();
 
     // Eliminar instruccion:
-    instruccion
-
+    liberar_instruccion();
 }
 
 void terminarPrograma() {

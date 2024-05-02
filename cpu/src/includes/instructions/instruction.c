@@ -31,10 +31,13 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
 
     t_tipo_instruccion tipo_instruccion_mapped;
 
-    if (string_equals_ignore_case(nombre_instruccion, "SET"))
+    if (string_equals_ignore_case(nombre_instruccion, "SET")) {
         tipo_instruccion_mapped.nombre_instruccion = SET;
-    else if (string_equals_ignore_case(nombre_instruccion, "SUM"))
+        tipo_instruccion_mapped.execute = set;
+    } else if (string_equals_ignore_case(nombre_instruccion, "SUM")) {
         tipo_instruccion_mapped.nombre_instruccion = SUM;
+        tipo_instruccion_mapped.execute = sum;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "SUB"))
         tipo_instruccion_mapped.nombre_instruccion = SUB;
     else if (string_equals_ignore_case(nombre_instruccion, "MOV_IN"))
