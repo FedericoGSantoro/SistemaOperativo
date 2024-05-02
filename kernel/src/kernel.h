@@ -10,6 +10,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <commons/collections/queue.h>
+#include <pthread.h>
+#include <semaphore.h>
 
 /*---------DEFINES---------*/
 
@@ -66,9 +68,9 @@ int socket_servidor;
 
 int pid_siguiente = 1;
 comando_consola comando;
+bool planificacionEjecutandose = true;
 char* pathArchivo;
 int numeroConsola = 1;
-bool planificacionEjecutandose = true;
 
 /*---------COLAS---------*/
 
@@ -86,6 +88,23 @@ pthread_t thread_cpu_interrupt;
 pthread_t thread_memoria;
 pthread_t thread_consola_interactiva;
 
+/*---------SEMAFOROS---------*/
+
+//pthread_mutex_t sem_gradoMultiprogramacion;
+pthread_mutex_t sem_planificacion;
+pthread_cond_t condicion_planificacion;
+pthread_mutex_t sem_cola_new;
+pthread_mutex_t sem_cola_ready;
+pthread_mutex_t sem_cola_exec;
+pthread_mutex_t sem_cola_blocked;
+pthread_mutex_t sem_cola_exit;
+sem_t semContadorColaNew;
+sem_t semContadorColaReady;
+sem_t semContadorColaExec;
+sem_t semContadorColaBlocked;
+sem_t semContadorColaExit;
+sem_t semGradoMultiprogramacion;
+
 /*---------FUNCIONES---------*/
 
 // Inicializa la planificacion de kernel
@@ -96,6 +115,10 @@ void planificacionCortoPlazo();
 void corto_plazo_blocked();
 // Carga el contexto actual del pcb por el recibido
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb);
+// Quita el primer PCB de la cola indicada
+t_pcb* quitarPcbCola(t_queue* cola, pthread_mutex_t semaforo);
+// Agrega el PCB a la cola indicada
+void agregarPcbCola(t_queue* cola, pthread_mutex_t semaforo, t_pcb* pcb);
 // Cambia el contexto del pcb con el recibido y lo asigna a la cola correspondiente
 void cambiarContexto(t_list* contexto, t_pcb* pcb);
 // Empaqueta los registros de la cpu del contexto para enviarlos
@@ -132,6 +155,8 @@ void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb);
 void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb);
 // Inicializa las colas
 void inicializarColas();
+// Inicializa los semaforos
+void inicializarSemaforos();
 // Inicializa las variables
 void inicializarVariables();
 // Inicializa la consola interactiva
@@ -139,7 +164,7 @@ void iniciarConsolaInteractiva();
 // Atiende las peticiones de la consola interactiva
 void atender_consola_interactiva();
 // Obtiene los pids de la cola
-char* obtenerPids (t_queue* cola);
+char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo);
 // Ejecuta el comando correspondiente
 void ejecutar_comando_consola(char** arrayComando);
 // Devuelve el comando del enum correspondiente
