@@ -139,9 +139,8 @@ void atenderKernelInterrupt() {
         case INTERRUPCION:
             char* interrupcion_kernel = recibir_mensaje(fd_kernel_interrupt);
             log_info(logger_aux_cpu, "Me llegó la interrupción %s", interrupcion_kernel);
-            free(mensaje);
-
-            // Modificamos el estado de la interrupcion utilizando mutex por si el hilo Kernel Dispatch está leyendo la variable
+            free(interrupcion_kernel);
+            // 
             pthread_mutex_lock(&variableInterrupcion);
             hayInterrupcion = true;
             pthread_mutex_unlock(&variableInterrupcion);
@@ -354,4 +353,5 @@ void terminarPrograma() {
     liberar_conexion(fd_memoria);
     liberar_conexion(fd_kernel_dispatch);
     liberar_conexion(fd_kernel_interrupt);
+    pthread_mutex_destroy(&variableInterrupcion);
 }
