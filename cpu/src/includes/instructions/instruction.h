@@ -4,6 +4,7 @@
 #include <commons/collections/list.h>
 #include <stdint.h>
 #include "../cpu_vars/cpu_vars.h"
+#include "../../../../utils/src/liberador/liberador.h"
 
 // Operaciones de Instrucciones de CPU
 typedef enum
@@ -40,12 +41,12 @@ typedef struct
 {
     t_tipo_instruccion tipo_instruccion;
     int cant_parametros;
-    int p_length[5];
     t_list* parametros;
 } t_instruccion;
 extern t_instruccion* instruccion;
 
 t_instruccion* procesar_instruccion(char *instruccion_entrante);
+void liberar_instruccion();
 void sum(int cantidad_parametros, t_instruccion* instruccion);
 void set(int cantidad_parametros, t_instruccion* instruccion);
 

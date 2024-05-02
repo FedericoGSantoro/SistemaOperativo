@@ -2,7 +2,6 @@
 
 t_instruccion* instruccion;
 
-
 //Funciones para ejecutar instrucciones (execute)
 
 void sum(int cantidad_parametros, t_instruccion* instruccion) {
@@ -104,23 +103,11 @@ uint32_t* mapear_registro(char *nombre_instruccion) {
     return registroMapeado;
 }
 
-void adicion_cantidad_parametros_en_instruccion(t_list *parametros, t_instruccion *instruccion) {
-    int i = 0;
-    while (i < instruccion->cant_parametros) {
-        char *param = list_get(parametros, i);
-        instruccion->p_length[i] = strlen(param) + 1;
-        i++;
-    }
-}
-
 t_instruccion *new_instruction(t_tipo_instruccion tipo_instruccion, t_list *parametros) {
     t_instruccion *tmp = malloc(sizeof(t_instruccion));
     tmp->tipo_instruccion = tipo_instruccion;
     tmp->cant_parametros = list_size(parametros);
     tmp->parametros = parametros;
-    for (size_t i = 0; i < 5; i++)
-        tmp->p_length[i] = 0; //inicalizamos la lista de las longitudes en 0 para luego, si es necesario, enviarlo en el buffering para el armado del paquete
-    adicion_cantidad_parametros_en_instruccion(parametros, tmp);
     return tmp;
 }
 
@@ -145,4 +132,11 @@ t_instruccion* procesar_instruccion(char *instruccion_entrante) {
     free(identificador);
     free(tokens);
     return instruccion_obtenida;
+}
+
+//Funcion para eliminar instruccion de memoria
+
+void liberar_instruccion() {
+    liberar_lista_de_datos_planos(instruccion->parametros);
+    free(instruccion);
 }

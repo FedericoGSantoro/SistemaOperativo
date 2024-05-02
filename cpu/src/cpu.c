@@ -258,7 +258,9 @@ void ejecutarCicloInstruccion() {
 
     // Execute:
     execute();
-    // Se ejecuta lo correspondiente a cada instruccion
+
+    // Eliminar instruccion:
+    instruccion
 
 }
 
