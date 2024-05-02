@@ -20,30 +20,6 @@ typedef enum {
 	INTERRUPCION,
 } op_codigo;
 
-// Operaciones de Instrucciones de CPU
-typedef enum
-{
-    SET,
-    SUM,
-    SUB,
-    MOV_IN,
-    MOV_OUT,
-    RESIZE,
-    JNZ,
-    COPY_STRING,
-    IO_GEN_SLEEP,
-    IO_STDIN_READ,
-    IO_STDOUT_WRITE,
-    IO_FS_CREATE,
-    IO_FS_DELETE,
-    IO_FS_TRUNCATE,
-    IO_FS_WRITE,
-    IO_FS_READ,
-    WAIT,
-    SIGNAL,
-    EXIT_PROGRAM,
-} t_nombre_instruccion;
-
 // Razones de bloqueo
 typedef enum{
 	INTERRUPCION_RELOJ,
