@@ -43,7 +43,10 @@ void corto_plazo_blocked() {
             pthread_cond_wait(&condicion_planificacion, &sem_planificacion);
         }
         pthread_mutex_unlock(&sem_planificacion);
-        sem_wait(&semContadorColaReady);
+        sem_wait(&semContadorColaBlocked);
+        // Nueva nueva idea:
+        // Agarro el primer elemento de la cola y le mando a interfaz para que lo solucione y espero su respuesta, cuando la recibo de que termino entonces mando el proceso a ready
+
         // Nueva idea:
         // Creo que espera a recibir una interrupcion de que finalizo el evento
         // que bloquea un proceso, cuando llega busca ese proceso y lo manda a ready
@@ -72,6 +75,7 @@ void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.si = *(uint32_t*)list_get(contexto, 11);
     pcb->contexto_ejecucion.registros_cpu.di = *(uint32_t*)list_get(contexto, 12);
     pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, 13);
+    log_info(logs_auxiliares, "AX: %d, BX: %d", pcb->contexto_ejecucion.registros_cpu.ax, pcb->contexto_ejecucion.registros_cpu.bx);
 }
 
 t_pcb* quitarPcbCola(t_queue* cola, pthread_mutex_t semaforo) {
@@ -134,12 +138,12 @@ void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb) {
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.di), sizeof(uint32_t));
 }
 
-void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb) {
-    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.stack_pointer), sizeof(uint64_t));
-    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.heap_pointer), sizeof(uint64_t));
-    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.data_pointer), sizeof(uint64_t));
-    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.code_pointer), sizeof(uint64_t));
-}
+// void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb) {
+//     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.stack_pointer), sizeof(uint64_t));
+//     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.heap_pointer), sizeof(uint64_t));
+//     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.data_pointer), sizeof(uint64_t));
+//     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.code_pointer), sizeof(uint64_t));
+// }
 
 void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
@@ -150,6 +154,13 @@ void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.motivo_bloqueo), sizeof(int));
 }
 
+void mensaje_cpu_interrupt() {
+    t_paquete* paquete = crear_paquete(INTERRUPCION);
+    agregar_a_paquete(paquete, &pcbADesalojar, sizeof(uint32_t));
+    enviar_paquete(paquete, fd_cpu_interrupt);
+    eliminar_paquete(paquete);
+}
+
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
     switch (codigoOperacion) {
@@ -157,9 +168,18 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
         paquete = crear_paquete(CONTEXTO_EJECUCION);
         empaquetar_contexto_ejecucion(paquete, pcb);
         enviar_paquete(paquete, fd_cpu_dispatch);
+        if ( ALGORITMO_PLANIFICACION == VRR || ALGORITMO_PLANIFICACION == RR ) {
+            pcbADesalojar = pcb->contexto_ejecucion.pid;
+            signal(SIGALRM, mensaje_cpu_interrupt);
+            alarm(QUANTUM);
+        }
+        pcbADesalojar = pcb->contexto_ejecucion.pid;
+        signal(SIGALRM, mensaje_cpu_interrupt);
+        alarm(1);
         eliminar_paquete(paquete);
         cambiarEstado(EXEC, pcb);
         op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
+        alarm(0);
         if ( codigoOperacion == OK_OPERACION ) {
             t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
             cambiarContexto(contextoNuevo, pcb);
@@ -200,9 +220,7 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     switch (estadoNuevo) {
     case READY:
         pcb->contexto_ejecucion.state = READY;
-        log_info(logs_auxiliares, "cambiarEstado");
         log_info(logs_obligatorios, "Cola Ready %s: [%s]", config_get_string_value(config, "ALGORITMO_PLANIFICACION"), obtenerPids(cola_ready, sem_cola_ready));
-        log_info(logs_auxiliares, "cambiarEstadoSalida");
         break;
     case EXEC:
         pcb->contexto_ejecucion.state = EXEC;
@@ -228,17 +246,15 @@ void corto_plazo_ready() {
         }
         pthread_mutex_unlock(&sem_planificacion);
         sem_wait(&semContadorColaExec);
-        if ( ALGORITMO_PLANIFICACION == VRR && !queue_is_empty(cola_ready_aux) ) {
-            // Agregar bloqueo cola ready aux
-            pcb = queue_pop(cola_ready_aux);
-            cambiarEstado(EXEC, pcb);
-            queue_push(cola_exec, pcb);
-            mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
-            continue;
-        }
+        // if ( ALGORITMO_PLANIFICACION == VRR && !queue_is_empty(cola_ready_aux) ) {
+        //     // Agregar bloqueo cola ready aux
+        //     pcb = queue_pop(cola_ready_aux);
+        //     agregarPcbCola(cola_exec, sem_cola_exec, pcb);
+        //     mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
+        //     continue;
+        // }
         sem_wait(&semContadorColaReady);
         pcb = quitarPcbCola(cola_ready, sem_cola_ready);
-        cambiarEstado(EXEC, pcb);
         agregarPcbCola(cola_exec, sem_cola_exec, pcb);
         mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
     }
@@ -262,6 +278,7 @@ void largo_plazo_new() {
         sem_wait(&semGradoMultiprogramacion);
         sem_wait(&semContadorColaNew);
         t_pcb* pcb = quitarPcbCola(cola_new, sem_cola_new);
+        mensaje_memoria(CREAR_PCB, pcb);
         agregarPcbCola(cola_ready, sem_cola_ready, pcb);
         sem_post(&semContadorColaReady);
         cambiarEstado(READY, pcb);
@@ -278,7 +295,6 @@ void largo_plazo_exit() {
         sem_wait(&semContadorColaExit);
         t_pcb* pcb = quitarPcbCola(cola_exit, sem_cola_exit);
         eliminar_pcb(pcb);
-        free(pcb);
         /*
         En caso de que el proceso se encuentre ejecutando en CPU, 
         se deberá enviar una señal de interrupción a través de la conexión 
@@ -295,6 +311,7 @@ void largo_plazo_exit() {
 
 void eliminar_pcb(t_pcb* pcb) {
     mensaje_memoria(ELIMINAR_PCB, pcb);
+    free(pcb);
 }
 
 void crear_pcb() {
@@ -308,19 +325,19 @@ void crear_pcb() {
     pcb->path_archivo = pathArchivo;
     pcb->contexto_ejecucion.registro_estados = 0;
     iniciarRegistrosCPU(pcb);
-    iniciarPunterosMemoria(pcb);
+    // iniciarPunterosMemoria(pcb);
     pcb->contexto_ejecucion.state = NEW;
     agregarPcbCola(cola_new, sem_cola_new, pcb);
     sem_post(&semContadorColaNew);
     log_info(logs_obligatorios, "Se crea el proceso %d en NEW", pcb->contexto_ejecucion.pid);
 }
 
-void iniciarPunterosMemoria(t_pcb* pcb) {
-    pcb->contexto_ejecucion.punteros_memoria.stack_pointer = -1;
-    pcb->contexto_ejecucion.punteros_memoria.heap_pointer = -1;
-    pcb->contexto_ejecucion.punteros_memoria.data_pointer = -1;
-    pcb->contexto_ejecucion.punteros_memoria.code_pointer = -1;
-}
+// void iniciarPunterosMemoria(t_pcb* pcb) {
+//     pcb->contexto_ejecucion.punteros_memoria.stack_pointer = -1;
+//     pcb->contexto_ejecucion.punteros_memoria.heap_pointer = -1;
+//     pcb->contexto_ejecucion.punteros_memoria.data_pointer = -1;
+//     pcb->contexto_ejecucion.punteros_memoria.code_pointer = -1;
+// }
 
 void iniciarRegistrosCPU(t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.pc = 0;
@@ -336,17 +353,16 @@ void iniciarRegistrosCPU(t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.di = 0;
 }
 
-void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb) {
-    pcb->contexto_ejecucion.punteros_memoria.stack_pointer = *(uint64_t*) list_get(punteros, 0);
-    pcb->contexto_ejecucion.punteros_memoria.heap_pointer = *(uint64_t*) list_get(punteros, 1);
-    pcb->contexto_ejecucion.punteros_memoria.data_pointer = *(uint64_t*) list_get(punteros, 2);
-    pcb->contexto_ejecucion.punteros_memoria.code_pointer = *(uint64_t*) list_get(punteros, 3);
-    pcb->contexto_ejecucion.registros_cpu.pc = (uint32_t)pcb->contexto_ejecucion.punteros_memoria.code_pointer;
-}
+// void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb) {
+//     pcb->contexto_ejecucion.punteros_memoria.stack_pointer = *(uint64_t*) list_get(punteros, 0);
+//     pcb->contexto_ejecucion.punteros_memoria.heap_pointer = *(uint64_t*) list_get(punteros, 1);
+//     pcb->contexto_ejecucion.punteros_memoria.data_pointer = *(uint64_t*) list_get(punteros, 2);
+//     pcb->contexto_ejecucion.punteros_memoria.code_pointer = *(uint64_t*) list_get(punteros, 3);
+//     pcb->contexto_ejecucion.registros_cpu.pc = (uint32_t)pcb->contexto_ejecucion.punteros_memoria.code_pointer;
+// }
 
 void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
     t_paquete* paquete;
-    int codigoOperacion;
     switch (comandoMemoria) {
     case CREAR_PCB:
         paquete = crear_paquete(CREAR_PCB);
@@ -357,19 +373,10 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         break;
     case ELIMINAR_PCB:
         paquete = crear_paquete(ELIMINAR_PCB);
-        empaquetar_punteros_memoria(paquete, pcb);
+        agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
+        // empaquetar_punteros_memoria(paquete, pcb);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
-        codigoOperacion = recibir_operacion(fd_memoria);
-        switch (codigoOperacion) {
-        case OK_OPERACION:
-            free(pcb);
-            break;
-        case ERROR_OPERACION:
-            log_error(logs_error, "Operacion eliminacion de memoria de pid %d no pudo ser realizada", pcb->contexto_ejecucion.pid);
-            mensaje_memoria(ELIMINAR_PCB, pcb);
-            break;
-        }
         break;
     default:
         log_error(logs_error, "Operacion desconocida");
@@ -387,16 +394,18 @@ void inicializarColas() {
 }
 
 void inicializarSemaforos() {
-    sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION); // Chequear como cambiar
+    sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
     pthread_mutex_init(&sem_planificacion, NULL);
     pthread_cond_init(&condicion_planificacion, NULL);
     pthread_mutex_init(&sem_cola_ready, NULL);
+    pthread_mutex_init(&sem_cola_ready_aux, NULL);
     pthread_mutex_init(&sem_cola_new, NULL);
     pthread_mutex_init(&sem_cola_blocked, NULL);
     pthread_mutex_init(&sem_cola_exec, NULL);
     pthread_mutex_init(&sem_cola_exit, NULL);
     sem_init(&semContadorColaNew, 0, 0);
     sem_init(&semContadorColaReady, 0, 0);
+    sem_init(&semContadorColaReadyAux, 0, 0);
     sem_init(&semContadorColaExec, 0, 1);
     sem_init(&semContadorColaBlocked, 0, 0);
     sem_init(&semContadorColaExit, 0, 0);
@@ -456,13 +465,30 @@ char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo) {
     return pids;
 }
 
+void ejecutar_script(char* pathScript) {
+    FILE* archivoScript = fopen(pathScript, "r");
+    char* lineaLeida = NULL;
+    size_t longitud = 0;
+    ssize_t cantLeida;
+    if ( archivoScript == NULL ) {
+        log_error(logs_error, "Error al abrir el archivo %s", pathScript);
+        break;
+    }
+    while ((cantLeida = getline(&lineaLeida, &longitud, archivoScript)) != -1) {
+        char** arrayComando = string_split(lineaLeida, " ");
+        ejecutar_comando_consola(arrayComando);
+    }
+    fclose(archivoScript);
+    free(lineaLeida);
+}
+
 void ejecutar_comando_consola(char** arrayComando) {
     comando = transformarAOperacion(arrayComando[0]);
     switch (comando) {
     case EJECUTAR_SCRIPT:
-        pathArchivo = arrayComando[1];
-        // Que hace?
-        log_info(logs_auxiliares, "Script de ' %s ' ejecutado", pathArchivo);
+        char* pathScript = arrayComando[1];
+        ejecutar_script(pathScript);
+        log_info(logs_auxiliares, "Script de ' %s ' ejecutado", pathScript);
         break;
     case INICIAR_PROCESO:
         pathArchivo = arrayComando[1];
@@ -495,12 +521,24 @@ void ejecutar_comando_consola(char** arrayComando) {
         log_info(logs_auxiliares, "Planificacion ejecutandose");
         break;
     case MULTIPROGRAMACION:
-        //pthread_mutex_lock(&sem_gradoMultiprogramacion);
+        pthread_mutex_lock(&sem_planificacion);
+        int diferencia_grados_multi = GRADO_MULTIPROGRAMACION;
         GRADO_MULTIPROGRAMACION = atoi(arrayComando[1]);
+        diferencia_grados_multi -= GRADO_MULTIPROGRAMACION;
+        sem_destroy(&semGradoMultiprogramacion);
+        sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
+        if ( diferencia_grados_multi > 0 ) {
+            for (int i = 0; i < diferencia_grados_multi; i++) {
+                sem_wait(&semGradoMultiprogramacion);
+            }
+        }
+        else {
+            for (int i = 0; i < -diferencia_grados_multi; i++) {
+                sem_post(&semGradoMultiprogramacion);
+            }
+        }
+        pthread_mutex_unlock(&sem_planificacion);
         log_info(logs_auxiliares, "Grado de multiprogramacion cambiado a: %d", GRADO_MULTIPROGRAMACION);
-        
-        // Reiniciar el sem de semGradoMultiprogramacion
-        //pthread_mutex_unlock(&sem_gradoMultiprogramacion);
         break;
     case PROCESO_ESTADO:
         log_info(logs_obligatorios, "Cola NEW: [%s]", obtenerPids(cola_new, sem_cola_new));
