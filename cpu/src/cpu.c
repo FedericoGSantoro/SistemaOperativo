@@ -168,6 +168,7 @@ bool esperarClientes() {
 bool desempaquetarInterrupcion(t_list *paquete) {
     uint32_t pid_aux = *(uint32_t*)list_get(paquete, 0);
     if (pid == pid_aux){
+        motivo_bloqueo = INTERRUPCION_RELOJ;
         return true;
     }
     return false;
