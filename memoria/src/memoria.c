@@ -104,6 +104,10 @@ void crearProceso(int fd_cliente_kernel) {
     crear_instrucciones(path, pid);
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(paquete_recibido);
+    // Enviar confirmacion de creacion de espacios de memoria
+    t_paquete* paquete_respuesta = crear_paquete(OK_OPERACION);
+    enviar_paquete(paquete_respuesta, fd_cliente_kernel);
+    eliminar_paquete(paquete_respuesta);
 }
 
 char* fetch_instruccion_de_cliente(int fd_cliente_cpu) {
