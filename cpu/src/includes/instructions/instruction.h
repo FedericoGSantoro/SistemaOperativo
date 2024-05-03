@@ -47,7 +47,7 @@ extern t_instruccion* instruccion;
 
 t_instruccion* procesar_instruccion(char *instruccion_entrante);
 void liberar_instruccion();
-void sum(int cantidad_parametros, t_instruccion* instruccion);
-void set(int cantidad_parametros, t_instruccion* instruccion);
+void sum(int cantidad_parametros, t_list* parametros);
+void set(int cantidad_parametros, t_list* parametros);
 
 #endif

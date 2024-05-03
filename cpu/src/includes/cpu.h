@@ -4,7 +4,7 @@
 #include "./cpu_vars/cpu_vars.h"
 #include "./includes/instructions/instruction.h"
 
-#define rutaConfiguracionCpu "../cpu.config"
+#define rutaConfiguracionCpu "cpu.config"
 
 // Inicializamos logs
 void iniciarLogs();

@@ -240,8 +240,10 @@ void fetch() {
     eliminar_paquete(paquete);
 
     // Recibimos de memoria la instruccion y lo guardamos en ir
+    
     recibir_operacion(fd_memoria);
-    ir = recibir_mensaje(fd_memoria);
+    ir = recibir_mensaje(fd_memoria); //TODO: Memoria le debe mandar un codigo que no hay mas instrucciones y en base a eso cortar el ciclo de instruccion
+
     log_info(logger_obligatorio_cpu, "PID: %d - FETCH - Program Counter: %d", pid, registros_cpu.pc);
 }
 
