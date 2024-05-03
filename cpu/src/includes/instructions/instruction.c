@@ -2,24 +2,60 @@
 
 t_instruccion* instruccion;
 
+
+
+uint32_t* mapear_registro(char *nombre_registro) {
+    
+    if (string_equals_ignore_case(nombre_registro, "AX"))
+        return &(registros_cpu.ax);
+    else if (string_equals_ignore_case(nombre_registro, "PC"))
+        return &(registros_cpu.pc);
+    else if (string_equals_ignore_case(nombre_registro, "BX"))
+        return &(registros_cpu.bx);
+    else if (string_equals_ignore_case(nombre_registro, "CX"))
+        return &(registros_cpu.cx);
+    else if (string_equals_ignore_case(nombre_registro, "DX"))
+        return &(registros_cpu.dx);
+    else if (string_equals_ignore_case(nombre_registro, "EAX"))
+        return &(registros_cpu.eax);
+    else if (string_equals_ignore_case(nombre_registro, "EBX"))
+        return &(registros_cpu.ebx);
+    else if (string_equals_ignore_case(nombre_registro, "ECX"))
+        return &(registros_cpu.ecx);
+    else if (string_equals_ignore_case(nombre_registro, "EDX"))
+        return &(registros_cpu.edx);
+    else if (string_equals_ignore_case(nombre_registro, "SI"))
+        return &(registros_cpu.si);
+    else if (string_equals_ignore_case(nombre_registro, "DI"))
+        return &(registros_cpu.di);
+    else {
+        valor_registro_numerico = string_to_int(nombre_registro);
+        return &valor_registro_numerico;
+    }
+}
+
 //Funciones para ejecutar instrucciones (execute)
 
 void sum(int cantidad_parametros, t_list* parametros) {
     
-    uint32_t destino = *(uint32_t*) list_get(parametros, 0);
-    uint32_t origen = *(uint32_t*) list_get(parametros, 1);
+    char* destino = (char*) list_get(parametros, 0);
+    char* origen = (char*) list_get(parametros, 1);
 
-    destino += origen;
+    uint32_t* registro_destino = mapear_registro(destino);
+    uint32_t* registro_origen = mapear_registro(origen);
+
+    *registro_destino += *registro_origen;
 }
 
 void set(int cantidad_parametros, t_list* parametros) {
 
-    uint32_t* destino = (uint32_t*) list_get(parametros, 0);
-    uint32_t* origen = (uint32_t*) list_get(parametros, 1);
+    char* destino = (char*) list_get(parametros, 0);
+    char* origen = (char*) list_get(parametros, 1);
 
-    destino = origen;
+    uint32_t* registro_destino = mapear_registro(destino);
+    uint32_t* registro_origen = mapear_registro(origen);
 
-    printf(registros_cpu.ax);
+    *registro_destino = *registro_origen;
 }
 
 
@@ -74,40 +110,6 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
     return tipo_instruccion_mapped;
 }
 
-uint32_t* mapear_registro(char *nombre_registro) {
-    
-    uint32_t registroMapeado;
-
-    if (string_equals_ignore_case(nombre_registro, "AX"))
-        return &(registros_cpu.ax);
-    else if (string_equals_ignore_case(nombre_registro, "PC"))
-        registroMapeado = registros_cpu.pc;
-    else if (string_equals_ignore_case(nombre_registro, "BX"))
-        registroMapeado = registros_cpu.bx;
-    else if (string_equals_ignore_case(nombre_registro, "CX"))
-        registroMapeado = registros_cpu.cx;
-    else if (string_equals_ignore_case(nombre_registro, "DX"))
-        registroMapeado = registros_cpu.dx;
-    else if (string_equals_ignore_case(nombre_registro, "EAX"))
-        registroMapeado = &registros_cpu.eax;
-    else if (string_equals_ignore_case(nombre_registro, "EBX"))
-        registroMapeado = registros_cpu.ebx;
-    else if (string_equals_ignore_case(nombre_registro, "ECX"))
-        registroMapeado = registros_cpu.ecx;
-    else if (string_equals_ignore_case(nombre_registro, "EDX"))
-        registroMapeado = registros_cpu.edx;
-    else if (string_equals_ignore_case(nombre_registro, "SI"))
-        registroMapeado = registros_cpu.si;
-    else if (string_equals_ignore_case(nombre_registro, "DI"))
-        registroMapeado = registros_cpu.di;
-    else {
-        valor_registro_numerico = string_to_int(nombre_registro);
-        return &valor_registro_numerico;
-    }
-
-    return registroMapeado;
-}
-
 t_instruccion *new_instruction(t_tipo_instruccion tipo_instruccion, t_list *parametros) {
     t_instruccion *tmp = malloc(sizeof(t_instruccion));
     tmp->tipo_instruccion = tipo_instruccion;
@@ -129,7 +131,7 @@ t_instruccion* procesar_instruccion(char *instruccion_entrante) {
     int i = 1; // A partir de 1 son parametros - La lista puede estar vacia
     uint32_t* registro_mapeado;
     while (tokens[i] != NULL) {
-        registro_mapeado = mapear_registro(tokens[i]);
+        registro_mapeado = tokens[i];
         list_add(parameters, registro_mapeado);
         i++;
     }

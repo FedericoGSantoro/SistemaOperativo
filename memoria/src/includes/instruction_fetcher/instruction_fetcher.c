@@ -6,7 +6,10 @@ char* fetch_instruccion(int pid, int pc) {
     char* pid_convertido = int_to_string(pid);
     t_list* instrucciones = (t_list*) dictionary_get(cache_instrucciones, pid_convertido);
 
-    char* instruccion = (char*) list_get(instrucciones, pc);
+    char* instruccion = "";
+    if (pc < list_size(instrucciones)) {
+        instruccion = (char*) list_get(instrucciones, pc);
+    }
 
     free(pid_convertido);
     return instruccion;
