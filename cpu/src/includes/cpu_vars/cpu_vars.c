@@ -29,7 +29,7 @@ pthread_t hilo_memoria_cpu;
 uint32_t pid;
 uint64_t registro_estados;
 t_registros_cpu registros_cpu;
-int valor_registro_numerico;
+uint32_t valor_registro_numerico;
 // t_punteros_memoria punteros_memoria;
 process_state state;
 blocked_reason motivo_bloqueo;

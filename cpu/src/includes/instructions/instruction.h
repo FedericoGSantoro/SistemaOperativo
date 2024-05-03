@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "../cpu_vars/cpu_vars.h"
 #include "../../../../utils/src/liberador/liberador.h"
+#include "../../../../utils/src/castingfunctions/castfunctions.h"
 
 // Operaciones de Instrucciones de CPU
 typedef enum

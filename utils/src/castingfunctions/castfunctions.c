@@ -8,7 +8,7 @@ char* int_to_string(int input){
     int_convertido = (char *)malloc(20 * sizeof(char));
     if (int_convertido == NULL) {
         fprintf(stderr, "Error: No se pudo asignar memoria.\n");
-        return 1;
+        return "";
     }
 
     // Utilizamos sprintf para convertir el entero a una cadena

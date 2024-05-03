@@ -6,9 +6,14 @@
 #include <stdlib.h>
 
 /*
-Libera una lista de datos planos (no estructuras).
+Libera una lista de datos con punteros.
 */
 void liberar_lista_de_datos_con_punteros(t_list* list);
+
+/*
+Libera una lista de datos planos (no estructuras).
+*/
+void liberar_lista_de_datos_planos(t_list* lista);
 
 /*
 Destroyer de elementos planos simples

@@ -128,8 +128,8 @@ t_instruccion* procesar_instruccion(char *instruccion_entrante) {
     t_tipo_instruccion tipo_instruccion = mapear_tipo_instruccion(identificador);
     // Agregamos a la lista los parametros de la instruccion
     t_list *parameters = list_create();
-    int i = 1; // A partir de 1 son parametros - La lista puede estar vacia
-    uint32_t* registro_mapeado;
+    int i = 1; // A partir de 1 son parametros - La lista puede estar vacia.
+    char* registro_mapeado;
     while (tokens[i] != NULL) {
         registro_mapeado = tokens[i];
         list_add(parameters, registro_mapeado);
