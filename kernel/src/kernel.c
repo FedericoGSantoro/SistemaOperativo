@@ -472,7 +472,6 @@ void ejecutar_script(char* pathScript) {
     ssize_t cantLeida;
     if ( archivoScript == NULL ) {
         log_error(logs_error, "Error al abrir el archivo %s", pathScript);
-        return;
     }
     while ((cantLeida = getline(&lineaLeida, &longitud, archivoScript)) != -1) {
         char** arrayComando = string_split(lineaLeida, " ");
