@@ -1,10 +1,10 @@
 #ifndef MEMORIA_VARS_H_
 #define MEMORIA_VARS_H_
-#define rutaConfiguracion "../memoria.config"
 
 #include "../../utils/src/config/configs.h"
 #include <commons/collections/dictionary.h>
 #include <commons/collections/list.h>
+
 
 //cache para almacenar lista de instrucciones (key = PID, value = lista de instrucciones)
 extern t_dictionary* cache_instrucciones;

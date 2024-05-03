@@ -16,7 +16,7 @@
 
 /*---------DEFINES---------*/
 
-#define rutaConfiguracion "../kernel.config"
+#define rutaConfiguracion "kernel.config"
 
 /*---------DATOS DE LA CONFIGURACION---------*/
 

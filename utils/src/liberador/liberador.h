@@ -8,7 +8,7 @@
 /*
 Libera una lista de datos planos (no estructuras).
 */
-void liberar_lista_de_datos_planos(t_list* list);
+void liberar_lista_de_datos_con_punteros(t_list* list);
 
 /*
 Destroyer de elementos planos simples
