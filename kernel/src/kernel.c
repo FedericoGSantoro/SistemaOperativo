@@ -107,6 +107,7 @@ void cambiarContexto(t_list* contexto, t_pcb* pcb) {
     case LLAMADA_SISTEMA:
         quitarPcbCola(cola_exec, sem_cola_exec);
         sem_post(&semContadorColaExec);
+        // TODO: Antes de añadir a bloqueados comprobar si esta la interfaz disponible y si lo esta añadirla, creo que cola bloqueado maneja el tema de enviar a las interfaces las cosas para hacer
         agregarPcbCola(cola_blocked, sem_cola_blocked, pcb);
         sem_post(&semContadorColaBlocked);
         cambiarEstado(BLOCKED, pcb);
@@ -370,6 +371,16 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         agregar_a_paquete(paquete, pathArchivo, strlen(pathArchivo) + 1);
         enviar_paquete(paquete, fd_memoria);
         eliminar_paquete(paquete);
+        op_codigo codigoMemoria = recibir_operacion(fd_memoria);
+        switch (codigoMemoria)
+        {
+        case OK_OPERACION:
+            break;
+        
+        default:
+            log_error(logs_error, "Error al crear espacios de memoria para el pcb %d", pcb->contexto_ejecucion.pid);
+            break;
+        }
         break;
     case ELIMINAR_PCB:
         paquete = crear_paquete(ELIMINAR_PCB);
@@ -472,6 +483,7 @@ void ejecutar_script(char* pathScript) {
     ssize_t cantLeida;
     if ( archivoScript == NULL ) {
         log_error(logs_error, "Error al abrir el archivo %s", pathScript);
+        return;
     }
     while ((cantLeida = getline(&lineaLeida, &longitud, archivoScript)) != -1) {
         char** arrayComando = string_split(lineaLeida, " ");
