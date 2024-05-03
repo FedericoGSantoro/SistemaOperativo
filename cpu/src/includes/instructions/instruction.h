@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "../cpu_vars/cpu_vars.h"
 #include "../../../../utils/src/liberador/liberador.h"
+#include "../../../../utils/src/castingfunctions/castfunctions.h"
 
 // Operaciones de Instrucciones de CPU
 typedef enum
@@ -47,7 +48,7 @@ extern t_instruccion* instruccion;
 
 t_instruccion* procesar_instruccion(char *instruccion_entrante);
 void liberar_instruccion();
-void sum(int cantidad_parametros, t_instruccion* instruccion);
-void set(int cantidad_parametros, t_instruccion* instruccion);
+void sum(int cantidad_parametros, t_list* parametros);
+void set(int cantidad_parametros, t_list* parametros);
 
 #endif

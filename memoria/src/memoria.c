@@ -7,6 +7,7 @@ void return_instruccion(char* instruccion, int fd_cliente);
 
 int main(void)
 {
+
     // inicializando ando
     inicializar_loggers();
     inicializar_config();
@@ -14,8 +15,7 @@ int main(void)
     inicializar_diccionario();
     socketFdMemoria = iniciar_servidor(memConfig.puertoEscucha, loggerAux, loggerError);
 
-    while (server_escuchar(socketFdMemoria))
-        ; // server escuchar devuelve 0 o 1 (false o true basicamente)
+    while (server_escuchar(socketFdMemoria)); // server escuchar devuelve 0 o 1 (false o true basicamente)
     terminar_programa();
     return 0;
 }
@@ -103,7 +103,7 @@ void crearProceso(int fd_cliente_kernel) {
     char *path = (char*) list_get(paquete_recibido, 1);
     crear_instrucciones(path, pid);
     //libero la lista generada del paquete deserializado
-    liberar_lista_de_datos_planos(paquete_recibido);
+    liberar_lista_de_datos_con_punteros(paquete_recibido);
 }
 
 char* fetch_instruccion_de_cliente(int fd_cliente_cpu) {
@@ -115,18 +115,13 @@ char* fetch_instruccion_de_cliente(int fd_cliente_cpu) {
 
     char* instruccion = fetch_instruccion(pid, pc);
 
-    liberar_lista_de_datos_planos(paquete);
+    liberar_lista_de_datos_con_punteros(paquete);
 
     return instruccion;
 }
 
 void return_instruccion(char* instruccion, int fd_cliente) {
-
-    t_paquete* paquete = crear_paquete(DEVOLVER_INSTRUCCION);
-    agregar_a_paquete(paquete, &(instruccion), strlen(instruccion) +1); // le agrego +1 por el caracter nulo
-    enviar_paquete(paquete, fd_cliente);
-    eliminar_paquete(paquete);
-    free(instruccion);
+    enviar_mensaje(instruccion, fd_cliente);
 }
 
 

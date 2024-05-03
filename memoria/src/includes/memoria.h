@@ -9,6 +9,9 @@
 #include "./memoria_vars/memoria_vars.h"
 #include "../../../utils/src/liberador/liberador.h"
 
+
+#define rutaConfiguracion "memoria.config"
+
 /*---------FUNCIONES---------*/
 void leer_config();
 int server_escuchar(int fd_memoria);

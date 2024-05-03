@@ -5,8 +5,12 @@ void free_elements_simple (void* data) {
     free(data);
 }
 
-void liberar_lista_de_datos_planos(t_list* lista){
+void liberar_lista_de_datos_con_punteros(t_list* lista){
 	list_destroy_and_destroy_elements(lista, free_elements_simple);
+}
+
+void liberar_lista_de_datos_planos(t_list* lista){
+	list_destroy(lista);
 }
 
 void destroyer_queue_con_datos_simples(void* cola){
