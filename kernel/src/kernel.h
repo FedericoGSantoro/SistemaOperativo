@@ -101,13 +101,13 @@ pthread_mutex_t sem_cola_ready_aux;
 pthread_mutex_t sem_cola_exec;
 pthread_mutex_t sem_cola_blocked;
 pthread_mutex_t sem_cola_exit;
+pthread_mutex_t sem_grado_multiprogramacion;
 sem_t semContadorColaNew;
 sem_t semContadorColaReady;
 sem_t semContadorColaReadyAux;
 sem_t semContadorColaExec;
 sem_t semContadorColaBlocked;
 sem_t semContadorColaExit;
-sem_t semGradoMultiprogramacion;
 
 /*---------FUNCIONES---------*/
 
@@ -143,6 +143,10 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb);
 void corto_plazo_ready();
 // Inicializa la planificacion a largo plazo
 void planificacionLargoPlazo();
+// Devuelve la cantidad de elementos en la cola indicada
+int elementosEnCola(t_queue* cola, pthread_mutex_t semaforo);
+// Devuelve la cantidad de elementos ejecutandose
+int elementosEjecutandose();
 // Algoritmo para la cola de NEW
 void largo_plazo_new();
 // Algoritmo para la cola de EXIT
