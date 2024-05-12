@@ -268,6 +268,22 @@ void planificacionLargoPlazo() {
     crearHiloDetach(&LargoPlazoExit, (void*) largo_plazo_exit, NULL, "Planificacion largo plazo EXIT", logs_auxiliares, logs_error);
 }
 
+int elementosEnCola(t_queue* cola, pthread_mutex_t semaforo) {
+    int cantidadProgramasEnCola;
+    pthread_mutex_lock(&semaforo);
+    cantidadProgramasEnCola = queue_size(cola);
+    pthread_mutex_unlock(&semaforo);
+    return cantidadProgramasEnCola;
+}
+
+int elementosEjecutandose() {
+    int cantidadProgramas = 0;
+    cantidadProgramas += elementosEnCola(cola_ready, sem_cola_ready);
+    cantidadProgramas += elementosEnCola(cola_exec, sem_cola_exec);
+    cantidadProgramas += elementosEnCola(cola_blocked, sem_cola_blocked);
+    return cantidadProgramas;
+}
+
 void largo_plazo_new() {
     while(1) {
         pthread_mutex_lock(&sem_planificacion);
@@ -276,13 +292,16 @@ void largo_plazo_new() {
         }
         pthread_mutex_unlock(&sem_planificacion);
         // Sumar la cola de ready aux?
-        sem_wait(&semGradoMultiprogramacion);
-        sem_wait(&semContadorColaNew);
-        t_pcb* pcb = quitarPcbCola(cola_new, sem_cola_new);
-        mensaje_memoria(CREAR_PCB, pcb);
-        agregarPcbCola(cola_ready, sem_cola_ready, pcb);
-        sem_post(&semContadorColaReady);
-        cambiarEstado(READY, pcb);
+        pthread_mutex_lock(&sem_grado_multiprogramacion);
+        if ( elementosEjecutandose() < GRADO_MULTIPROGRAMACION ) {
+            pthread_mutex_unlock(&sem_grado_multiprogramacion);
+            sem_wait(&semContadorColaNew);
+            t_pcb* pcb = quitarPcbCola(cola_new, sem_cola_new);
+            mensaje_memoria(CREAR_PCB, pcb);
+            agregarPcbCola(cola_ready, sem_cola_ready, pcb);
+            sem_post(&semContadorColaReady);
+            cambiarEstado(READY, pcb);
+        }
     }
 }
 
@@ -405,7 +424,7 @@ void inicializarColas() {
 }
 
 void inicializarSemaforos() {
-    sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
+    pthread_mutex_init(&sem_grado_multiprogramacion, NULL);
     pthread_mutex_init(&sem_planificacion, NULL);
     pthread_cond_init(&condicion_planificacion, NULL);
     pthread_mutex_init(&sem_cola_ready, NULL);
@@ -532,23 +551,9 @@ void ejecutar_comando_consola(char** arrayComando) {
         log_info(logs_auxiliares, "Planificacion ejecutandose");
         break;
     case MULTIPROGRAMACION:
-        pthread_mutex_lock(&sem_planificacion);
-        int diferencia_grados_multi = GRADO_MULTIPROGRAMACION;
+        pthread_mutex_lock(&sem_grado_multiprogramacion);
         GRADO_MULTIPROGRAMACION = atoi(arrayComando[1]);
-        diferencia_grados_multi -= GRADO_MULTIPROGRAMACION;
-        sem_destroy(&semGradoMultiprogramacion);
-        sem_init(&semGradoMultiprogramacion, 0, GRADO_MULTIPROGRAMACION);
-        if ( diferencia_grados_multi > 0 ) {
-            for (int i = 0; i < diferencia_grados_multi; i++) {
-                sem_wait(&semGradoMultiprogramacion);
-            }
-        }
-        else {
-            for (int i = 0; i < -diferencia_grados_multi; i++) {
-                sem_post(&semGradoMultiprogramacion);
-            }
-        }
-        pthread_mutex_unlock(&sem_planificacion);
+        pthread_mutex_unlock(&sem_grado_multiprogramacion);
         log_info(logs_auxiliares, "Grado de multiprogramacion cambiado a: %d", GRADO_MULTIPROGRAMACION);
         break;
     case PROCESO_ESTADO:
@@ -735,11 +740,11 @@ void terminarPrograma() {
     pthread_mutex_destroy(&sem_cola_exec);
     pthread_mutex_destroy(&sem_cola_blocked);
     pthread_mutex_destroy(&sem_cola_exit);
+    pthread_mutex_destroy(&sem_grado_multiprogramacion);
     pthread_cond_destroy(&condicion_planificacion);
     sem_destroy(&semContadorColaNew);
     sem_destroy(&semContadorColaReady);
     sem_destroy(&semContadorColaExec);
     sem_destroy(&semContadorColaBlocked);
     sem_destroy(&semContadorColaExit);
-    sem_destroy(&semGradoMultiprogramacion);
 }
