@@ -376,8 +376,7 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         {
         case OK_OPERACION:
             log_debug(logs_auxiliares, "OK Operacion desde memoria");
-            break;
-        
+            break;        
         default:
             log_error(logs_error, "Error al crear espacios de memoria para el pcb %d", pcb->contexto_ejecucion.pid);
             break;

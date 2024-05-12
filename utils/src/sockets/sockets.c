@@ -118,12 +118,10 @@ void enviar_mensaje(char* mensaje, int socket_cliente) {
 }
 
 void enviar_codigo_op(op_codigo codigo_operacion, int socket_cliente) {
+	
 	void* a_enviar = malloc(sizeof(int));
-
 	memcpy(a_enviar, &codigo_operacion, sizeof(int));
-
 	send(socket_cliente, a_enviar, sizeof(int), 0);
-
 	free(a_enviar);
 }
 
