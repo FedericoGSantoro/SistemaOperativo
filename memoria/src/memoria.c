@@ -1,7 +1,8 @@
 #include "./includes/memoria.h"
 
 void inicializar_diccionario();
-void crearProceso(int fd_cliente_kernel);
+void crear_proceso(int fd_cliente_kernel);
+void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel);
 char* fetch_instruccion_de_cliente(int fd_cliente);
 void return_instruccion(char* instruccion, int fd_cliente);
 
@@ -79,7 +80,11 @@ void gestionar_conexion(void *puntero_fd_cliente)
             list_iterate(valoresPaquete, (void *)iteradorPaquete);
             break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
-            crearProceso(fd_cliente);
+            crear_proceso(fd_cliente);
+            enviar_codigo_op(OK_OPERACION, fd_cliente);
+            break;
+        case ELIMINAR_PCB: 
+            eliminar_estructuras_asociadas_al_proceso(fd_cliente);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
             break;
         // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar
@@ -88,13 +93,13 @@ void gestionar_conexion(void *puntero_fd_cliente)
             return_instruccion(instruccion, fd_cliente);
             break;
         default:
-            log_error(loggerError, "Instrucción no reconocida.");
+            log_error(loggerError, "Instrucción no reconocida %d.", op_recibida);
             break;
         }
     }
 }
 
-void crearProceso(int fd_cliente_kernel) {
+void crear_proceso(int fd_cliente_kernel) {
     
     t_list *paquete_recibido = recibir_paquete(fd_cliente_kernel); 
     // recibirPID
@@ -108,6 +113,17 @@ void crearProceso(int fd_cliente_kernel) {
     t_paquete* paquete_respuesta = crear_paquete(OK_OPERACION);
     enviar_paquete(paquete_respuesta, fd_cliente_kernel);
     eliminar_paquete(paquete_respuesta);
+}
+
+void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel) {
+    
+    t_list *paquete_recibido = recibir_paquete(fd_cliente_kernel); 
+    // recibirPID
+    uint32_t pid = *(uint32_t*) list_get(paquete_recibido, 0);
+
+    eliminar_instrucciones(pid);
+    //libero la lista generada del paquete deserializado
+    liberar_lista_de_datos_con_punteros(paquete_recibido);
 }
 
 char* fetch_instruccion_de_cliente(int fd_cliente_cpu) {

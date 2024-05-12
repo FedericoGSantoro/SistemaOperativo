@@ -36,7 +36,7 @@ uint32_t* mapear_registro(char *nombre_registro) {
 
 //Funciones para ejecutar instrucciones (execute)
 
-void sum(int cantidad_parametros, t_list* parametros) {
+void sum_instruction(int cantidad_parametros, t_list* parametros) {
     
     char* destino = (char*) list_get(parametros, 0);
     char* origen = (char*) list_get(parametros, 1);
@@ -47,7 +47,7 @@ void sum(int cantidad_parametros, t_list* parametros) {
     *registro_destino += *registro_origen;
 }
 
-void set(int cantidad_parametros, t_list* parametros) {
+void set_instruction(int cantidad_parametros, t_list* parametros) {
 
     char* destino = (char*) list_get(parametros, 0);
     char* origen = (char*) list_get(parametros, 1);
@@ -58,6 +58,9 @@ void set(int cantidad_parametros, t_list* parametros) {
     *registro_destino = *registro_origen;
 }
 
+void exit_instruction(int cantidad_parametros, t_list* parametros) {
+    registro_estados = EXIT;
+}
 
 //Mapeo y lectura de instrucciones (decode)
 
@@ -67,10 +70,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
 
     if (string_equals_ignore_case(nombre_instruccion, "SET")) {
         tipo_instruccion_mapped.nombre_instruccion = SET;
-        tipo_instruccion_mapped.execute = set;
+        tipo_instruccion_mapped.execute = set_instruction;
     } else if (string_equals_ignore_case(nombre_instruccion, "SUM")) {
         tipo_instruccion_mapped.nombre_instruccion = SUM;
-        tipo_instruccion_mapped.execute = sum;
+        tipo_instruccion_mapped.execute = sum_instruction;
     }
     else if (string_equals_ignore_case(nombre_instruccion, "SUB"))
         tipo_instruccion_mapped.nombre_instruccion = SUB;
@@ -104,8 +107,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
         tipo_instruccion_mapped.nombre_instruccion = WAIT;
     else if (string_equals_ignore_case(nombre_instruccion, "SIGNAL"))
         tipo_instruccion_mapped.nombre_instruccion = SIGNAL;
-    else if (string_equals_ignore_case(nombre_instruccion, "EXIT"))
+    else if (string_equals_ignore_case(nombre_instruccion, "EXIT")) {
         tipo_instruccion_mapped.nombre_instruccion = EXIT_PROGRAM;
+        tipo_instruccion_mapped.execute = exit_instruction;
+    }
 
     return tipo_instruccion_mapped;
 }
