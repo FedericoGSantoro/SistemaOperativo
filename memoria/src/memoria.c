@@ -71,7 +71,6 @@ void gestionar_conexion(void *puntero_fd_cliente)
             log_info(loggerAux, "Me llegó el mensaje %s", mensaje);
             free(mensaje);
             break;
-
         case PAQUETE:
             // recibir_paquete
             // deserializar
@@ -81,6 +80,7 @@ void gestionar_conexion(void *puntero_fd_cliente)
             break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
             crearProceso(fd_cliente);
+            enviar_codigo_op(OK_OPERACION, fd_cliente);
             break;
         // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar
         case FETCH_INSTRUCCION: // la cpu envia el pid y el pc para obtener la instruccion deseada

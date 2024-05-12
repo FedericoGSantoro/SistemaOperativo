@@ -52,6 +52,12 @@ socket_cliente = socket por el cual enviar el mensaje
 */
 void enviar_mensaje(char* mensaje, int socket_servidor);
 /*
+Envia un codigo de operacion hacia el servidor indicado
+codigo_operacion = codigo a enviar
+socket_cliente = socket por el cual enviar el mensaje
+*/
+void enviar_codigo_op(op_codigo codigo_operacion, int socket_cliente);
+/*
 Serializa un paquete
 paquete = paquete a serializar
 bytes = bytes del contenido del paquete (tamaño buffer [sizeof(int)], buffer, tamaño codigo de op[sizeof(int)])

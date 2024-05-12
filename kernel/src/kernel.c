@@ -375,6 +375,7 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         switch (codigoMemoria)
         {
         case OK_OPERACION:
+            log_debug(logs_auxiliares, "OK Operacion desde memoria");
             break;
         
         default:
