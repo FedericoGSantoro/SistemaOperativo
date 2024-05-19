@@ -18,3 +18,6 @@ void destroyer_queue_con_datos_simples(void* cola){
     queue_clean_and_destroy_elements(cola_casteada, free_elements_simple);
 }
 
+void destroyer_dictionary_key_con_estructuras(t_dictionary* dictionary, char* key, void(*element_destroyer)(void*)){
+    dictionary_remove_and_destroy(dictionary, key, element_destroyer);
+}

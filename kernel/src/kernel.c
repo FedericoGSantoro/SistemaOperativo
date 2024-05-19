@@ -91,8 +91,17 @@ void agregarPcbCola(t_queue* cola, pthread_mutex_t semaforo, t_pcb* pcb) {
     pthread_mutex_unlock(&semaforo);
 }
 
+void finalizar_proceso(t_pcb* pcb) {
+    quitarPcbCola(cola_exec, sem_cola_exec);
+    sem_post(&semContadorColaExec);
+    agregarPcbCola(cola_exit, sem_cola_exit, pcb);
+    sem_post(&semContadorColaExit);
+    cambiarEstado(EXIT, pcb);
+}
+
 void cambiarContexto(t_list* contexto, t_pcb* pcb) {
     cargar_contexto_recibido(contexto, pcb);
+
     switch (pcb->contexto_ejecucion.motivo_bloqueo) { 
     case INTERRUPCION_RELOJ:
         quitarPcbCola(cola_exec, sem_cola_exec);
@@ -113,11 +122,7 @@ void cambiarContexto(t_list* contexto, t_pcb* pcb) {
         cambiarEstado(BLOCKED, pcb);
         break;
     case INTERRUPCION_FIN_EVENTO:
-        quitarPcbCola(cola_exec, sem_cola_exec);
-        sem_post(&semContadorColaExec);
-        agregarPcbCola(cola_exit, sem_cola_exit, pcb);
-        sem_post(&semContadorColaExit);
-        cambiarEstado(EXIT, pcb);
+        finalizar_proceso(pcb);
         break;
     default:
         log_error(logs_error, "Error con estado recibido, no reconocido: %d", pcb->contexto_ejecucion.state);
@@ -381,6 +386,19 @@ void iniciarRegistrosCPU(t_pcb* pcb) {
 //     pcb->contexto_ejecucion.registros_cpu.pc = (uint32_t)pcb->contexto_ejecucion.punteros_memoria.code_pointer;
 // }
 
+void evaluar_respuesta_de_operacion(int fd_cliente, char* nombre_modulo_server, op_codigo codigo_operacion) {
+
+    op_codigo respuesta_recibida = recibir_operacion(fd_cliente);
+    switch (respuesta_recibida) {
+        case OK_OPERACION:
+            log_info(logs_auxiliares, "Operacion OK desde %s", nombre_modulo_server);
+            break;
+        default:
+            log_error(logs_error, "Error al ejecutar operacion %s en %d", nombre_modulo_server, codigo_operacion);
+            break;
+    }
+}
+
 void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
     t_paquete* paquete;
     switch (comandoMemoria) {
@@ -389,23 +407,15 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
         agregar_a_paquete(paquete, pathArchivo, strlen(pathArchivo) + 1);
         enviar_paquete(paquete, fd_memoria);
+        evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, CREAR_PCB);
         eliminar_paquete(paquete);
-        op_codigo codigoMemoria = recibir_operacion(fd_memoria);
-        switch (codigoMemoria)
-        {
-        case OK_OPERACION:
-            log_debug(logs_auxiliares, "OK Operacion desde memoria");
-            break;        
-        default:
-            log_error(logs_error, "Error al crear espacios de memoria para el pcb %d", pcb->contexto_ejecucion.pid);
-            break;
-        }
         break;
     case ELIMINAR_PCB:
         paquete = crear_paquete(ELIMINAR_PCB);
         agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
         // empaquetar_punteros_memoria(paquete, pcb);
         enviar_paquete(paquete, fd_memoria);
+        evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, ELIMINAR_PCB);
         eliminar_paquete(paquete);
         break;
     default:

@@ -109,6 +109,9 @@ sem_t semContadorColaExec;
 sem_t semContadorColaBlocked;
 sem_t semContadorColaExit;
 
+/*---------SERVIDORES A CONECTARSE---------*/
+const char* MEMORIA_SERVER = "memoria";
+
 /*---------FUNCIONES---------*/
 
 // Inicializa la planificacion de kernel
