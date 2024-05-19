@@ -102,11 +102,6 @@ void finalizar_proceso(t_pcb* pcb) {
 void cambiarContexto(t_list* contexto, t_pcb* pcb) {
     cargar_contexto_recibido(contexto, pcb);
 
-    if (pcb->contexto_ejecucion.registro_estados == EXIT) {
-        finalizar_proceso(pcb);
-        return;
-    }
-
     switch (pcb->contexto_ejecucion.motivo_bloqueo) { 
     case INTERRUPCION_RELOJ:
         quitarPcbCola(cola_exec, sem_cola_exec);

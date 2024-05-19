@@ -59,7 +59,7 @@ void set_instruction(int cantidad_parametros, t_list* parametros) {
 }
 
 void exit_instruction(int cantidad_parametros, t_list* parametros) {
-    registro_estados = EXIT;
+    motivo_bloqueo = INTERRUPCION_FIN_EVENTO;
 }
 
 //Mapeo y lectura de instrucciones (decode)
