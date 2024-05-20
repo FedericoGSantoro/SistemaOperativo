@@ -47,6 +47,17 @@ void sum_instruction(int cantidad_parametros, t_list* parametros) {
     *registro_destino += *registro_origen;
 }
 
+void sub_instruction(int cantidad_parametros, t_list* parametros) {
+    
+    char* destino = (char*) list_get(parametros, 0);
+    char* origen = (char*) list_get(parametros, 1);
+
+    uint32_t* registro_destino = mapear_registro(destino);
+    uint32_t* registro_origen = mapear_registro(origen);
+
+    *registro_destino -= *registro_origen;
+}
+
 void set_instruction(int cantidad_parametros, t_list* parametros) {
 
     char* destino = (char*) list_get(parametros, 0);
@@ -88,8 +99,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
         tipo_instruccion_mapped.nombre_instruccion = SUM;
         tipo_instruccion_mapped.execute = sum_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "SUB"))
+    else if (string_equals_ignore_case(nombre_instruccion, "SUB")) {
         tipo_instruccion_mapped.nombre_instruccion = SUB;
+        tipo_instruccion_mapped.execute = sub_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "MOV_IN"))
         tipo_instruccion_mapped.nombre_instruccion = MOV_IN;
     else if (string_equals_ignore_case(nombre_instruccion, "MOV_OUT"))
