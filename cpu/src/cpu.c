@@ -93,7 +93,7 @@ void atenderKernelDispatch() {
             // Mientras no exista interrupcion de kernel se ejecuta un ciclo de instruccion, sino sale del while y se envia contexto a Kernel
             // Leemos el estado de la interrupcion utilizando mutex por si el hilo Kernel Interrupt está modificando la variable
             pthread_mutex_lock(&variableInterrupcion);
-            while(!hayInterrupcion && motivo_bloqueo != INTERRUPCION_FIN_EVENTO){
+            while(!hayInterrupcion && state != READY){
                 pthread_mutex_unlock(&variableInterrupcion);
                 log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
                 ejecutarCicloInstruccion();

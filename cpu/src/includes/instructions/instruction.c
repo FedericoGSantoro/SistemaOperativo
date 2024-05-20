@@ -62,6 +62,19 @@ void exit_instruction(int cantidad_parametros, t_list* parametros) {
     motivo_bloqueo = INTERRUPCION_FIN_EVENTO;
 }
 
+void jnz_instruction(int cantidad_parametros, t_list* parametros) {
+
+    char* registro = (char*) list_get(parametros, 0);
+    char* instruccion_a_moverse = (char*) list_get(parametros, 1);
+
+    uint32_t* registro_mapeado = mapear_registro(registro);
+    uint32_t* instruccion_a_moverse_mapeada = mapear_registro(instruccion_a_moverse);
+
+    if (registro_mapeado != 0) {
+        registros_cpu.pc = *instruccion_a_moverse_mapeada - 2; //restamos uno porque despues vamos a sumar uno con el proximo PC++, al finalizar un ciclo de instruccion que tenga a JNZ. Me llevo a consultar si queda en bulce infinito, o como cortamos el JNZ. El otro -1 es para que no se nos vaya la posicion del array
+    }
+}
+
 //Mapeo y lectura de instrucciones (decode)
 
 t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
@@ -83,8 +96,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
         tipo_instruccion_mapped.nombre_instruccion = MOV_OUT;
     else if (string_equals_ignore_case(nombre_instruccion, "RESIZE"))
         tipo_instruccion_mapped.nombre_instruccion = RESIZE;
-    else if (string_equals_ignore_case(nombre_instruccion, "JNZ"))
+    else if (string_equals_ignore_case(nombre_instruccion, "JNZ")) {
         tipo_instruccion_mapped.nombre_instruccion = JNZ;
+        tipo_instruccion_mapped.execute = jnz_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "COPY_STRING"))
         tipo_instruccion_mapped.nombre_instruccion = COPY_STRING;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_GEN_SLEEP"))
