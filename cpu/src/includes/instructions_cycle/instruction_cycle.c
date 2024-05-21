@@ -1,4 +1,4 @@
-#include "./instruction.h"
+#include "./instruction_cycle.h"
 
 t_instruccion* instruccion;
 
@@ -163,12 +163,15 @@ t_instruccion* procesar_instruccion(char *instruccion_entrante) {
     t_list *parameters = list_create();
     int i = 1; // A partir de 1 son parametros - La lista puede estar vacia.
     char* registro_mapeado;
+    char* parametros_string = string_new();
     while (tokens[i] != NULL) {
         registro_mapeado = tokens[i];
+        string_append_with_format(&parametros_string, "%s ", registro_mapeado);
         list_add(parameters, registro_mapeado);
         i++;
     }
     t_instruccion *instruccion_obtenida = new_instruction(tipo_instruccion, parameters);
+    instruccion_obtenida->parametros_string = parametros_string;
     free(identificador);
     free(tokens);
     return instruccion_obtenida;

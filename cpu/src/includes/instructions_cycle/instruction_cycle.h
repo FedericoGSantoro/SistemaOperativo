@@ -43,6 +43,7 @@ typedef struct
     t_tipo_instruccion tipo_instruccion;
     int cant_parametros;
     t_list* parametros;
+    char* parametros_string;
 } t_instruccion;
 extern t_instruccion* instruccion;
 

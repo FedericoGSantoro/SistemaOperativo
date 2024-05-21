@@ -156,7 +156,7 @@ void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registro_estados), sizeof(uint64_t));
     empaquetar_registros_cpu(paquete, pcb);
     // empaquetar_punteros_memoria(paquete, pcb);
-    // agregar_a_paquete(paquete, (int) pcb->contexto_ejecucion.state, sizeof(int));
+    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.state), sizeof(int));
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.motivo_bloqueo), sizeof(int));
 }
 
@@ -171,6 +171,7 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
     switch (codigoOperacion) {
     case CONTEXTO_EJECUCION:
+        pcb->contexto_ejecucion.motivo_bloqueo = UNKNOWN;
         paquete = crear_paquete(CONTEXTO_EJECUCION);
         empaquetar_contexto_ejecucion(paquete, pcb);
         enviar_paquete(paquete, fd_cpu_dispatch);
@@ -346,7 +347,7 @@ void crear_pcb() {
     pcb->quantum_faltante = QUANTUM;
     pcb->io_identifier = numeroConsola;
     numeroConsola++;
-    pcb->contexto_ejecucion.motivo_bloqueo = -1;
+    pcb->contexto_ejecucion.motivo_bloqueo = 0;
     pcb->path_archivo = pathArchivo;
     pcb->contexto_ejecucion.registro_estados = 0;
     iniciarRegistrosCPU(pcb);
