@@ -2,7 +2,7 @@
 #define CPU_H_
 
 #include "./cpu_vars/cpu_vars.h"
-#include "./includes/instructions/instruction.h"
+#include "./includes/instructions_cycle/instruction_cycle.h"
 
 #define rutaConfiguracionCpu "cpu.config"
 

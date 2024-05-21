@@ -93,7 +93,7 @@ void atenderKernelDispatch() {
             // Mientras no exista interrupcion de kernel se ejecuta un ciclo de instruccion, sino sale del while y se envia contexto a Kernel
             // Leemos el estado de la interrupcion utilizando mutex por si el hilo Kernel Interrupt está modificando la variable
             pthread_mutex_lock(&variableInterrupcion);
-            while(!hayInterrupcion && state != READY){
+            while(!hayInterrupcion && (state == EXEC || (state == READY && motivo_bloqueo == UNKNOWN))){
                 pthread_mutex_unlock(&variableInterrupcion);
                 log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
                 ejecutarCicloInstruccion();
@@ -223,7 +223,8 @@ void desempaquetarContextoEjecucion(t_list* paquete) {
     registros_cpu.edx = *(uint32_t*)list_get(paquete, 10);
     registros_cpu.si = *(uint32_t*)list_get(paquete, 11);
     registros_cpu.di = *(uint32_t*)list_get(paquete, 12);
-    motivo_bloqueo = *(blocked_reason*) list_get(paquete, 13);
+    state = *(process_state*) list_get(paquete, 13);
+    motivo_bloqueo = *(blocked_reason*) list_get(paquete, 14);
 }
 
 void recvContextoEjecucion() {
@@ -264,6 +265,7 @@ void decode() {
 
 void execute() {
     instruccion->tipo_instruccion.execute(instruccion->cant_parametros, instruccion->parametros);
+    log_info(logger_obligatorio_cpu, "PID: %d - Ejecutando: %d - [%s]", pid, instruccion->tipo_instruccion.nombre_instruccion, instruccion->parametros_string);
 }
 
 void ejecutarCicloInstruccion() {
