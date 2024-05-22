@@ -7,6 +7,12 @@
 
 // Codigos de operaciones
 typedef enum {
+    STRING,
+	INT,
+} tipo_de_dato;
+
+// Codigos de operaciones
+typedef enum {
     MENSAJE,
     PAQUETE,
 	CONTEXTO_EJECUCION,
@@ -63,6 +69,16 @@ typedef struct{
 	uint32_t di;
 } t_registros_cpu;
 
+typedef struct{
+	tipo_de_dato tipo_de_dato;
+	void* valor;
+} t_params_io;
+
+typedef struct{
+	t_list* parametros;
+	char* nombre_io;  
+} t_io_detail;
+
 // Punteros a memoria
 // typedef struct{
 // 	uint64_t stack_pointer; // puntero a pila del sistema
@@ -78,6 +94,7 @@ typedef struct{
 	// t_punteros_memoria punteros_memoria;
 	process_state state;
 	blocked_reason motivo_bloqueo;
+	t_io_detail io_detail;
 } t_contexto_ejecucion;
 // PCB
 typedef struct{

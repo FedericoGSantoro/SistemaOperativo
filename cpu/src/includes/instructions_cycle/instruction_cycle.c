@@ -36,7 +36,7 @@ uint32_t* mapear_registro(char *nombre_registro) {
 
 //Funciones para ejecutar instrucciones (execute)
 
-void sum_instruction(int cantidad_parametros, t_list* parametros) {
+void sum_instruction(t_list* parametros) {
     
     char* destino = (char*) list_get(parametros, 0);
     char* origen = (char*) list_get(parametros, 1);
@@ -47,7 +47,7 @@ void sum_instruction(int cantidad_parametros, t_list* parametros) {
     *registro_destino += *registro_origen;
 }
 
-void sub_instruction(int cantidad_parametros, t_list* parametros) {
+void sub_instruction(t_list* parametros) {
     
     char* destino = (char*) list_get(parametros, 0);
     char* origen = (char*) list_get(parametros, 1);
@@ -58,7 +58,7 @@ void sub_instruction(int cantidad_parametros, t_list* parametros) {
     *registro_destino -= *registro_origen;
 }
 
-void set_instruction(int cantidad_parametros, t_list* parametros) {
+void set_instruction(t_list* parametros) {
 
     char* destino = (char*) list_get(parametros, 0);
     char* origen = (char*) list_get(parametros, 1);
@@ -69,11 +69,7 @@ void set_instruction(int cantidad_parametros, t_list* parametros) {
     *registro_destino = *registro_origen;
 }
 
-void exit_instruction(int cantidad_parametros, t_list* parametros) {
-    motivo_bloqueo = INTERRUPCION_FIN_EVENTO;
-}
-
-void jnz_instruction(int cantidad_parametros, t_list* parametros) {
+void jnz_instruction(t_list* parametros) {
 
     char* registro = (char*) list_get(parametros, 0);
     char* instruccion_a_moverse = (char*) list_get(parametros, 1);
@@ -84,6 +80,27 @@ void jnz_instruction(int cantidad_parametros, t_list* parametros) {
     if (registro_mapeado != 0) {
         registros_cpu.pc = *instruccion_a_moverse_mapeada - 2; //restamos uno porque despues vamos a sumar uno con el proximo PC++, al finalizar un ciclo de instruccion que tenga a JNZ. Me llevo a consultar si queda en bulce infinito, o como cortamos el JNZ. El otro -1 es para que no se nos vaya la posicion del array
     }
+}
+
+void io_gen_sleep_instruction(t_list* parametros) {
+
+    char* nombre_io = (char*) list_get(parametros, 0);
+    char* cantidad_tiempo_sleep = (char*) list_get(parametros, 1);
+    int* cantidad_tiempo_sleep_parseado = malloc(sizeof(int));
+    *cantidad_tiempo_sleep_parseado = string_to_int(cantidad_tiempo_sleep);
+    t_params_io* parametro_io = malloc(sizeof(int)*2);
+    
+    parametro_io->tipo_de_dato = INT;
+    parametro_io->valor = cantidad_tiempo_sleep_parseado;
+
+    io_detail.nombre_io = nombre_io;
+    list_add_in_index(io_detail.parametros, 0, parametro_io);
+
+    motivo_bloqueo = LLAMADA_SISTEMA;
+}
+
+void exit_instruction(t_list* parametros) {
+    motivo_bloqueo = INTERRUPCION_FIN_EVENTO;
 }
 
 //Mapeo y lectura de instrucciones (decode)
@@ -115,8 +132,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
     }
     else if (string_equals_ignore_case(nombre_instruccion, "COPY_STRING"))
         tipo_instruccion_mapped.nombre_instruccion = COPY_STRING;
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_GEN_SLEEP"))
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_GEN_SLEEP")) {
         tipo_instruccion_mapped.nombre_instruccion = IO_GEN_SLEEP;
+        tipo_instruccion_mapped.execute = io_gen_sleep_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ"))
         tipo_instruccion_mapped.nombre_instruccion = IO_STDIN_READ;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE"))

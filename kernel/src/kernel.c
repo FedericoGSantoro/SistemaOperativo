@@ -62,6 +62,9 @@ void corto_plazo_blocked() {
 }
 
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
+    
+    int ultimo_indice = 14;
+    
     pcb->contexto_ejecucion.registro_estados = *(uint64_t*)list_get(contexto, 1);
     pcb->contexto_ejecucion.registros_cpu.pc = *(uint32_t*)list_get(contexto, 2);
     pcb->contexto_ejecucion.registros_cpu.ax = *(uint8_t*)list_get(contexto, 3);
@@ -75,6 +78,37 @@ void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.si = *(uint32_t*)list_get(contexto, 11);
     pcb->contexto_ejecucion.registros_cpu.di = *(uint32_t*)list_get(contexto, 12);
     pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, 13);
+    uint32_t cantidad_parametros_io_detail = *(uint32_t*)list_get(contexto, ultimo_indice);
+
+    if (cantidad_parametros_io_detail != 0) {
+        pcb->contexto_ejecucion.io_detail.parametros = list_create();
+
+        for (int i = 0; i < cantidad_parametros_io_detail; i++) {
+            ultimo_indice++;
+            tipo_de_dato tipo_de_dato_parametro_io = *(tipo_de_dato*)list_get(contexto, ultimo_indice);
+            t_params_io* parametro_io;
+            ultimo_indice++;
+            void* valor_parametro_io_recibido = (void*)list_get(contexto, ultimo_indice);
+            void* valor_parametro_a_guardar;
+            switch (tipo_de_dato_parametro_io)
+            {
+            case INT:
+                parametro_io = malloc(sizeof(int)*2);
+                valor_parametro_a_guardar = malloc(sizeof(int));
+                valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
+                break;
+
+            default:
+                break;
+            }
+            parametro_io->tipo_de_dato = tipo_de_dato_parametro_io;
+            parametro_io->valor = valor_parametro_a_guardar;
+
+            list_add_in_index(pcb->contexto_ejecucion.io_detail.parametros, i, parametro_io);
+        }
+        ultimo_indice++;
+        pcb->contexto_ejecucion.io_detail.nombre_io = (char *)list_get(contexto, ultimo_indice);
+    }
     log_info(logs_auxiliares, "AX: %d, BX: %d", pcb->contexto_ejecucion.registros_cpu.ax, pcb->contexto_ejecucion.registros_cpu.bx);
 }
 
@@ -114,12 +148,23 @@ void cambiarContexto(t_list* contexto, t_pcb* pcb) {
         log_info(logs_obligatorios, "PID: %d - Desalojado por fin de Quantum", pcb->contexto_ejecucion.pid);
         break;
     case LLAMADA_SISTEMA:
-        quitarPcbCola(cola_exec, sem_cola_exec);
+        /*quitarPcbCola(cola_exec, sem_cola_exec);
         sem_post(&semContadorColaExec);
         // TODO: Antes de añadir a bloqueados comprobar si esta la interfaz disponible y si lo esta añadirla, creo que cola bloqueado maneja el tema de enviar a las interfaces las cosas para hacer
         agregarPcbCola(cola_blocked, sem_cola_blocked, pcb);
         sem_post(&semContadorColaBlocked);
         cambiarEstado(BLOCKED, pcb);
+        */
+        
+        /*TODO: ELIMINAR LAS LINEAS DE ABAJO Y EL COMENTARIO DE ARRIBA. 
+        CAMBIAMOS EL ESTADO PARA SEGUIR EJECUTANDO HASTA QUE ESTE LA 
+        LOGICA DE LLAMADA AL SISTEMA*/
+        cambiarEstado(EXEC, pcb);
+        agregarPcbCola(cola_ready, sem_cola_ready, pcb);
+        sem_post(&semContadorColaExec);
+        sem_post(&semContadorColaReady);
+        planificacionEjecutandose = true;
+        pthread_cond_broadcast(&condicion_planificacion);
         break;
     case INTERRUPCION_FIN_EVENTO:
         finalizar_proceso(pcb);
