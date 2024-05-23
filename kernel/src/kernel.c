@@ -106,7 +106,8 @@ void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice
 
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     
-    int ultimo_indice = 13;
+    int ultimo_indice = 13; //ESTE ULTIMO INDICE ES PARA CONTABILIZAR HASTA EL ULTIMO DE LOS PARAMETROS QUE SON ESTATICOS. }
+    //SI AGREGAMOS OTRO PARAMETRO ESTATICO, DEBEMOS INCREMENTAR ESTE NUMERO, YA QUE LUEGO SE DESERIALIZAN DEL PAQUETE CAMPOS QUE SON DINAMICOS (COMO LISTAS)
     
     pcb->contexto_ejecucion.registro_estados = *(uint64_t*)list_get(contexto, 1);
     pcb->contexto_ejecucion.registros_cpu.pc = *(uint32_t*)list_get(contexto, 2);
@@ -120,7 +121,7 @@ void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.edx = *(uint32_t*)list_get(contexto, 10);
     pcb->contexto_ejecucion.registros_cpu.si = *(uint32_t*)list_get(contexto, 11);
     pcb->contexto_ejecucion.registros_cpu.di = *(uint32_t*)list_get(contexto, 12);
-    pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, ultimo_indice);
+    pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, ultimo_indice); //ojo con el ultimo_indice, explicado mas arriba
     cargar_io_detail_en_context(pcb, contexto, ultimo_indice);
     log_info(logs_auxiliares, "AX: %d, BX: %d", pcb->contexto_ejecucion.registros_cpu.ax, pcb->contexto_ejecucion.registros_cpu.bx);
 }
