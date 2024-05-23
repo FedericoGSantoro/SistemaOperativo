@@ -100,6 +100,9 @@ void io_gen_sleep_instruction(t_list* parametros) {
     list_add_in_index(io_detail.parametros, 0, parametro_io);
 
     motivo_bloqueo = LLAMADA_SISTEMA;
+    pthread_mutex_lock(&variableInterrupcion);
+    hayInterrupcion = true;
+    pthread_mutex_unlock(&variableInterrupcion);
 
     //liberacion de recursos
     free(io_instruccion);
@@ -107,6 +110,9 @@ void io_gen_sleep_instruction(t_list* parametros) {
 
 void exit_instruction(t_list* parametros) {
     motivo_bloqueo = INTERRUPCION_FIN_EVENTO;
+    pthread_mutex_lock(&variableInterrupcion);
+    hayInterrupcion = true;
+    pthread_mutex_unlock(&variableInterrupcion);
 }
 
 //Mapeo y lectura de instrucciones (decode)
