@@ -27,7 +27,7 @@ typedef enum {
 
 // Razones de bloqueo
 typedef enum{
-	UNKNOWN,
+	NOTHING,
 	INTERRUPCION_RELOJ,
 	INTERRUPCION_FIN_EVENTO,
 	LLAMADA_SISTEMA,
