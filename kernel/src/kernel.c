@@ -30,10 +30,13 @@ void iniciarPlanificacion() {
 void planificacionCortoPlazo() {
     pthread_t CortoPlazoReady;
     pthread_t CortoPlazoBlocked;
-    //pthread_t CortoPlazoRunning; // Creo que solo comprueba quantum para desalojar a ready y exit
     crearHiloDetach(&CortoPlazoReady, (void*) corto_plazo_ready, NULL, "Planificacion corto plazo READY", logs_auxiliares, logs_error);
     crearHiloDetach(&CortoPlazoBlocked, (void*) corto_plazo_blocked, NULL, "Planificacion corto plazo RUNNING", logs_auxiliares, logs_error);
-    //crearHiloDetach(&CortoPlazoRunning, (void*) corto_plazo_running, NULL, "Planificacion corto plazo BLOCKED", logs_auxiliares, logs_error);
+}
+
+bool buscarIO(void* interfaz) {
+    interfazConectada* interfazConvertida = (interfazConectada*) interfaz;
+    return strcmp(interfazConvertida->nombre, ioBuscada) == 0;
 }
 
 void corto_plazo_blocked() {
@@ -45,24 +48,51 @@ void corto_plazo_blocked() {
         pthread_mutex_unlock(&sem_planificacion);
         sem_wait(&semContadorColaBlocked);
         pthread_mutex_lock(&sem_cola_blocked_aux);
-        //t_pcb* pcbBloqueado = queue_pop(cola_blocked_aux);
+        t_pcb* pcbBloqueado = queue_pop(cola_blocked_aux);
         pthread_mutex_unlock(&sem_cola_blocked_aux);
-        //dictionary_get(diccionarioInterfaces, obtenerTipoInterfaz(pcb->contexto_ejecucion.io_detail.));
-        // Nueva nueva idea:
-        // Agarro el primer elemento de la cola y le mando a interfaz para que lo solucione y espero su respuesta, cuando la recibo de que termino entonces mando el proceso a ready
-
-        // Nueva idea:
-        // Creo que espera a recibir una interrupcion de que finalizo el evento
-        // que bloquea un proceso, cuando llega busca ese proceso y lo manda a ready
-        
-        // t_pcb* pcb = queue_peek(cola_ready);
-        
-        // Vieja idea:
-        // Chequea si el motivo del bloqueo fue solucionado
-        // Si esta solucionado lo envia a ready, si no lo deja bloqueado
-        
-        // Chequea para eliminarlo tambien
-    }
+        ioBuscada = pcbBloqueado->contexto_ejecucion.io_detail.nombre_io;
+        /*
+        LOG OBLIGATORIO: Motivo de Bloqueo 
+        "PID: <PID> - Bloqueado por: <INTERFAZ / NOMBRE_RECURSO>"
+        */
+        // TODO: Agregar cambio para nombre recurso
+        log_info(logs_obligatorios, "PID: %d - Bloqueado por: %s", pcbBloqueado->contexto_ejecucion.pid, ioBuscada);
+        interfazConectada* interfazEncontrada = NULL;
+        switch (pcbBloqueado->contexto_ejecucion.io_detail.io_instruccion) {
+        case IO_GEN_SLEEP:
+            pthread_mutex_lock(&mutexInterfacesGenericas);        
+            interfazEncontrada = list_find(interfacesGenericas, buscarIO);
+            pthread_mutex_unlock(&mutexInterfacesGenericas); 
+            break;
+        case IO_STDIN_READ:
+            pthread_mutex_lock(&mutexInterfacesSTDIN);        
+            interfazEncontrada = list_find(interfacesSTDIN, buscarIO);
+            pthread_mutex_unlock(&mutexInterfacesSTDIN);        
+            break;
+        case IO_STDOUT_WRITE:
+            pthread_mutex_lock(&mutexInterfacesSTDOUT);        
+            interfazEncontrada = list_find(interfacesSTDOUT, buscarIO);
+            pthread_mutex_unlock(&mutexInterfacesSTDOUT);        
+            break;
+        default:
+            pthread_mutex_lock(&mutexInterfacesFS);        
+            interfazEncontrada = list_find(interfacesFS, buscarIO);
+            pthread_mutex_unlock(&mutexInterfacesFS);        
+            break;
+        }
+        if ( interfazEncontrada == NULL ) {
+            log_warning(logs_auxiliares, "interfaz %s no encontrada", ioBuscada);
+            enviarPCBExit(pcbBloqueado);
+            continue;
+        }
+        pthread_mutex_lock(&(interfazEncontrada->semaforoMutex));        
+        queue_push(interfazEncontrada->colaEjecucion, pcbBloqueado);
+        pthread_mutex_unlock(&(interfazEncontrada->semaforoMutex));
+        sem_post(&(interfazEncontrada->semaforoCantProcesos));
+        pthread_mutex_lock(&sem_cola_blocked);      
+        list_add(cola_blocked, &(pcbBloqueado->contexto_ejecucion.pid));
+        pthread_mutex_unlock(&sem_cola_blocked);
+    } 
 }
 
 //cargamos en el contexto del proceso, el io_detail para las operaciones con las entradas y salidas.
@@ -125,7 +155,7 @@ void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.si = *(uint32_t*)list_get(contexto, 11);
     pcb->contexto_ejecucion.registros_cpu.di = *(uint32_t*)list_get(contexto, 12);
     pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, 13);
-    cargar_io_detail_en_context(pcb, contexto, 14);
+    cargar_io_detail_en_context(pcb, contexto, 13);
     log_info(logs_auxiliares, "AX: %d, BX: %d", pcb->contexto_ejecucion.registros_cpu.ax, pcb->contexto_ejecucion.registros_cpu.bx);
 }
 
@@ -405,6 +435,9 @@ void crear_pcb() {
     iniciarRegistrosCPU(pcb);
     // iniciarPunterosMemoria(pcb);
     pcb->contexto_ejecucion.state = NEW;
+    pcb->contexto_ejecucion.io_detail.nombre_io = "";
+    pcb->contexto_ejecucion.io_detail.parametros = list_create();
+    pcb->contexto_ejecucion.io_detail.io_instruccion = NONE;
     agregarPcbCola(cola_new, sem_cola_new, pcb);
     sem_post(&semContadorColaNew);
     log_info(logs_obligatorios, "Se crea el proceso %d en NEW", pcb->contexto_ejecucion.pid);
@@ -439,15 +472,15 @@ void iniciarRegistrosCPU(t_pcb* pcb) {
 //     pcb->contexto_ejecucion.registros_cpu.pc = (uint32_t)pcb->contexto_ejecucion.punteros_memoria.code_pointer;
 // }
 
-void evaluar_respuesta_de_operacion(int fd_cliente, char* nombre_modulo_server, op_codigo codigo_operacion) {
+bool evaluar_respuesta_de_operacion(int fd_cliente, char* nombre_modulo_server, op_codigo codigo_operacion) {
     op_codigo respuesta_recibida = recibir_operacion(fd_cliente);
     switch (respuesta_recibida) {
         case OK_OPERACION:
             log_info(logs_auxiliares, "Operacion OK desde %s", nombre_modulo_server);
-            break;
+            return true;
         default:
             log_error(logs_error, "Error al ejecutar operacion %s en %d", nombre_modulo_server, codigo_operacion);
-            break;
+            return false;
     }
 }
 
@@ -459,7 +492,11 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
         agregar_a_paquete(paquete, pathArchivo, strlen(pathArchivo) + 1);
         enviar_paquete(paquete, fd_memoria);
-        evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, CREAR_PCB);
+        if ( !evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, CREAR_PCB) ) {
+            log_warning(logs_auxiliares, "Reintentando creacion pid: %d", pcb->contexto_ejecucion.pid);
+            system("sleep 5");
+            mensaje_memoria(comandoMemoria, pcb);
+        }
         eliminar_paquete(paquete);
         break;
     case ELIMINAR_PCB:
@@ -467,7 +504,11 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
         // empaquetar_punteros_memoria(paquete, pcb);
         enviar_paquete(paquete, fd_memoria);
-        evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, ELIMINAR_PCB);
+        if ( !evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, ELIMINAR_PCB) ) {
+            log_warning(logs_auxiliares, "Reintentando eliminacion pid: %d", pcb->contexto_ejecucion.pid);
+            system("sleep 5");
+            mensaje_memoria(comandoMemoria, pcb);
+        }
         eliminar_paquete(paquete);
         break;
     default:
@@ -505,8 +546,15 @@ void inicializarSemaforos() {
     sem_init(&semContadorColaExit, 0, 0);
 }
 
-void inicializarDiccionario() {
-    diccionarioInterfaces = dictionary_create();
+void inicializarListasInterfaces() {
+    interfacesGenericas = list_create();
+    interfacesSTDIN = list_create();
+    interfacesSTDOUT = list_create();
+    interfacesFS = list_create();
+    pthread_mutex_init(&mutexInterfacesGenericas, NULL);
+    pthread_mutex_init(&mutexInterfacesSTDIN, NULL);
+    pthread_mutex_init(&mutexInterfacesSTDOUT, NULL);
+    pthread_mutex_init(&mutexInterfacesFS, NULL);
 }
 
 void inicializarVariables() {
@@ -529,8 +577,8 @@ void inicializarVariables() {
     // Inicializar colas
     inicializarColas();
 
-    // Inicializar diccionario
-    inicializarDiccionario();
+    // Inicializar listas de interfaces
+    inicializarListasInterfaces();
 
 }
 
@@ -708,18 +756,17 @@ void atender_cliente(interfazConectada* datosInterfaz) {
     // Reviso que haya conexion
     while( datosInterfaz->fd_interfaz != -1 ) {
         sem_wait(&datosInterfaz->semaforoCantProcesos);
-        //pthread_mutex_lock(&datosInterfaz->semaforoMutex);
-        //t_pcb* pcbAEjecutar = queue_pop(datosInterfaz->colaEjecucion);
-        //pthread_mutex_unlock(&datosInterfaz->semaforoMutex);
-        // TODO Hacer funcion para enviar la instruccion a esta interfaz
-        //t_paquete* instruccionEjecutar;
-        // TODO Enviar instruccion
+        pthread_mutex_lock(&datosInterfaz->semaforoMutex);
+        t_pcb* pcbAEjecutar = queue_pop(datosInterfaz->colaEjecucion);
+        pthread_mutex_unlock(&datosInterfaz->semaforoMutex);
+        t_paquete* paquete = crear_paquete(OK_OPERACION);
+        agregar_a_paquete(paquete, &pcbAEjecutar->contexto_ejecucion.io_detail, sizeof(t_io_detail));
+        enviar_paquete(paquete, datosInterfaz->fd_interfaz);
         codigoOperacion = recibir_operacion(datosInterfaz->fd_interfaz);
         if ( codigoOperacion == -1 ) {
             log_warning(logs_auxiliares, "El cliente se desconecto de Kernel");
             break;
         }
-        // TODO Recibir la interrupcion que termino
         switch (codigoOperacion) {
         case MENSAJE:
             char* mensaje = recibir_mensaje(datosInterfaz->fd_interfaz);
@@ -731,12 +778,41 @@ void atender_cliente(interfazConectada* datosInterfaz) {
             list_iterate(valoresPaquete, (void*) iteradorPaquete);
             list_destroy(valoresPaquete);
             break;
+        case OK_OPERACION:
+            pthread_mutex_lock(&sem_cola_blocked);
+            list_remove_element(cola_blocked, &pcbAEjecutar->contexto_ejecucion.pid);
+            pthread_mutex_unlock(&sem_cola_blocked);
+            agregarPcbCola(cola_ready, sem_cola_ready, pcbAEjecutar);
+            cambiarEstado(READY, pcbAEjecutar);
+            sem_post(&semContadorColaReady);
+            break;
         default:
             log_error(logs_error, "Codigo de operacion no reconocido: %d", codigoOperacion);
             break;
         }
     }
-    // Eliminar IO de diccionario y hacerle un free
+    switch (datosInterfaz->tipoInterfaz) {
+    case GENERICA:
+        pthread_mutex_lock(&mutexInterfacesGenericas);        
+        list_remove_element(interfacesGenericas, &datosInterfaz);
+        pthread_mutex_unlock(&mutexInterfacesGenericas);        
+        break;
+    case STDIN:
+        pthread_mutex_lock(&mutexInterfacesSTDIN);        
+        list_remove_element(interfacesSTDIN, &datosInterfaz);
+        pthread_mutex_unlock(&mutexInterfacesSTDIN);        
+        break;
+    case STDOUT:
+        pthread_mutex_lock(&mutexInterfacesSTDOUT);        
+        list_remove_element(interfacesSTDOUT, &datosInterfaz);
+        pthread_mutex_unlock(&mutexInterfacesSTDOUT);        
+        break;
+    case FS:
+        pthread_mutex_lock(&mutexInterfacesFS);        
+        list_remove_element(interfacesFS, &datosInterfaz);
+        pthread_mutex_unlock(&mutexInterfacesFS);        
+        break;
+    }
 }
 
 void iteradorPaquete(char* value) {
@@ -759,7 +835,32 @@ interfazConectada* crearInterfaz(t_list* nombreYTipoInterfaz, int socket_cliente
     sem_init(&semaforoCantProcesos, 0, 0);
     interfazIO->semaforoCantProcesos = semaforoCantProcesos;
     interfazIO->fd_interfaz = socket_cliente;
-    dictionary_put(diccionarioInterfaces, obtenerTipoInterfaz((typeInterface) list_get(nombreYTipoInterfaz, 1)), (void*) interfazIO);
+    switch (interfazIO->tipoInterfaz)
+    {
+    case GENERICA:
+        pthread_mutex_lock(&mutexInterfacesGenericas);
+        list_add(interfacesGenericas, interfazIO);
+        pthread_mutex_unlock(&mutexInterfacesGenericas);
+        break;
+    case STDIN:
+        pthread_mutex_lock(&mutexInterfacesSTDIN);
+        list_add(interfacesSTDIN, interfazIO);
+        pthread_mutex_unlock(&mutexInterfacesSTDIN);
+        break;
+    case STDOUT:
+        pthread_mutex_lock(&mutexInterfacesSTDOUT);
+        list_add(interfacesSTDOUT, interfazIO);
+        pthread_mutex_unlock(&mutexInterfacesSTDOUT);
+        break;
+    case FS:
+        pthread_mutex_lock(&mutexInterfacesFS);
+        list_add(interfacesFS, interfazIO);
+        pthread_mutex_unlock(&mutexInterfacesFS);
+        break;
+    default:
+        return NULL;
+        break;
+    }
     return interfazIO;
 }
 
@@ -771,6 +872,10 @@ bool escucharServer(int socket_servidor) {
         // Creo hilo y le asigno atender_cliente pasandole el socket como parametro
         t_list* nombreYTipoInterfaz = recibir_paquete(socket_cliente);
         interfazConectada* interfazNueva = crearInterfaz(nombreYTipoInterfaz, socket_cliente);
+        if (interfazNueva == NULL) {
+            log_error(logs_error, "Interfaz %s de tipo %s no pudo ser creada", (char*) list_get(nombreYTipoInterfaz, 0), obtenerTipoInterfaz(*(typeInterface*) list_get(nombreYTipoInterfaz, 1)));
+            return true;
+        }
         // Primero nombre y despues tipoInterfaz
         pthread_t thread_cliente;
         crearHiloDetach(&thread_cliente, (void*) atender_cliente, (interfazConectada*) interfazNueva, "Cliente", logs_auxiliares, logs_error);
@@ -873,6 +978,17 @@ void eliminarInterfaz(interfazConectada* interfazAEliminar) {
     free(interfazAEliminar);
 }
 
+void liberarInterfaces() {
+    list_destroy_and_destroy_elements(interfacesGenericas, (void*) eliminarInterfaz);
+    list_destroy_and_destroy_elements(interfacesSTDIN, (void*) eliminarInterfaz);
+    list_destroy_and_destroy_elements(interfacesSTDOUT, (void*) eliminarInterfaz);
+    list_destroy_and_destroy_elements(interfacesFS, (void*) eliminarInterfaz);
+    pthread_mutex_destroy(&mutexInterfacesGenericas);
+    pthread_mutex_destroy(&mutexInterfacesSTDIN);
+    pthread_mutex_destroy(&mutexInterfacesSTDOUT);
+    pthread_mutex_destroy(&mutexInterfacesFS);
+}
+
 void terminarPrograma() {
     log_destroy(logs_obligatorios);
     log_destroy(logs_auxiliares);
@@ -903,5 +1019,5 @@ void terminarPrograma() {
     sem_destroy(&semContadorColaExec);
     sem_destroy(&semContadorColaBlocked);
     sem_destroy(&semContadorColaExit);
-    dictionary_destroy_and_destroy_elements(diccionarioInterfaces, (void *)eliminarInterfaz);
+    liberarInterfaces();
 }

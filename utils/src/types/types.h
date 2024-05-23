@@ -13,7 +13,8 @@ typedef enum {
 
 // Operaciones de Instrucciones de CPU
 typedef enum
-{
+{	
+	NONE,
     SET,
     SUM,
     SUB,

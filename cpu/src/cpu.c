@@ -80,7 +80,7 @@ void iniciar_ciclo_instruccion() {
     // Mientras no exista interrupcion de kernel se ejecuta un ciclo de instruccion, sino sale del while y se envia contexto a Kernel
     // Leemos el estado de la interrupcion utilizando mutex por si el hilo Kernel Interrupt está modificando la variable
     pthread_mutex_lock(&variableInterrupcion);
-    while (!hayInterrupcion && ((state == EXEC || state == READY) && motivo_bloqueo == NOTHING)) {
+    while (!hayInterrupcion/* && ((state == EXEC || state == READY) && motivo_bloqueo == NOTHING)*/) {
         pthread_mutex_unlock(&variableInterrupcion);
         log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
         ejecutarCicloInstruccion();
@@ -275,8 +275,8 @@ void desempaquetarContextoEjecucion(t_list *paquete) {
     registros_cpu.edx = *(uint32_t *)list_get(paquete, 10);
     registros_cpu.si = *(uint32_t *)list_get(paquete, 11);
     registros_cpu.di = *(uint32_t *)list_get(paquete, 12);
-    state = *(process_state *)list_get(paquete, 13);
-    motivo_bloqueo = *(blocked_reason *)list_get(paquete, 14);
+    //state = *(process_state *)list_get(paquete, 13);
+    motivo_bloqueo = *(blocked_reason *)list_get(paquete, 13);
     io_detail.nombre_io = "";
     io_detail.parametros = list_create(); // SE ELIMINA EN ALGUN LADO ESTO?
 }
