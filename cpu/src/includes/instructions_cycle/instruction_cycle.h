@@ -24,6 +24,8 @@ typedef struct
 } t_instruccion;
 extern t_instruccion* instruccion;
 
+// Maneja el motivo del bloqueo
+void manejarInterrupciones (blocked_reason motivo_nuevo);
 uint32_t* mapear_registro(char *nombre_registro);
 void liberar_instruccion();
 void sum_instruction(t_list* parametros);

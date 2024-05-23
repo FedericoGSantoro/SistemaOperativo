@@ -70,14 +70,14 @@ void iteradorPaquete(char *value) {
 }
 
 void iniciar_ciclo_instruccion() {
-    
     recvContextoEjecucion();
     log_info(logger_aux_cpu, "Recibi el contexto de ejecucion!");
 
     // Mientras no exista interrupcion de kernel se ejecuta un ciclo de instruccion, sino sale del while y se envia contexto a Kernel
     // Leemos el estado de la interrupcion utilizando mutex por si el hilo Kernel Interrupt está modificando la variable
     pthread_mutex_lock(&variableInterrupcion);
-    while (!hayInterrupcion/* && ((state == EXEC || state == READY) && motivo_bloqueo == NOTHING)*/) {
+    while (motivo_bloqueo == NOTHING) {    
+        log_info(logger_aux_cpu, "motivo viejo: %d", motivo_bloqueo);
         pthread_mutex_unlock(&variableInterrupcion);
         log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
         ejecutarCicloInstruccion();
@@ -85,9 +85,7 @@ void iniciar_ciclo_instruccion() {
         registros_cpu.pc++;
         pthread_mutex_lock(&variableInterrupcion);
     }
-
-    // Seteamos de nuevo en false el hayInterrupcion
-    hayInterrupcion = false;
+    log_info(logger_aux_cpu, "motivo nuevo: %d", motivo_bloqueo);
     pthread_mutex_unlock(&variableInterrupcion);
     // Empaquetamos el contexto de ejecucion y se lo enviamos a Kernel
     enviarContextoEjecucion();
@@ -171,23 +169,16 @@ bool esperarClientes() {
     return false;
 }
 
-bool desempaquetarInterrupcion(t_list *paquete) {
+void desempaquetarInterrupcion(t_list *paquete) {
     uint32_t pid_aux = *(uint32_t *)list_get(paquete, 0);
     if (pid == pid_aux) {
-        motivo_bloqueo = INTERRUPCION_RELOJ;
-        return true;
+        manejarInterrupciones(INTERRUPCION_RELOJ);
     }
-    return false;
 }
 
 void recvInterrupcion() {
     t_list *paquete = recibir_paquete(fd_kernel_interrupt);
-    if (desempaquetarInterrupcion(paquete)) {
-        // Modificamos el estado de la interrupcion utilizando mutex por si el hilo Kernel Dispatch está leyendo la variable
-        pthread_mutex_lock(&variableInterrupcion);
-        hayInterrupcion = true;
-        pthread_mutex_unlock(&variableInterrupcion);
-    }
+    desempaquetarInterrupcion(paquete);
     list_destroy(paquete);
 }
 
@@ -272,10 +263,9 @@ void desempaquetarContextoEjecucion(t_list *paquete) {
     registros_cpu.edx = *(uint32_t *)list_get(paquete, 10);
     registros_cpu.si = *(uint32_t *)list_get(paquete, 11);
     registros_cpu.di = *(uint32_t *)list_get(paquete, 12);
-    //state = *(process_state *)list_get(paquete, 13);
     motivo_bloqueo = *(blocked_reason *)list_get(paquete, 13);
     io_detail.nombre_io = "";
-    io_detail.parametros = list_create(); // SE ELIMINA EN ALGUN LADO ESTO?
+    io_detail.parametros = list_create();
 }
 
 void recvContextoEjecucion() {

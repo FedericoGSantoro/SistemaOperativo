@@ -39,7 +39,7 @@ void enviarMsjMemoria();
 void iteradorPaquete(char* value);
 
 // Desempaquetamos la interrupcion de kernel y validamos que el pid que nos envia sea igual al pid que estamos ejecutando
-bool desempaquetarInterrupcion(t_list *paquete);
+void desempaquetarInterrupcion(t_list *paquete);
 // Recibimos interrupcion de kernel, nos envía el pid
 void recvInterrupcion();
 

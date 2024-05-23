@@ -1,5 +1,13 @@
 #include "./instruction_cycle.h"
 
+void manejarInterrupciones (blocked_reason motivo_nuevo) {
+    pthread_mutex_lock(&variableInterrupcion);
+    if (motivo_bloqueo < motivo_nuevo) {
+        motivo_bloqueo = motivo_nuevo;
+    }
+    pthread_mutex_unlock(&variableInterrupcion);
+}
+
 t_instruccion* instruccion;
 
 uint32_t* mapear_registro(char *nombre_registro) {
@@ -99,20 +107,14 @@ void io_gen_sleep_instruction(t_list* parametros) {
     io_detail.io_instruccion = *io_instruccion;
     list_add_in_index(io_detail.parametros, 0, parametro_io);
 
-    motivo_bloqueo = LLAMADA_SISTEMA;
-    pthread_mutex_lock(&variableInterrupcion);
-    hayInterrupcion = true;
-    pthread_mutex_unlock(&variableInterrupcion);
+    manejarInterrupciones(LLAMADA_SISTEMA);
 
     //liberacion de recursos
     free(io_instruccion);
 }
 
 void exit_instruction(t_list* parametros) {
-    motivo_bloqueo = INTERRUPCION_FIN_EVENTO;
-    pthread_mutex_lock(&variableInterrupcion);
-    hayInterrupcion = true;
-    pthread_mutex_unlock(&variableInterrupcion);
+    manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
 }
 
 //Mapeo y lectura de instrucciones (decode)
