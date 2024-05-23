@@ -216,10 +216,12 @@ void agregar_io_detail(t_paquete *paquete) {
             agregar_a_paquete(paquete, valor_parametro_a_enviar, size_parametro);
         }
         agregar_a_paquete(paquete, io_detail.nombre_io, strlen(io_detail.nombre_io) + 1);
+        agregar_a_paquete(paquete, &io_detail.io_instruccion, sizeof(int));
     }
 }
 
 void eliminar_io_detail() {
+    
     for (int i = 0; i < io_detail.parametros->elements_count; i++) {
         void* parametro_a_eliminar = list_get(io_detail.parametros, i);
         free(parametro_a_eliminar);

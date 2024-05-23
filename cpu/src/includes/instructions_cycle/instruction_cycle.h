@@ -4,32 +4,9 @@
 #include <commons/collections/list.h>
 #include <stdint.h>
 #include "../cpu_vars/cpu_vars.h"
+#include "../../../../utils/src/types/types.h"
 #include "../../../../utils/src/liberador/liberador.h"
 #include "../../../../utils/src/castingfunctions/castfunctions.h"
-
-// Operaciones de Instrucciones de CPU
-typedef enum
-{
-    SET,
-    SUM,
-    SUB,
-    MOV_IN,
-    MOV_OUT,
-    RESIZE,
-    JNZ,
-    COPY_STRING,
-    IO_GEN_SLEEP,
-    IO_STDIN_READ,
-    IO_STDOUT_WRITE,
-    IO_FS_CREATE,
-    IO_FS_DELETE,
-    IO_FS_TRUNCATE,
-    IO_FS_WRITE,
-    IO_FS_READ,
-    WAIT,
-    SIGNAL,
-    EXIT_PROGRAM,
-} t_nombre_instruccion;
 
 // Estructuras de instruccion
 

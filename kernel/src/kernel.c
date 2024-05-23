@@ -101,6 +101,9 @@ void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice
         }
         ultimo_indice++;
         pcb->contexto_ejecucion.io_detail.nombre_io = (char *)list_get(contexto, ultimo_indice); //obtengo el nombre de la IO
+        
+        ultimo_indice++;
+        pcb->contexto_ejecucion.io_detail.io_instruccion = *(t_nombre_instruccion *)list_get(contexto, ultimo_indice); //obtengo el nombre de la instruccion contra IO
     }
 }
 

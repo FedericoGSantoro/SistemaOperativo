@@ -87,14 +87,22 @@ void io_gen_sleep_instruction(t_list* parametros) {
     int* cantidad_tiempo_sleep_parseado = malloc(sizeof(int));
     *cantidad_tiempo_sleep_parseado = string_to_int(cantidad_tiempo_sleep);
     t_params_io* parametro_io = malloc(sizeof(int)*2);
-    
+    t_nombre_instruccion* io_instruccion = malloc(sizeof(int));
+
+    //armado de los parametros de io_detail    
     parametro_io->tipo_de_dato = INT;
     parametro_io->valor = cantidad_tiempo_sleep_parseado;
 
+    //armado de io_detail
     io_detail.nombre_io = nombre_io;
+    *io_instruccion = IO_GEN_SLEEP;
+    io_detail.io_instruccion = *io_instruccion;
     list_add_in_index(io_detail.parametros, 0, parametro_io);
 
     motivo_bloqueo = LLAMADA_SISTEMA;
+
+    //liberacion de recursos
+    free(io_instruccion);
 }
 
 void exit_instruction(t_list* parametros) {
