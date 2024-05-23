@@ -226,7 +226,8 @@ void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
     empaquetar_registros_cpu(paquete, pcb);
     // empaquetar_punteros_memoria(paquete, pcb);
     // agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.state), sizeof(int));
-    agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.motivo_bloqueo), sizeof(int));
+    blocked_reason motivo_vacio = NOTHING;
+    agregar_a_paquete(paquete, &motivo_vacio, sizeof(int));
 }
 
 void mensaje_cpu_interrupt() {
