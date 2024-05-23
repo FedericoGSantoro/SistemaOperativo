@@ -1,7 +1,6 @@
 #include "./includes/cpu.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
     iniciarLogs();
 
@@ -12,74 +11,64 @@ int main(int argc, char *argv[])
 
     iniciarServidoresCpu();
     iniciarConexionCpuMemoria();
-    while (esperarClientes())
-        ;
+    while (esperarClientes());
 
     terminarPrograma();
 
     return 0;
 }
 
-void iniciarLogs()
-{
+void iniciarLogs() {
     logger_obligatorio_cpu = log_create("logsObligatoriosCPU.log", "LOG_OBLIGATORIO_CPU", true, LOG_LEVEL_INFO);
+
     logger_aux_cpu = log_create("logsExtrasCPU.log", "LOG_EXTRA_CPU", true, LOG_LEVEL_INFO);
+
     logger_error_cpu = log_create("logsExtrasCPU.log", "LOG_ERROR_CPU", true, LOG_LEVEL_INFO);
+
     // Comprobamos que los logs se hayan creado correctamente
-    if (logger_aux_cpu == NULL || logger_obligatorio_cpu == NULL || logger_error_cpu == NULL)
-    {
+    if (logger_aux_cpu == NULL || logger_obligatorio_cpu == NULL || logger_error_cpu == NULL) {
         terminarPrograma();
         abort();
     }
 }
 
-void iniciarConfig()
-{
+void iniciarConfig() {
     configuracion_cpu = iniciar_config(rutaConfiguracionCpu, logger_error_cpu, (void *)terminarPrograma);
 }
 
-void leerConfig()
-{
-    if (configuracion_cpu != NULL)
-    {
+void leerConfig() {
+    if (configuracion_cpu != NULL) {
         IP_MEMORIA = config_get_string_value(configuracion_cpu, "IP_MEMORIA");
         PUERTO_MEMORIA = config_get_string_value(configuracion_cpu, "PUERTO_MEMORIA");
         PUERTO_ESCUCHA_DISPATCH = config_get_string_value(configuracion_cpu, "PUERTO_ESCUCHA_DISPATCH");
         PUERTO_ESCUCHA_INTERRUPT = config_get_string_value(configuracion_cpu, "PUERTO_ESCUCHA_INTERRUPT");
         CANTIDAD_ENTRADAS_TLB = config_get_int_value(configuracion_cpu, "CANTIDAD_ENTRADAS_TLB");
         ALGORITMO_TLB = config_get_string_value(configuracion_cpu, "ALGORITMO_TLB");
-    }
-    else
-    {
+    } else {
         terminarPrograma();
         abort();
     }
 }
 
-void iniciarMutex()
-{
+void iniciarMutex() {
     pthread_mutex_init(&variableInterrupcion, NULL);
 }
 
-void iniciarServidoresCpu()
-{
+void iniciarServidoresCpu() {
     fd_cpu_dispatch = iniciar_servidor(PUERTO_ESCUCHA_DISPATCH, logger_aux_cpu, logger_error_cpu);
     fd_cpu_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, logger_aux_cpu, logger_error_cpu);
 }
 
-void enviarMsjMemoria()
-{
+void enviarMsjMemoria() {
     enviar_mensaje("Hola, soy CPU!", fd_memoria);
 }
 
-void iniciarConexionCpuMemoria()
-{
+void iniciarConexionCpuMemoria() {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error_cpu);
     enviarMsjMemoria();
 }
 
-void iteradorPaquete(char *value)
-{
+void iteradorPaquete(char *value) {
     log_info(logger_aux_cpu, "%s", value);
 }
 
@@ -108,82 +97,74 @@ void iniciar_ciclo_instruccion() {
     log_info(logger_aux_cpu, "Envie el contexto de ejecucion!");
 }
 
-void atenderKernelDispatch()
-{
+void atenderKernelDispatch() {
     bool aux_control = 1;
 
     // While infinito mientras kernel dispatch este conectado al servidor
     // Sale del while cuando se desconecta o si se encuentra con una operacion desconocida
-    while (aux_control)
-    {
+    while (aux_control) {
         int cod_op = recibir_operacion(fd_kernel_dispatch);
-        switch (cod_op)
-        {
-        case MENSAJE:
-            char *mensaje = recibir_mensaje(fd_kernel_dispatch);
-            log_info(logger_aux_cpu, "Me llegó el mensaje %s", mensaje);
-            free(mensaje);
-            break;
-        case PAQUETE:
-            t_list *valoresPaquete = recibir_paquete(fd_kernel_dispatch);
-            list_iterate(valoresPaquete, (void *)iteradorPaquete);
-            break;
-        case CONTEXTO_EJECUCION:
-            iniciar_ciclo_instruccion();
-            break;
-        // Case -1 para salir del while infinito
-        case -1:
-            log_error(logger_aux_cpu, "Desconexion de Kernel Modo Dispatch");
-            // Al setear en 0 en la proxima iteracion ya no entra en el while y sigue ejecutandose el programa
-            aux_control = 0;
-            break;
-        default:
-            log_warning(logger_aux_cpu, "Operacion desconocida de Kernel Modo Dispatch");
-            break;
+        switch (cod_op) {
+            case MENSAJE:
+                char *mensaje = recibir_mensaje(fd_kernel_dispatch);
+                log_info(logger_aux_cpu, "Me llegó el mensaje %s", mensaje);
+                free(mensaje);
+                break;
+            case PAQUETE:
+                t_list *valoresPaquete = recibir_paquete(fd_kernel_dispatch);
+                list_iterate(valoresPaquete, (void *)iteradorPaquete);
+                break;
+            case CONTEXTO_EJECUCION:
+                iniciar_ciclo_instruccion();
+                break;
+            // Case -1 para salir del while infinito
+            case -1:
+                log_error(logger_aux_cpu, "Desconexion de Kernel Modo Dispatch");
+                // Al setear en 0 en la proxima iteracion ya no entra en el while y sigue ejecutandose el programa
+                aux_control = 0;
+                break;
+            default:
+                log_warning(logger_aux_cpu, "Operacion desconocida de Kernel Modo Dispatch");
+                break;
         }
     }
 }
 
-void atenderKernelInterrupt()
-{
+void atenderKernelInterrupt() {
     bool aux_control = 1;
 
-    while (aux_control)
-    {
+    while (aux_control) {
         int cod_op = recibir_operacion(fd_kernel_interrupt);
-        switch (cod_op)
-        {
-        case MENSAJE:
-            char *mensaje = recibir_mensaje(fd_kernel_interrupt);
-            log_info(logger_aux_cpu, "Me llegó el mensaje %s", mensaje);
-            free(mensaje);
-            break;
-        case PAQUETE:
-            t_list *valoresPaquete = recibir_paquete(fd_kernel_interrupt);
-            list_iterate(valoresPaquete, (void *)iteradorPaquete);
-            break;
-        // Caso de INTERRUPCION_RELOJ:
-        case INTERRUPCION:
-            recvInterrupcion();
-            log_info(logger_aux_cpu, "Me llegó una interrupción!");
-            break;
-        case -1:
-            log_error(logger_aux_cpu, "Desconexion de Kernel Modo Interrupt");
-            aux_control = 0;
-            break;
-        default:
-            log_warning(logger_aux_cpu, "Operacion desconocida de Kernel Modo Interrupt");
-            break;
+        switch (cod_op) {
+            case MENSAJE:
+                char *mensaje = recibir_mensaje(fd_kernel_interrupt);
+                log_info(logger_aux_cpu, "Me llegó el mensaje %s", mensaje);
+                free(mensaje);
+                break;
+            case PAQUETE:
+                t_list *valoresPaquete = recibir_paquete(fd_kernel_interrupt);
+                list_iterate(valoresPaquete, (void *)iteradorPaquete);
+                break;
+            // Caso de INTERRUPCION_RELOJ:
+            case INTERRUPCION:
+                recvInterrupcion();
+                log_info(logger_aux_cpu, "Me llegó una interrupción!");
+                break;
+            case -1:
+                log_error(logger_aux_cpu, "Desconexion de Kernel Modo Interrupt");
+                aux_control = 0;
+                break;
+            default:
+                log_warning(logger_aux_cpu, "Operacion desconocida de Kernel Modo Interrupt");
+                break;
         }
     }
 }
 
-bool esperarClientes()
-{
+bool esperarClientes() {
     fd_kernel_dispatch = esperar_cliente(fd_cpu_dispatch, logger_aux_cpu, logger_error_cpu);
     fd_kernel_interrupt = esperar_cliente(fd_cpu_interrupt, logger_aux_cpu, logger_error_cpu);
-    if (fd_kernel_dispatch != -1 && fd_kernel_interrupt != -1)
-    {
+    if (fd_kernel_dispatch != -1 && fd_kernel_interrupt != -1) {
         // Posibilidad de crear hilo join con Kernel Dispatch - REVISAR
         crearHiloDetach(&hilo_kernel_dispatch_cpu, (void *)atenderKernelDispatch, NULL, "Kernel Dispatch", logger_aux_cpu, logger_error_cpu);
         crearHiloDetach(&hilo_kernel_interrumpt_cpu, (void *)atenderKernelInterrupt, NULL, "Kernel Interrupt", logger_aux_cpu, logger_error_cpu);
@@ -192,22 +173,18 @@ bool esperarClientes()
     return false;
 }
 
-bool desempaquetarInterrupcion(t_list *paquete)
-{
+bool desempaquetarInterrupcion(t_list *paquete) {
     uint32_t pid_aux = *(uint32_t *)list_get(paquete, 0);
-    if (pid == pid_aux)
-    {
+    if (pid == pid_aux) {
         motivo_bloqueo = INTERRUPCION_RELOJ;
         return true;
     }
     return false;
 }
 
-void recvInterrupcion()
-{
+void recvInterrupcion() {
     t_list *paquete = recibir_paquete(fd_kernel_interrupt);
-    if (desempaquetarInterrupcion(paquete))
-    {
+    if (desempaquetarInterrupcion(paquete)) {
         // Modificamos el estado de la interrupcion utilizando mutex por si el hilo Kernel Dispatch está leyendo la variable
         pthread_mutex_lock(&variableInterrupcion);
         hayInterrupcion = true;
@@ -220,23 +197,20 @@ void agregar_io_detail(t_paquete *paquete) {
 
     agregar_a_paquete(paquete, &(io_detail.parametros->elements_count), sizeof(int));
 
-    if (io_detail.parametros->elements_count != 0)
-    {
-        for (int i = 0; i < io_detail.parametros->elements_count; i++)
-        {
+    if (io_detail.parametros->elements_count != 0) {
+        for (int i = 0; i < io_detail.parametros->elements_count; i++) {
             t_params_io parametro_io = *(t_params_io*)list_get(io_detail.parametros, i);
             int size_parametro;
             void *valor_parametro_a_enviar;
-            switch (parametro_io.tipo_de_dato)
-            {
-            case INT:
-                size_parametro = sizeof(int);
-                valor_parametro_a_enviar = malloc(size_parametro);
-                valor_parametro_a_enviar = (int *)parametro_io.valor;
-                break;
+            switch (parametro_io.tipo_de_dato) {
+                case INT:
+                    size_parametro = sizeof(int);
+                    valor_parametro_a_enviar = malloc(size_parametro);
+                    valor_parametro_a_enviar = (int *)parametro_io.valor;
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
             }
             agregar_a_paquete(paquete, &parametro_io.tipo_de_dato, sizeof(int));
             agregar_a_paquete(paquete, valor_parametro_a_enviar, size_parametro);
@@ -245,8 +219,7 @@ void agregar_io_detail(t_paquete *paquete) {
     }
 }
 
-void eliminar_io_detail()
-{
+void eliminar_io_detail() {
     for (int i = 0; i < io_detail.parametros->elements_count; i++) {
         void* parametro_a_eliminar = list_get(io_detail.parametros, i);
         free(parametro_a_eliminar);
@@ -254,8 +227,7 @@ void eliminar_io_detail()
     list_clean(io_detail.parametros);
 }
 
-void empaquetarContextoEjecucion(t_paquete *paquete)
-{
+void empaquetarContextoEjecucion(t_paquete *paquete) {
     agregar_a_paquete(paquete, &(pid), sizeof(uint32_t));
     agregar_a_paquete(paquete, &(registro_estados), sizeof(uint64_t));
     agregar_a_paquete(paquete, &(registros_cpu.pc), sizeof(uint32_t));
@@ -273,8 +245,7 @@ void empaquetarContextoEjecucion(t_paquete *paquete)
     agregar_io_detail(paquete);
 }
 
-void enviarContextoEjecucion()
-{
+void enviarContextoEjecucion() {
     t_paquete *paquete = crear_paquete(OK_OPERACION);
     empaquetarContextoEjecucion(paquete);
     enviar_paquete(paquete, fd_kernel_dispatch);
@@ -282,8 +253,7 @@ void enviarContextoEjecucion()
     eliminar_paquete(paquete);
 }
 
-void desempaquetarContextoEjecucion(t_list *paquete)
-{
+void desempaquetarContextoEjecucion(t_list *paquete) {
     pid = *(uint32_t *)list_get(paquete, 0);
     registro_estados = *(uint64_t *)list_get(paquete, 1);
     registros_cpu.pc = *(uint32_t *)list_get(paquete, 2);
@@ -303,15 +273,13 @@ void desempaquetarContextoEjecucion(t_list *paquete)
     io_detail.parametros = list_create();
 }
 
-void recvContextoEjecucion()
-{
+void recvContextoEjecucion() {
     t_list *paquete = recibir_paquete(fd_kernel_dispatch);
     desempaquetarContextoEjecucion(paquete);
     list_destroy(paquete);
 }
 
-void fetch()
-{
+void fetch() {
     t_paquete *paquete = crear_paquete(FETCH_INSTRUCCION);
     agregar_a_paquete(paquete, &(registros_cpu.pc), sizeof(uint32_t));
     agregar_a_paquete(paquete, &(pid), sizeof(uint32_t));
@@ -326,32 +294,27 @@ void fetch()
     log_info(logger_obligatorio_cpu, "PID: %d - FETCH - Program Counter: %d", pid, registros_cpu.pc);
 }
 
-void atenderMemoria(op_codigo codigoMemoria)
-{
-    switch (codigoMemoria)
-    {
-    case FETCH_INSTRUCCION:
-        fetch();
-        break;
-    default:
-        log_warning(logger_aux_cpu, "Operacion desconocida de Memoria");
-        break;
+void atenderMemoria(op_codigo codigoMemoria) {
+    switch (codigoMemoria) {
+        case FETCH_INSTRUCCION:
+            fetch();
+            break;
+        default:
+            log_warning(logger_aux_cpu, "Operacion desconocida de Memoria");
+            break;
     }
 }
 
-void decode()
-{
+void decode() {
     instruccion = procesar_instruccion(ir);
 }
 
-void execute()
-{
+void execute() {
     log_info(logger_obligatorio_cpu, "PID: %d - Ejecutando: %d - [%s]", pid, instruccion->tipo_instruccion.nombre_instruccion, instruccion->parametros_string);
     instruccion->tipo_instruccion.execute(instruccion->parametros);
 }
 
-void ejecutarCicloInstruccion()
-{
+void ejecutarCicloInstruccion() {
 
     // Fetch:
     atenderMemoria(FETCH_INSTRUCCION);
@@ -366,8 +329,7 @@ void ejecutarCicloInstruccion()
     liberar_instruccion();
 }
 
-void terminarPrograma()
-{
+void terminarPrograma() {
     log_destroy(logger_obligatorio_cpu);
     log_destroy(logger_aux_cpu);
     log_destroy(logger_error_cpu);
