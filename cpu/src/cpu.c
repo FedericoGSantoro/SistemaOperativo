@@ -113,6 +113,7 @@ void atenderKernelDispatch() {
             case PAQUETE:
                 t_list *valoresPaquete = recibir_paquete(fd_kernel_dispatch);
                 list_iterate(valoresPaquete, (void *)iteradorPaquete);
+                list_destroy(valoresPaquete);
                 break;
             case CONTEXTO_EJECUCION:
                 iniciar_ciclo_instruccion();
@@ -144,6 +145,7 @@ void atenderKernelInterrupt() {
             case PAQUETE:
                 t_list *valoresPaquete = recibir_paquete(fd_kernel_interrupt);
                 list_iterate(valoresPaquete, (void *)iteradorPaquete);
+                list_destroy(valoresPaquete);
                 break;
             // Caso de INTERRUPCION_RELOJ:
             case INTERRUPCION:
@@ -165,7 +167,6 @@ bool esperarClientes() {
     fd_kernel_dispatch = esperar_cliente(fd_cpu_dispatch, logger_aux_cpu, logger_error_cpu);
     fd_kernel_interrupt = esperar_cliente(fd_cpu_interrupt, logger_aux_cpu, logger_error_cpu);
     if (fd_kernel_dispatch != -1 && fd_kernel_interrupt != -1) {
-        // Posibilidad de crear hilo join con Kernel Dispatch - REVISAR
         crearHiloDetach(&hilo_kernel_dispatch_cpu, (void *)atenderKernelDispatch, NULL, "Kernel Dispatch", logger_aux_cpu, logger_error_cpu);
         crearHiloDetach(&hilo_kernel_interrumpt_cpu, (void *)atenderKernelInterrupt, NULL, "Kernel Interrupt", logger_aux_cpu, logger_error_cpu);
         return true;
@@ -208,7 +209,6 @@ void agregar_io_detail(t_paquete *paquete) {
                     valor_parametro_a_enviar = malloc(size_parametro);
                     valor_parametro_a_enviar = (int *)parametro_io.valor;
                     break;
-
                 default:
                     break;
             }
@@ -270,7 +270,7 @@ void desempaquetarContextoEjecucion(t_list *paquete) {
     state = *(process_state *)list_get(paquete, 13);
     motivo_bloqueo = *(blocked_reason *)list_get(paquete, 14);
     io_detail.nombre_io = "";
-    io_detail.parametros = list_create();
+    io_detail.parametros = list_create(); // SE ELIMINA EN ALGUN LADO ESTO?
 }
 
 void recvContextoEjecucion() {
@@ -287,10 +287,8 @@ void fetch() {
     eliminar_paquete(paquete);
 
     // Recibimos de memoria la instruccion y lo guardamos en ir
-
     recibir_operacion(fd_memoria);
-    ir = recibir_mensaje(fd_memoria); // TODO: Memoria manda una instruccion vacia cuando no hay mas instrucciones y CPU deberia frenar el ciclo para dicho proceso
-
+    ir = recibir_mensaje(fd_memoria);
     log_info(logger_obligatorio_cpu, "PID: %d - FETCH - Program Counter: %d", pid, registros_cpu.pc);
 }
 
@@ -315,7 +313,6 @@ void execute() {
 }
 
 void ejecutarCicloInstruccion() {
-
     // Fetch:
     atenderMemoria(FETCH_INSTRUCCION);
 
