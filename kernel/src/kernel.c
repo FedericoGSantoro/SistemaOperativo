@@ -61,9 +61,52 @@ void corto_plazo_blocked() {
     }
 }
 
+//cargamos en el contexto del proceso, el io_detail para las operaciones con las entradas y salidas.
+void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice) {
+
+    ultimo_indice++;
+    uint32_t cantidad_parametros_io_detail = *(uint32_t*)list_get(contexto, ultimo_indice);
+
+    if (cantidad_parametros_io_detail != 0) {
+        pcb->contexto_ejecucion.io_detail.parametros = list_create();
+
+        for (int i = 0; i < cantidad_parametros_io_detail; i++) {
+
+            ultimo_indice++;
+            tipo_de_dato tipo_de_dato_parametro_io = *(tipo_de_dato*) list_get(contexto, ultimo_indice);
+
+            t_params_io* parametro_io_a_guardar;
+            
+            ultimo_indice++;
+            void* valor_parametro_io_recibido = (void*) list_get(contexto, ultimo_indice);
+            void* valor_parametro_a_guardar;
+
+            switch (tipo_de_dato_parametro_io)
+            {
+            case INT:
+                parametro_io_a_guardar = malloc(sizeof(int)*2);
+                valor_parametro_a_guardar = malloc(sizeof(int));
+                valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
+                break;
+
+            default:
+                break;
+            }
+
+            parametro_io_a_guardar->tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
+            //(esto va a servir mas adelante para que kernel pueda usarlo correctamente, ya que puede recibir char* o int)
+            parametro_io_a_guardar->valor = valor_parametro_a_guardar; //almaceno el valor del parametro de la instruccion de io
+
+            list_add_in_index(pcb->contexto_ejecucion.io_detail.parametros, i, parametro_io_a_guardar); //almaceno el parametro en la lista de parametros que usara kernel luego
+        }
+        ultimo_indice++;
+        pcb->contexto_ejecucion.io_detail.nombre_io = (char *)list_get(contexto, ultimo_indice); //obtengo el nombre de la IO
+    }
+}
+
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     
-    int ultimo_indice = 14;
+    int ultimo_indice = 13;
     
     pcb->contexto_ejecucion.registro_estados = *(uint64_t*)list_get(contexto, 1);
     pcb->contexto_ejecucion.registros_cpu.pc = *(uint32_t*)list_get(contexto, 2);
@@ -77,38 +120,8 @@ void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.edx = *(uint32_t*)list_get(contexto, 10);
     pcb->contexto_ejecucion.registros_cpu.si = *(uint32_t*)list_get(contexto, 11);
     pcb->contexto_ejecucion.registros_cpu.di = *(uint32_t*)list_get(contexto, 12);
-    pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, 13);
-    uint32_t cantidad_parametros_io_detail = *(uint32_t*)list_get(contexto, ultimo_indice);
-
-    if (cantidad_parametros_io_detail != 0) {
-        pcb->contexto_ejecucion.io_detail.parametros = list_create();
-
-        for (int i = 0; i < cantidad_parametros_io_detail; i++) {
-            ultimo_indice++;
-            tipo_de_dato tipo_de_dato_parametro_io = *(tipo_de_dato*)list_get(contexto, ultimo_indice);
-            t_params_io* parametro_io;
-            ultimo_indice++;
-            void* valor_parametro_io_recibido = (void*)list_get(contexto, ultimo_indice);
-            void* valor_parametro_a_guardar;
-            switch (tipo_de_dato_parametro_io)
-            {
-            case INT:
-                parametro_io = malloc(sizeof(int)*2);
-                valor_parametro_a_guardar = malloc(sizeof(int));
-                valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
-                break;
-
-            default:
-                break;
-            }
-            parametro_io->tipo_de_dato = tipo_de_dato_parametro_io;
-            parametro_io->valor = valor_parametro_a_guardar;
-
-            list_add_in_index(pcb->contexto_ejecucion.io_detail.parametros, i, parametro_io);
-        }
-        ultimo_indice++;
-        pcb->contexto_ejecucion.io_detail.nombre_io = (char *)list_get(contexto, ultimo_indice);
-    }
+    pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, ultimo_indice);
+    cargar_io_detail_en_context(pcb, contexto, ultimo_indice);
     log_info(logs_auxiliares, "AX: %d, BX: %d", pcb->contexto_ejecucion.registros_cpu.ax, pcb->contexto_ejecucion.registros_cpu.bx);
 }
 
@@ -380,8 +393,20 @@ void largo_plazo_exit() {
     }
 }
 
+void eliminar_io_detail(t_pcb* pcb) {
+    
+    t_io_detail io_detail_de_contexto = pcb->contexto_ejecucion.io_detail;
+
+    for (int i = 0; i < (io_detail_de_contexto.parametros->elements_count); i++) {
+        void* parametro_a_eliminar = list_get(io_detail_de_contexto.parametros, i);
+        free(parametro_a_eliminar);
+    }
+    list_clean(io_detail_de_contexto.parametros);
+}
+
 void eliminar_pcb(t_pcb* pcb) {
     mensaje_memoria(ELIMINAR_PCB, pcb);
+    eliminar_io_detail(pcb);
     free(pcb);
 }
 

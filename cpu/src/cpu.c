@@ -83,6 +83,31 @@ void iteradorPaquete(char *value)
     log_info(logger_aux_cpu, "%s", value);
 }
 
+void iniciar_ciclo_instruccion() {
+    
+    recvContextoEjecucion();
+    log_info(logger_aux_cpu, "Recibi el contexto de ejecucion!");
+
+    // Mientras no exista interrupcion de kernel se ejecuta un ciclo de instruccion, sino sale del while y se envia contexto a Kernel
+    // Leemos el estado de la interrupcion utilizando mutex por si el hilo Kernel Interrupt está modificando la variable
+    pthread_mutex_lock(&variableInterrupcion);
+    while (!hayInterrupcion && ((state == EXEC || state == READY) && motivo_bloqueo == UNKNOWN)) {
+        pthread_mutex_unlock(&variableInterrupcion);
+        log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
+        ejecutarCicloInstruccion();
+        // Aumento en 1 al final del ciclo para que apunte a la siguiente instruccion
+        registros_cpu.pc++;
+        pthread_mutex_lock(&variableInterrupcion);
+    }
+
+    // Seteamos de nuevo en false el hayInterrupcion
+    hayInterrupcion = false;
+    pthread_mutex_unlock(&variableInterrupcion);
+    // Empaquetamos el contexto de ejecucion y se lo enviamos a Kernel
+    enviarContextoEjecucion();
+    log_info(logger_aux_cpu, "Envie el contexto de ejecucion!");
+}
+
 void atenderKernelDispatch()
 {
     bool aux_control = 1;
@@ -104,28 +129,7 @@ void atenderKernelDispatch()
             list_iterate(valoresPaquete, (void *)iteradorPaquete);
             break;
         case CONTEXTO_EJECUCION:
-            recvContextoEjecucion();
-            log_info(logger_aux_cpu, "Recibi el contexto de ejecucion!");
-
-            // Mientras no exista interrupcion de kernel se ejecuta un ciclo de instruccion, sino sale del while y se envia contexto a Kernel
-            // Leemos el estado de la interrupcion utilizando mutex por si el hilo Kernel Interrupt está modificando la variable
-            pthread_mutex_lock(&variableInterrupcion);
-            while (!hayInterrupcion && ((state == EXEC || state == READY) && motivo_bloqueo == UNKNOWN))
-            {
-                pthread_mutex_unlock(&variableInterrupcion);
-                log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
-                ejecutarCicloInstruccion();
-                // Aumento en 1 al final del ciclo para que apunte a la siguiente instruccion
-                registros_cpu.pc++;
-                pthread_mutex_lock(&variableInterrupcion);
-            }
-            // Seteamos de nuevo en false el hayInterrupcion
-            hayInterrupcion = false;
-            pthread_mutex_unlock(&variableInterrupcion);
-
-            // Empaquetamos el contexto de ejecucion y se lo enviamos a Kernel
-            enviarContextoEjecucion();
-            log_info(logger_aux_cpu, "Envie el contexto de ejecucion!");
+            iniciar_ciclo_instruccion();
             break;
         // Case -1 para salir del while infinito
         case -1:
