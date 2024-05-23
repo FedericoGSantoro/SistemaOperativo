@@ -4,6 +4,8 @@
 #include "../../utils/src/config/configs.h"
 #include <commons/collections/dictionary.h>
 #include <commons/collections/list.h>
+#include <semaphore.h>
+#include <signal.h>
 
 
 //cache para almacenar lista de instrucciones (key = PID, value = lista de instrucciones)
@@ -30,5 +32,8 @@ extern int socketFdMemoria;
 //Threads memoria server
 extern pthread_t thr_server;
 extern pthread_t thr_server_conn;
+
+//Semaforos
+extern sem_t sem_retardo;
 
 #endif /* MEMORIA_VARS_H */

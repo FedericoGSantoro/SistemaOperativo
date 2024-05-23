@@ -12,6 +12,7 @@ int main(void)
     // inicializando ando
     inicializar_loggers();
     inicializar_config();
+    inicializar_semaforos();
     //al ser dinámico el diccionario se inicializa en el main y no como constante global, pues la memoria cambia
     inicializar_diccionario();
     socketFdMemoria = iniciar_servidor(memConfig.puertoEscucha, loggerAux, loggerError);
@@ -89,7 +90,10 @@ void gestionar_conexion(void *puntero_fd_cliente)
             break;
         // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar
         case FETCH_INSTRUCCION: // la cpu envia el pid y el pc para obtener la instruccion deseada
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
             char* instruccion = fetch_instruccion_de_cliente(fd_cliente);
+            sem_wait(&sem_retardo);
             return_instruccion(instruccion, fd_cliente);
             break;
         default:
@@ -109,10 +113,11 @@ void crear_proceso(int fd_cliente_kernel) {
     crear_instrucciones(path, pid);
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(paquete_recibido);
+    //---------BORRAR PUES ESTO SE HACE DENTRO DEL CASE----------- TODO: (recordatorio)
     // Enviar confirmacion de creacion de espacios de memoria
-    t_paquete* paquete_respuesta = crear_paquete(OK_OPERACION);
-    enviar_paquete(paquete_respuesta, fd_cliente_kernel);
-    eliminar_paquete(paquete_respuesta);
+    //t_paquete* paquete_respuesta = crear_paquete(OK_OPERACION);
+    //enviar_paquete(paquete_respuesta, fd_cliente_kernel);
+    //eliminar_paquete(paquete_respuesta);
 }
 
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel) {
@@ -144,6 +149,9 @@ void return_instruccion(char* instruccion, int fd_cliente) {
     enviar_mensaje(instruccion, fd_cliente);
 }
 
+void manejar_retardo(){
+    sem_post(&sem_retardo);
+}
 
 void iteradorPaquete(char *value)
 {
@@ -161,6 +169,10 @@ void inicializar_config()
 {
     config = iniciar_config(rutaConfiguracion, loggerError, (void *)terminar_programa);
     leer_config();
+}
+
+void inicializar_semaforos(){
+    sem_init(&sem_retardo, 0, 0);
 }
 
 void inicializar_diccionario(){

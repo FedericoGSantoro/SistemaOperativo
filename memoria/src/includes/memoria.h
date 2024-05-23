@@ -9,7 +9,6 @@
 #include "./memoria_vars/memoria_vars.h"
 #include "../../../utils/src/liberador/liberador.h"
 
-
 #define rutaConfiguracion "memoria.config"
 
 /*---------FUNCIONES---------*/
@@ -19,5 +18,8 @@ void gestionar_conexion(void * puntero_fd_cliente);
 void terminar_programa();
 void inicializar_loggers();
 void inicializar_config();
+void inicializar_semaforos();
+void manejar_retardo();
+
 
 #endif
