@@ -2,8 +2,6 @@
 
 t_instruccion* instruccion;
 
-
-
 uint32_t* mapear_registro(char *nombre_registro) {
     
     if (string_equals_ignore_case(nombre_registro, "AX"))
