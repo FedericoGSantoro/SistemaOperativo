@@ -53,8 +53,17 @@ int GRADO_MULTIPROGRAMACION;
 
 /*---------ESTRUCTURAS INTERFACES IO---------*/
 
-t_dictionary* diccionarioInterfaces;
 
+t_list* interfacesGenericas;
+t_list* interfacesSTDIN;
+t_list* interfacesSTDOUT;
+t_list* interfacesFS;
+pthread_mutex_t mutexInterfacesGenericas;
+pthread_mutex_t mutexInterfacesSTDIN;
+pthread_mutex_t mutexInterfacesSTDOUT;
+pthread_mutex_t mutexInterfacesFS;
+
+char* ioBuscada;
 typedef enum{
     GENERICA,
     STDIN,
@@ -144,6 +153,8 @@ char* MEMORIA_SERVER = "memoria";
 void iniciarPlanificacion();
 // Inicializa la planificacion a corto plazo
 void planificacionCortoPlazo();
+// Busca la IO que solicita el proceso
+bool buscarIO(void* interfaz);
 // Algoritmo para cola de blocked
 void corto_plazo_blocked();
 // Carga el contexto actual del pcb por el recibido
@@ -191,7 +202,7 @@ void iniciarRegistrosCPU(t_pcb* pcb);
 // Asigna los punteros a memoria al pcb
 //void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb);
 // Comprueba la operacion recibida
-void evaluar_respuesta_de_operacion(int fd_cliente, char* nombre_modulo_server, op_codigo codigo_operacion);
+bool evaluar_respuesta_de_operacion(int fd_cliente, char* nombre_modulo_server, op_codigo codigo_operacion);
 // Maneja la conexion con memoria
 void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb);
 // Inicializa las colas
@@ -199,7 +210,7 @@ void inicializarColas();
 // Inicializa los semaforos
 void inicializarSemaforos();
 // Inicializa los diccionarios
-void inicializarDiccionario();
+void inicializarListasInterfaces();
 // Inicializa las variables
 void inicializarVariables();
 // Inicializa la consola interactiva
@@ -244,6 +255,8 @@ int* string_array_as_int_array(char** arrayInstancias);
 void enviarPCBExit(t_pcb* pcb);
 // Elimina la interfaz de la memoria
 void eliminarInterfaz(interfazConectada* interfazAEliminar);
+// Libera las interfaces conectadas y sus elementos
+void liberarInterfaces();
 // Libera los espacios de memoria
 void terminarPrograma();
 
