@@ -45,9 +45,18 @@ void corto_plazo_blocked() {
         pthread_mutex_unlock(&sem_planificacion);
         sem_wait(&semContadorColaBlocked);
         pthread_mutex_lock(&sem_cola_blocked_aux);
-        //t_pcb* pcbBloqueado = queue_pop(cola_blocked_aux);
+        t_pcb* pcbBloqueado = queue_pop(cola_blocked_aux);
         pthread_mutex_unlock(&sem_cola_blocked_aux);
-        //dictionary_get(diccionarioInterfaces, obtenerTipoInterfaz(pcb->contexto_ejecucion.io_detail.));
+        switch (pcbBloqueado->contexto_ejecucion.io_detail.instruccion)
+        {
+        case IO_GEN_SLEEP:
+            //interfazConectada** interfaces = dictionary_get(diccionarioInterfaces, "GENERICA");
+            
+            break;
+        default:
+            break;
+        }
+        //dictionary_get(diccionarioInterfaces, obtenerTipoInterfaz(pcbBloqueado->contexto_ejecucion.io_detail.));
         // Nueva nueva idea:
         // Agarro el primer elemento de la cola y le mando a interfaz para que lo solucione y espero su respuesta, cuando la recibo de que termino entonces mando el proceso a ready
 
