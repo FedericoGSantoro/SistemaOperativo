@@ -16,3 +16,6 @@ int socketFdMemoria;
 //Threads memoria server
 pthread_t thr_server;
 pthread_t thr_server_conn;
+
+//Semaforo
+sem_t sem_retardo;
