@@ -39,4 +39,3 @@ char *ir;
 
 // Mutex
 pthread_mutex_t variableInterrupcion;
-bool hayInterrupcion = false;
