@@ -34,6 +34,7 @@ extern pthread_t hilo_memoria_cpu;
 extern uint32_t pid;
 extern uint64_t registro_estados;
 extern t_registros_cpu registros_cpu;
+extern t_io_detail io_detail;
 extern uint32_t valor_registro_numerico;
 //extern t_punteros_memoria punteros_memoria;
 extern process_state state;

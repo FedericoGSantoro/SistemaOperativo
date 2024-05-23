@@ -35,7 +35,7 @@ typedef enum
 
 typedef struct {
 	t_nombre_instruccion nombre_instruccion;
-	void (*execute)(int, t_list*); //funcion generica para ejecutar una instruccion con cantidad de parametros y parametros dados
+	void (*execute)(t_list*); //funcion generica para ejecutar una instruccion con parametros dados
 } t_tipo_instruccion;
 
 typedef struct
@@ -49,10 +49,11 @@ extern t_instruccion* instruccion;
 
 t_instruccion* procesar_instruccion(char *instruccion_entrante);
 void liberar_instruccion();
-void sum_instruction(int cantidad_parametros, t_list* parametros);
-void sub_instruction(int cantidad_parametros, t_list* parametros);
-void set_instruction(int cantidad_parametros, t_list* parametros);
-void jnz_instruction(int cantidad_parametros, t_list* parametros);
-void exit_instruction(int cantidad_parametros, t_list* parametros);
+void sum_instruction(t_list* parametros);
+void sub_instruction(t_list* parametros);
+void set_instruction(t_list* parametros);
+void jnz_instruction(t_list* parametros);
+void io_gen_sleep_instruction(t_list* parametros);
+void exit_instruction(t_list* parametros);
 
 #endif
