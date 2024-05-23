@@ -10,6 +10,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <commons/collections/queue.h>
+#include <commons/collections/dictionary.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -50,6 +51,28 @@ char** RECURSOS;
 int* INSTANCIAS_RECURSOS;
 int GRADO_MULTIPROGRAMACION;
 
+/*---------ESTRUCTURAS INTERFACES IO---------*/
+
+t_dictionary* diccionarioInterfaces;
+
+typedef enum{
+    GENERICA,
+    STDIN,
+    STDOUT,
+    FS,
+} typeInterface;
+
+typedef struct {
+    char* nombre;
+    typeInterface tipoInterfaz;
+    bool ocupada;
+    t_queue* colaEjecucion;
+    pthread_mutex_t semaforoMutex;
+    sem_t semaforoCantProcesos;
+    int fd_interfaz;
+} interfazConectada;
+
+
 /*---------ESTRUCTURAS PARA INFORMACION---------*/
 
 // Estructuras para informacion
@@ -80,7 +103,8 @@ t_queue* cola_new;
 t_queue* cola_ready;
 t_queue* cola_exit;
 t_queue* cola_exec;
-t_queue* cola_blocked;
+t_list* cola_blocked;
+t_queue* cola_blocked_aux;
 t_queue* cola_ready_aux;
 
 /*---------HILOS---------*/
@@ -99,6 +123,7 @@ pthread_mutex_t sem_cola_new;
 pthread_mutex_t sem_cola_ready;
 pthread_mutex_t sem_cola_ready_aux;
 pthread_mutex_t sem_cola_exec;
+pthread_mutex_t sem_cola_blocked_aux;
 pthread_mutex_t sem_cola_blocked;
 pthread_mutex_t sem_cola_exit;
 pthread_mutex_t sem_grado_multiprogramacion;
@@ -110,7 +135,8 @@ sem_t semContadorColaBlocked;
 sem_t semContadorColaExit;
 
 /*---------SERVIDORES A CONECTARSE---------*/
-const char* MEMORIA_SERVER = "memoria";
+
+char* MEMORIA_SERVER = "memoria";
 
 /*---------FUNCIONES---------*/
 
@@ -131,7 +157,7 @@ void cambiarContexto(t_list* contexto, t_pcb* pcb);
 // Empaqueta los registros de la cpu del contexto para enviarlos
 void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb);
 // Empaqueta los punteros de memoria para enviarlos
-void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb);
+//void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb);
 // Empaqueta el contexto de ejecucion para enviarlo
 void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb);
 // Maneja la conexion con el interrupt de CPU para desalojar un pid
@@ -159,17 +185,21 @@ void eliminar_pcb(t_pcb* pcb);
 // Crea el pcb
 void crear_pcb();
 // Inicializa los punteros a memoria
-void iniciarPunterosMemoria(t_pcb* pcb);
+//void iniciarPunterosMemoria(t_pcb* pcb);
 // Inicia registros de cpu en 0
 void iniciarRegistrosCPU(t_pcb* pcb);
 // Asigna los punteros a memoria al pcb
-void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb);
+//void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb);
+// Comprueba la operacion recibida
+void evaluar_respuesta_de_operacion(int fd_cliente, char* nombre_modulo_server, op_codigo codigo_operacion);
 // Maneja la conexion con memoria
 void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb);
 // Inicializa las colas
 void inicializarColas();
 // Inicializa los semaforos
 void inicializarSemaforos();
+// Inicializa los diccionarios
+void inicializarDiccionario();
 // Inicializa las variables
 void inicializarVariables();
 // Inicializa la consola interactiva
@@ -180,14 +210,20 @@ void atender_consola_interactiva();
 char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo);
 // Ejecuta el script indicado
 void ejecutar_script(char* pathScript);
+// Devuelve los pids bloqueados
+char* obtenerPidsBloqueados();
 // Ejecuta el comando correspondiente
 void ejecutar_comando_consola(char** arrayComando);
 // Devuelve el comando del enum correspondiente
 comando_consola transformarAOperacion(char* operacionLeida);
+// Obtiene el tipo de interfaz
+char* obtenerTipoInterfaz(typeInterface tipoInterfaz);
 // Atiende al cliente
-void atender_cliente(void* argumentoVoid);
+void atender_cliente(interfazConectada* argumentoVoid);
 // Itera el paquete y lo muestra por pantalla
 void iteradorPaquete(char* value);
+// Crea la estructura de una interfaz y la agrega al diccionario
+interfazConectada* crearInterfaz(t_list* nombreYTipoInterfaz, int socket_cliente);
 // Escucha el socket por peticiones
 bool escucharServer(int socket_servidor);
 // Envia mensaje inicial 
@@ -204,6 +240,10 @@ alg_planificacion obtenerAlgoritmo();
 void leerConfig(); 
 // Convierte un array de string a un array de enteros
 int* string_array_as_int_array(char** arrayInstancias);
+// Envia un pcb a la cola de exit
+void enviarPCBExit(t_pcb* pcb);
+// Elimina la interfaz de la memoria
+void eliminarInterfaz(interfazConectada* interfazAEliminar);
 // Libera los espacios de memoria
 void terminarPrograma();
 
