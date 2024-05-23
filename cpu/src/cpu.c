@@ -197,30 +197,36 @@ void recvInterrupcion() {
 void agregar_io_detail(t_paquete *paquete) {
 
     agregar_a_paquete(paquete, &(io_detail.parametros->elements_count), sizeof(int));
-
-    if (io_detail.parametros->elements_count != 0) {
-        for (int i = 0; i < io_detail.parametros->elements_count; i++) {
-            t_params_io parametro_io = *(t_params_io*)list_get(io_detail.parametros, i);
-            int size_parametro;
-            void *valor_parametro_a_enviar;
-            switch (parametro_io.tipo_de_dato) {
-                case INT:
-                    size_parametro = sizeof(int);
-                    valor_parametro_a_enviar = malloc(size_parametro);
-                    valor_parametro_a_enviar = (int *)parametro_io.valor;
-                    break;
-                default:
-                    break;
-            }
-            agregar_a_paquete(paquete, &parametro_io.tipo_de_dato, sizeof(int));
-            agregar_a_paquete(paquete, valor_parametro_a_enviar, size_parametro);
-        }
-        agregar_a_paquete(paquete, io_detail.nombre_io, strlen(io_detail.nombre_io) + 1);
-        agregar_a_paquete(paquete, &io_detail.io_instruccion, sizeof(int));
+    
+    if (io_detail.parametros == NULL || io_detail.parametros->elements_count == 0) {
+        return;
     }
+    
+    for (int i = 0; i < io_detail.parametros->elements_count; i++) {
+        t_params_io parametro_io = *(t_params_io*)list_get(io_detail.parametros, i);
+        int size_parametro;
+        void *valor_parametro_a_enviar;
+        switch (parametro_io.tipo_de_dato) {
+            case INT:
+                size_parametro = sizeof(int);
+                valor_parametro_a_enviar = malloc(size_parametro);
+                valor_parametro_a_enviar = (int *)parametro_io.valor;
+                break;
+            default:
+                break;
+        }
+        agregar_a_paquete(paquete, &parametro_io.tipo_de_dato, sizeof(int));
+        agregar_a_paquete(paquete, valor_parametro_a_enviar, size_parametro);
+    }
+    agregar_a_paquete(paquete, io_detail.nombre_io, strlen(io_detail.nombre_io) + 1);
+    agregar_a_paquete(paquete, &io_detail.io_instruccion, sizeof(int));
 }
 
 void eliminar_io_detail() {
+    
+    if (io_detail.parametros == NULL || io_detail.parametros->elements_count == 0) {
+        return;
+    }
     
     for (int i = 0; i < io_detail.parametros->elements_count; i++) {
         void* parametro_a_eliminar = list_get(io_detail.parametros, i);

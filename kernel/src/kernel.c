@@ -401,6 +401,10 @@ void eliminar_io_detail(t_pcb* pcb) {
     
     t_io_detail io_detail_de_contexto = pcb->contexto_ejecucion.io_detail;
 
+    if (io_detail_de_contexto.parametros == NULL || io_detail_de_contexto.parametros->elements_count == 0) {
+        return;
+    }
+
     for (int i = 0; i < (io_detail_de_contexto.parametros->elements_count); i++) {
         void* parametro_a_eliminar = list_get(io_detail_de_contexto.parametros, i);
         free(parametro_a_eliminar);
