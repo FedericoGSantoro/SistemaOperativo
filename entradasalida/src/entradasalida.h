@@ -18,7 +18,7 @@ typedef enum {
     GENERICA,
 	STDIN,
     STDOUT,
-    DIALFS
+    FS,
 } tipo_de_interfaz;
 
 /*---------DATOS DE LA CONFIGURACION---------*/
@@ -52,7 +52,7 @@ int fd_kernel;
 // Variable para guardar el nombre que se envia a kernel
 char* nombre;
 //Variable para guardar el path del config
-char* path;
+char* path_config;
 // Puntero a funcion para indicar que debe hacer el hilo
 void (*tipoOperacion)();
 
@@ -74,6 +74,7 @@ op_codigo transformarAOperacion(char* operacionLeida);
 
 // Inicializa las variables
 void inicializar();
+char* enumToString(t_nombre_instruccion nombreDeInstruccion);
 void inicializarLogs();
 void inicializarConexionKernel();
 void inicializarConfig();
