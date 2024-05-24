@@ -13,9 +13,17 @@
 
 #define rutaConfiguracion "../entradasalida.config"
 
+/*---------ENUMS---------*/
+typedef enum {
+    GENERICA,
+	STDIN,
+    STDOUT,
+    DIALFS
+} tipo_de_interfaz;
+
 /*---------DATOS DE LA CONFIGURACION---------*/
 
-char* TIPO_INTERFAZ;
+tipo_de_interfaz TIPO_INTERFAZ;
 int TIEMPO_UNIDAD_TRABAJO;
 char*IP_KERNEL;
 char* PUERTO_KERNEL;
@@ -24,6 +32,7 @@ char* PUERTO_MEMORIA;
 char* PATH_BASE_DIALFS;
 int BLOCK_SIZE;
 int BLOCK_COUNT;
+int RETRASO_COMPACTACION;
 
 /*---------ESTRUCTURAS PARA INFORMACION---------*/
 
@@ -40,14 +49,13 @@ int fd_kernel;
 
 /*---------VARIABLES---------*/
 
-// Variable para leer la operacion (Actualmente = mensaje, paquete, exit)
-char* operacionLeida;
-// Variable para leer a quien enviar la operacion
-char* enviarA;
-// Variable para guardar donde se va a enviar la operacion
-int socketAEnviar;
+// Variable para guardar el nombre que se envia a kernel
+char* nombre;
+//Variable para guardar el path del config
+char* path;
 // Puntero a funcion para indicar que debe hacer el hilo
 void (*tipoOperacion)();
+
 
 /*---------HILOS---------*/
 
