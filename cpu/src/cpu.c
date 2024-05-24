@@ -220,7 +220,7 @@ void eliminar_io_detail() {
         void* parametro_a_eliminar = list_get(io_detail.parametros, i);
         free(parametro_a_eliminar);
     }
-    list_clean(io_detail.parametros);
+    list_clean(io_detail.parametros); // TODO Esto no elimina la lista, deberia eliminarse
 }
 
 void empaquetarContextoEjecucion(t_paquete *paquete) {
