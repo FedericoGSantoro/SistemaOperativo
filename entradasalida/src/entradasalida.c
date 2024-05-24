@@ -2,34 +2,36 @@
 
 int main(int argc, char* argv[]) {
     //Inicializa todo
-    inicializar();
-    operacionLeida = readline("OPERACION > ");
-    while(strcmp(operacionLeida, "exit")) {
-        enviarA = readline("DESTINO > ");
-        string_to_upper(enviarA);
-        switch ( transformarAOperacion(operacionLeida) ) {
-        case MENSAJE:
-            tipoOperacion = enviarMsj;
-            enviarOperacionA();
-            break;
-        case PAQUETE:
-            tipoOperacion = enviarPaquete;
-            enviarOperacionA();
-            break;
-        default:
-            log_error(logger_error, "Comando no reconocido");
-            break;
-        }
-        operacionLeida = readline("OPERACION > ");
+    if(argc != 2){
+        printf("Error faltan argumentos");
+        return 1;
     }
-    free(operacionLeida);
-    free(enviarA);
+    nombre = argv[0];
+    path = argv[1];
+    inicializar();
+    while(1){
+    recibir_operacion(fd_kernel);
+    t_list* paquete= recibir_paquete(fd_kernel);
+    u_int32_t pid = list_get(paquete, 0);
+    t_io_detail informacion = *(t_io_detail*) list_get(paquete,1);
+    log_info(logger_obligatorio, "“PID: %d - Operacion: %s”",pid, enumToString(informacion.io_instruccion));
+    switch (informacion.io_instruccion)
+    {
+    case IO_GEN_SLEEP:
+        sleep(*(int*)list_get(informacion.parametros,0));
+        enviar_codigo_op(OK_OPERACION, fd_kernel);
+        break;
+    default:
+        log_error(logger_error, "Se recibio una instruccion no esperada: %s", informacion.io_instruccion);
+        break;
+    }
+    list_destroy(paquete);
+    }
     terminarPrograma();
-
     return 0;
 }
 
-
+/*
 void enviarMsj(){
     char* comandoLeido = readline("String > ");
     enviar_mensaje(comandoLeido, socketAEnviar);
@@ -83,7 +85,7 @@ op_codigo transformarAOperacion(char* operacionLeida) {
         return -1; // Valor por defecto para indicar error
     }
 }
-
+*/
 
 void inicializar(){
     inicializarLogs();
@@ -109,16 +111,50 @@ void inicializarConfig(){
     leerConfig();
 }
 
+tipo_de_interfaz leerTipoDeInterfaz() {
+    char* tipo = config_get_string_value(configuracion, "TIPO_INTERFAZ");
+    if ( string_equals_ignore_case(tipo, "GENERICA") ) {
+        return GENERICA;
+    } else if ( string_equals_ignore_case(tipo, "STDIN") ) {
+        return STDIN;
+    } else if ( string_equals_ignore_case(tipo, "STDOUT") ) {
+        return STDOUT;
+    } else if ( string_equals_ignore_case(tipo, "DIALFS") ) {
+        return DIALFS;
+    } else {
+        log_error(logger_error, "Tipo de interfaz no reconocida: %s", tipo);
+        abort();
+    }
+}
+
 void leerConfig() {
-        TIPO_INTERFAZ = config_get_string_value(configuracion, "TIPO_INTERFAZ");
+    IP_KERNEL = config_get_string_value(configuracion, "IP_KERNEL");
+    PUERTO_KERNEL = config_get_string_value(configuracion, "PUERTO_KERNEL");
+    TIPO_INTERFAZ = leerTipoDeInterfaz();
+    switch (TIPO_INTERFAZ)
+    {
+    case GENERICA:
+        TIEMPO_UNIDAD_TRABAJO = config_get_int_value(configuracion, "TIEMPO_UNIDAD_TRABAJO");            
+        break;
+    case STDIN:
+        IP_MEMORIA = config_get_string_value(configuracion, "IP_MEMORIA");
+        PUERTO_MEMORIA = config_get_string_value(configuracion, "PUERTO_MEMORIA");
+        break;
+    case STDOUT:
         TIEMPO_UNIDAD_TRABAJO = config_get_int_value(configuracion, "TIEMPO_UNIDAD_TRABAJO");
-        IP_KERNEL = config_get_string_value(configuracion, "IP_KERNEL");
-        PUERTO_KERNEL = config_get_string_value(configuracion, "PUERTO_KERNEL");
+        IP_MEMORIA = config_get_string_value(configuracion, "IP_MEMORIA");
+        PUERTO_MEMORIA = config_get_string_value(configuracion, "PUERTO_MEMORIA");
+        break;
+    case DIALFS:
+        TIEMPO_UNIDAD_TRABAJO = config_get_int_value(configuracion, "TIEMPO_UNIDAD_TRABAJO");
         IP_MEMORIA = config_get_string_value(configuracion, "IP_MEMORIA");
         PUERTO_MEMORIA = config_get_string_value(configuracion, "PUERTO_MEMORIA");
         PATH_BASE_DIALFS = config_get_string_value(configuracion, "PATH_BASE_DIALFS");
         BLOCK_SIZE = config_get_int_value(configuracion, "BLOCK_SIZE");
         BLOCK_COUNT = config_get_int_value(configuracion, "BLOCK_COUNT");
+        RETRASO_COMPACTACION = config_get_int_value(configuracion, "RETRASO_COMPACTACION");
+        break;        
+    }
 }
 
 void inicializarConexiones(){
@@ -129,7 +165,13 @@ void inicializarConexiones(){
 void inicializarConexionKernel()
 {
     fd_kernel = crear_conexion(IP_KERNEL, PUERTO_KERNEL, logger_error);
-    //crearHiloDetach(&hilo_kernel, (void*)enviarMsjKernel, NULL, "Kernel", logger_auxiliar, logger_error);
+    t_paquete* paquete = crear_paquete(OK_OPERACION);
+
+	agregar_a_paquete(paquete, nombre, strlen(nombre)+1); // Agregamos al paquete el stream
+	agregar_a_paquete(paquete, TIPO_INTERFAZ, sizeof(int)); // Agregamos al paquete el stream
+    enviar_paquete(paquete, fd_kernel);
+	eliminar_paquete(paquete);
+    //crearHiloDetach(&hilo_kernel, (void*)enviarPaquete, NULL, "Kernel", logger_auxiliar, logger_error);
 }
 
 void inicializarConexionMemoria()
@@ -137,6 +179,27 @@ void inicializarConexionMemoria()
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error);
     //crearHiloDetach(&hilo_memoria, (void*)enviarMsjMemoria, NULL, "Memoria", logger_auxiliar, logger_error);
 
+}
+
+char* enumToString(t_nombre_instruccion nombreDeInstruccion){
+    switch(nombreDeInstruccion){
+        case IO_GEN_SLEEP:
+            return "IO_GEN_SLEEP";
+        case IO_STDIN_READ:
+            return "IO_STDIN_READ";
+        case IO_STDOUT_WRITE:
+            return "IO_STDOUT_WRITE";
+        case IO_FS_CREATE:
+            return "IO_FS_CREATE";
+        case IO_FS_DELETE:
+            return "IO_FS_DELETE";
+        case IO_FS_TRUNCATE:
+            return "IO_FS_TRUNCATE";
+        case IO_FS_WRITE:
+            return "IO_FS_WRITE";
+        case IO_FS_READ:
+            return "IO_FS_READ";
+    };
 }
 
 void enviarMsjMemoria(){
