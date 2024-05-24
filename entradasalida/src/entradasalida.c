@@ -19,29 +19,70 @@ int main(int argc, char* argv[]) {
             log_warning(logger_auxiliar, "Desconexion de kernel");
             break;
         }
-        t_list* paquete= recibir_paquete(fd_kernel);
+        t_list* paquete = recibir_paquete(fd_kernel);
         u_int32_t pid = *(uint32_t*)list_get(paquete, 0);
-        t_io_detail informacion = *(t_io_detail*) list_get(paquete,1);
-        log_info(logger_obligatorio, "PID: %d - Operacion: %s",pid, enumToString(informacion.io_instruccion));
-        switch (informacion.io_instruccion)
-        {
+        recibirIoDetail(paquete, 1);
+        log_info(logger_obligatorio, "PID: %d - Operacion: %s",pid, enumToString(tipoInstruccion));
+        switch (tipoInstruccion) {
         case IO_GEN_SLEEP:
             // TODO rompe aca al leer los parametros
-            log_info(logger_auxiliar, "Cantidad: %d ", list_size(informacion.parametros));
+            // log_info(logger_auxiliar, "Cantidad: %d ", list_size(informacion.parametros));
             // t_params_io parametro = *(t_params_io*) list_get(informacion.parametros, 0);
-            // int sleepValue = *(int*) parametro.valor;
+            int sleepValue = *(int*) list_get(parametrosRecibidos, 0);
             // log_info(logger_auxiliar, "SLEEP %d", sleepValue);
-            // sleep(sleepValue);
+            sleep(sleepValue);
             enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
         default:
-            log_error(logger_error, "Se recibio una instruccion no esperada: %d", informacion.io_instruccion);
+            log_error(logger_error, "Se recibio una instruccion no esperada: %d", tipoInstruccion);
             break;
         }
         list_destroy(paquete);
     }
     terminarPrograma();
     return 0;
+}
+
+void recibirIoDetail(t_list* listaPaquete, int ultimo_indice) {
+
+    uint32_t cantidad_parametros_io_detail = *(uint32_t*)list_get(listaPaquete, ultimo_indice);
+
+    if (cantidad_parametros_io_detail != 0) {
+
+        for (int i = 0; i < cantidad_parametros_io_detail; i++) {
+
+            ultimo_indice++;
+            tipo_de_dato tipo_de_dato_parametro_io = *(tipo_de_dato*) list_get(listaPaquete, ultimo_indice);
+
+            //t_params_io* parametro_io_a_guardar;
+            
+            ultimo_indice++;
+            void* valor_parametro_io_recibido = (void*) list_get(listaPaquete, ultimo_indice);
+            void* valor_parametro_a_guardar;
+
+            switch (tipo_de_dato_parametro_io) {
+            case INT:
+                //parametro_io_a_guardar = malloc(sizeof(int)*2);
+                valor_parametro_a_guardar = malloc(sizeof(int));
+                valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
+                break;
+
+            default:
+                break;
+            }
+
+            //parametro_io_a_guardar->tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
+            //(esto va a servir mas adelante para que kernel pueda usarlo correctamente, ya que puede recibir char* o int)
+            //parametro_io_a_guardar->valor = valor_parametro_a_guardar; //almaceno el valor del parametro de la instruccion de io
+
+            list_add_in_index(parametrosRecibidos, i, valor_parametro_a_guardar); //almaceno el parametro en la lista de parametros que usara kernel luego
+        }
+        ultimo_indice++;
+        //pcb->contexto_ejecucion.io_detail.nombre_io = (char *)list_get(contexto, ultimo_indice); //obtengo el nombre de la IO
+        
+        //ultimo_indice++;
+        tipoInstruccion = *(t_nombre_instruccion *)list_get(listaPaquete, ultimo_indice); //obtengo el nombre de la instruccion contra IO
+    }
 }
 
 /*
@@ -106,6 +147,8 @@ void inicializar(){
     inicializarConfig();
 
     inicializarConexiones();
+
+    parametrosRecibidos = list_create();
 }
 
 void inicializarLogs(){
