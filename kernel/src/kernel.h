@@ -74,7 +74,7 @@ typedef enum{
 typedef struct {
     char* nombre;
     typeInterface tipoInterfaz;
-    bool ocupada;
+    sem_t libre;
     t_queue* colaEjecucion;
     pthread_mutex_t semaforoMutex;
     sem_t semaforoCantProcesos;
@@ -105,6 +105,8 @@ bool planificacionEjecutandose = true;
 char* pathArchivo;
 int numeroConsola = 1;
 uint32_t pcbADesalojar;
+uint32_t pidAEliminar;
+t_list* pidsAFinalizar;
 
 /*---------COLAS---------*/
 

@@ -85,6 +85,8 @@ void corto_plazo_blocked() {
             enviarPCBExit(pcbBloqueado);
             continue;
         }
+        log_info(logs_auxiliares, "Interfaz encontrada %s", interfazEncontrada->nombre);
+        log_info(logs_auxiliares, "pid: %d", pcbBloqueado->contexto_ejecucion.pid);
         pthread_mutex_lock(&(interfazEncontrada->semaforoMutex));        
         queue_push(interfazEncontrada->colaEjecucion, pcbBloqueado);
         pthread_mutex_unlock(&(interfazEncontrada->semaforoMutex));
@@ -237,6 +239,11 @@ void mensaje_cpu_interrupt() {
     eliminar_paquete(paquete);
 }
 
+bool coincidePidAEliminarEnExec(void* pidVoid) {
+    uint32_t pidAComparar = *(uint32_t*) pidVoid;
+    return pidAComparar == pcbADesalojar;
+}
+
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
     switch (codigoOperacion) {
@@ -246,21 +253,27 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
         enviar_paquete(paquete, fd_cpu_dispatch);
         // TODO revisar para VRR
         if ( ALGORITMO_PLANIFICACION == VRR || ALGORITMO_PLANIFICACION == RR ) {
-            pcbADesalojar = pcb->contexto_ejecucion.pid;
             signal(SIGALRM, mensaje_cpu_interrupt);
             alarm(QUANTUM);
         }
         pcbADesalojar = pcb->contexto_ejecucion.pid;
-        signal(SIGALRM, mensaje_cpu_interrupt);
-        alarm(1);
         eliminar_paquete(paquete);
         cambiarEstado(EXEC, pcb);
         op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
         alarm(0);
         if ( codigoOperacion == OK_OPERACION ) {
-            t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
-            cambiarContexto(contextoNuevo, pcb);
-            list_destroy(contextoNuevo);
+            // Creo que funciona a chequear
+            // if ( !list_is_empty(pidsAFinalizar) ) {
+                if ( !list_remove_by_condition(pidsAFinalizar, coincidePidAEliminarEnExec) ) {
+                    t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
+                    cambiarContexto(contextoNuevo, pcb);
+                    list_destroy(contextoNuevo);
+                // }
+            } else {
+                t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
+                list_destroy(contextoNuevo);
+                eliminar_pcb(pcb);
+            }
         } else {
             log_error(logs_error, "Problema con la operacion");
         }
@@ -495,7 +508,6 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         enviar_paquete(paquete, fd_memoria);
         if ( !evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, CREAR_PCB) ) {
             log_warning(logs_auxiliares, "Reintentando creacion pid: %d", pcb->contexto_ejecucion.pid);
-            system("sleep 5");
             mensaje_memoria(comandoMemoria, pcb);
         }
         eliminar_paquete(paquete);
@@ -507,7 +519,6 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
         enviar_paquete(paquete, fd_memoria);
         if ( !evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, ELIMINAR_PCB) ) {
             log_warning(logs_auxiliares, "Reintentando eliminacion pid: %d", pcb->contexto_ejecucion.pid);
-            system("sleep 5");
             mensaje_memoria(comandoMemoria, pcb);
         }
         eliminar_paquete(paquete);
@@ -526,6 +537,7 @@ void inicializarColas() {
     cola_exec = queue_create();
     cola_exit = queue_create();
     cola_ready_aux = queue_create();
+    pidsAFinalizar = list_create();
 }
 
 void inicializarSemaforos() {
@@ -625,7 +637,9 @@ void ejecutar_script(char* pathScript) {
         return;
     }
     while ((cantLeida = getline(&lineaLeida, &longitud, archivoScript)) != -1) {
+        lineaLeida[strcspn(lineaLeida, "\n")] = 0;
         char** arrayComando = string_split(lineaLeida, " ");
+        log_info(logs_auxiliares, "Comando: %s", arrayComando[0]);
         ejecutar_comando_consola(arrayComando);
     }
     fclose(archivoScript);
@@ -657,6 +671,39 @@ char* obtenerPidsBloqueados() {
     return pids;
 }
 
+bool coincidePidAEliminar(void* pcbVoid) {
+    t_pcb* pcbAComparar = (t_pcb*) pcbVoid;
+    return pcbAComparar->contexto_ejecucion.pid == pidAEliminar;
+}
+
+t_pcb* buscarPidEnCola(t_queue* cola, pthread_mutex_t semaforo) {
+    t_pcb* pcbEncontrado;
+    pthread_mutex_lock(&semaforo);
+    pcbEncontrado = list_remove_by_condition(cola->elements, coincidePidAEliminar);
+    pthread_mutex_unlock(&semaforo);
+    return pcbEncontrado;
+}
+// Chequear eficiencia
+void eliminarPid() {
+    // TODO añadir cola aux
+    t_pcb* pcbAEliminar;
+    if ( (pcbAEliminar = buscarPidEnCola(cola_new, sem_cola_new)) ) {
+        eliminar_pcb(pcbAEliminar);
+    } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready, sem_cola_ready)) ) {
+        eliminar_pcb(pcbAEliminar);
+    } else if ( (pcbAEliminar = buscarPidEnCola(cola_exit, sem_cola_exit)) ) {
+        eliminar_pcb(pcbAEliminar);
+    } else if ( (pcbAEliminar = buscarPidEnCola(cola_exec, sem_cola_exec)) ) {
+        list_add(pidsAFinalizar, &pidAEliminar);
+        mensaje_cpu_interrupt();
+        alarm(0);
+    } else if ( (pcbAEliminar = buscarPidEnCola(cola_blocked_aux, sem_cola_blocked_aux)) ){
+        eliminar_pcb(pcbAEliminar);
+    } else {
+        list_add(pidsAFinalizar, &pidAEliminar);       
+    }
+}
+
 void ejecutar_comando_consola(char** arrayComando) {
     comando = transformarAOperacion(arrayComando[0]);
     switch (comando) {
@@ -670,15 +717,13 @@ void ejecutar_comando_consola(char** arrayComando) {
         crear_pcb();
         break;
     case FINALIZAR_PROCESO:
-        // TODO todo jaja
-        uint32_t pid = atoi(arrayComando[1]);
+        // TODO Revisar que ande
+        pidAEliminar = atoi(arrayComando[1]);
         // (deberá liberar recursos, archivos y memoria)
         pthread_mutex_lock(&sem_planificacion);
         planificacionEjecutandose = false;
-        // Encontrar en que cola esta
-        // Sacarlo de la cola y eliminarlo
-        // si esta en exec Mando interrupcion
-        log_info(logs_auxiliares, "Proceso %d finalizado", pid);
+        eliminarPid();
+        log_info(logs_auxiliares, "Proceso %d finalizado", pidAEliminar);
         planificacionEjecutandose = true;
         pthread_cond_broadcast(&condicion_planificacion);
         pthread_mutex_unlock(&sem_planificacion);
@@ -755,12 +800,15 @@ char* obtenerTipoInterfaz(typeInterface tipoInterfaz) {
 void atender_cliente(interfazConectada* datosInterfaz) {
     int codigoOperacion;
     // Reviso que haya conexion
+    t_pcb* pcbAEjecutar;
     while( datosInterfaz->fd_interfaz != -1 ) {
         sem_wait(&datosInterfaz->semaforoCantProcesos);
-        pthread_mutex_lock(&datosInterfaz->semaforoMutex);
-        t_pcb* pcbAEjecutar = queue_pop(datosInterfaz->colaEjecucion);
-        pthread_mutex_unlock(&datosInterfaz->semaforoMutex);
+        sem_wait(&datosInterfaz->libre);
+        do { 
+            pcbAEjecutar = quitarPcbCola(datosInterfaz->colaEjecucion, datosInterfaz->semaforoMutex);
+        } while( list_remove_by_condition(pidsAFinalizar, coincidePidAEliminarEnExec) );
         t_paquete* paquete = crear_paquete(OK_OPERACION);
+        agregar_a_paquete(paquete, &pcbAEjecutar->contexto_ejecucion.pid, sizeof(uint32_t));
         agregar_a_paquete(paquete, &pcbAEjecutar->contexto_ejecucion.io_detail, sizeof(t_io_detail));
         enviar_paquete(paquete, datosInterfaz->fd_interfaz);
         codigoOperacion = recibir_operacion(datosInterfaz->fd_interfaz);
@@ -786,31 +834,41 @@ void atender_cliente(interfazConectada* datosInterfaz) {
             agregarPcbCola(cola_ready, sem_cola_ready, pcbAEjecutar);
             cambiarEstado(READY, pcbAEjecutar);
             sem_post(&semContadorColaReady);
+            sem_post(&datosInterfaz->libre);
             break;
         default:
             log_error(logs_error, "Codigo de operacion no reconocido: %d", codigoOperacion);
             break;
         }
     }
+    log_warning(logs_auxiliares, "Eliminando interfaz %s de tipo %d", datosInterfaz->nombre, datosInterfaz->tipoInterfaz);
     switch (datosInterfaz->tipoInterfaz) {
     case GENERICA:
-        pthread_mutex_lock(&mutexInterfacesGenericas);        
-        list_remove_element(interfacesGenericas, &datosInterfaz);
+        pthread_mutex_lock(&mutexInterfacesGenericas);   
+        if ( !list_remove_element(interfacesGenericas, datosInterfaz) ) {
+            log_error(logs_auxiliares, "Error al eliminar interfaz %s de tipo %d", datosInterfaz->nombre, datosInterfaz->tipoInterfaz);
+        }
         pthread_mutex_unlock(&mutexInterfacesGenericas);        
         break;
     case STDIN:
         pthread_mutex_lock(&mutexInterfacesSTDIN);        
-        list_remove_element(interfacesSTDIN, &datosInterfaz);
+        if ( !list_remove_element(interfacesSTDIN, datosInterfaz) ) {
+            log_error(logs_auxiliares, "Error al eliminar interfaz %s de tipo %d", datosInterfaz->nombre, datosInterfaz->tipoInterfaz);
+        }
         pthread_mutex_unlock(&mutexInterfacesSTDIN);        
         break;
     case STDOUT:
         pthread_mutex_lock(&mutexInterfacesSTDOUT);        
-        list_remove_element(interfacesSTDOUT, &datosInterfaz);
+        if ( !list_remove_element(interfacesSTDOUT, datosInterfaz) ) {
+            log_error(logs_auxiliares, "Error al eliminar interfaz %s de tipo %d", datosInterfaz->nombre, datosInterfaz->tipoInterfaz);
+        }
         pthread_mutex_unlock(&mutexInterfacesSTDOUT);        
         break;
     case FS:
         pthread_mutex_lock(&mutexInterfacesFS);        
-        list_remove_element(interfacesFS, &datosInterfaz);
+        if ( !list_remove_element(interfacesFS, datosInterfaz) ) {
+            log_error(logs_auxiliares, "Error al eliminar interfaz %s de tipo %d", datosInterfaz->nombre, datosInterfaz->tipoInterfaz);
+        }
         pthread_mutex_unlock(&mutexInterfacesFS);        
         break;
     }
@@ -827,7 +885,9 @@ interfazConectada* crearInterfaz(t_list* nombreYTipoInterfaz, int socket_cliente
     }
     interfazIO->nombre = (char*) list_get(nombreYTipoInterfaz, 0);
     interfazIO->tipoInterfaz = *(typeInterface*) list_get(nombreYTipoInterfaz, 1);
-    interfazIO->ocupada = false;
+    sem_t libre;
+    sem_init(&libre, 0, 1);
+    interfazIO->libre = libre;
     interfazIO->colaEjecucion = queue_create();
     pthread_mutex_t semaforoMutex;
     pthread_mutex_init(&semaforoMutex, NULL);
@@ -836,8 +896,7 @@ interfazConectada* crearInterfaz(t_list* nombreYTipoInterfaz, int socket_cliente
     sem_init(&semaforoCantProcesos, 0, 0);
     interfazIO->semaforoCantProcesos = semaforoCantProcesos;
     interfazIO->fd_interfaz = socket_cliente;
-    switch (interfazIO->tipoInterfaz)
-    {
+    switch (interfazIO->tipoInterfaz) {
     case GENERICA:
         pthread_mutex_lock(&mutexInterfacesGenericas);
         list_add(interfacesGenericas, interfazIO);
@@ -871,6 +930,7 @@ bool escucharServer(int socket_servidor) {
     // Si aparece alguien:
     if ( socket_cliente != -1 ) {
         // Creo hilo y le asigno atender_cliente pasandole el socket como parametro
+        recibir_operacion(socket_cliente);
         t_list* nombreYTipoInterfaz = recibir_paquete(socket_cliente);
         interfazConectada* interfazNueva = crearInterfaz(nombreYTipoInterfaz, socket_cliente);
         if (interfazNueva == NULL) {
@@ -881,6 +941,7 @@ bool escucharServer(int socket_servidor) {
         pthread_t thread_cliente;
         crearHiloDetach(&thread_cliente, (void*) atender_cliente, (interfazConectada*) interfazNueva, "Cliente", logs_auxiliares, logs_error);
         list_destroy(nombreYTipoInterfaz);
+        log_info(logs_auxiliares, "Interfaz conectada: %s", interfazNueva->nombre);
         return true;
     }
     return false;
