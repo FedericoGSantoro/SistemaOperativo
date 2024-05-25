@@ -102,6 +102,7 @@ int socket_servidor;
 int pid_siguiente = 1;
 comando_consola comando;
 bool planificacionEjecutandose = true;
+bool planificacionNoEjecutandosePorFinalizarProceso = false;
 char* pathArchivo;
 int numeroConsola = 1;
 uint32_t pcbADesalojar;
@@ -131,6 +132,7 @@ pthread_t thread_consola_interactiva;
 /*---------SEMAFOROS---------*/
 
 //pthread_mutex_t sem_gradoMultiprogramacion;
+pthread_mutex_t mutexEliminarProceso;
 pthread_mutex_t mutexpidAEnviarExit;
 pthread_mutex_t mutexInterfazAEliminar;
 pthread_mutex_t sem_planificacion;
@@ -230,6 +232,8 @@ char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo);
 void ejecutar_script(char* pathScript);
 // Devuelve los pids bloqueados
 char* obtenerPidsBloqueados();
+// Comprueba si la planificacion esta ejecutandose
+bool planificacionEstaEjecutandose();
 // Ejecuta el comando correspondiente
 void ejecutar_comando_consola(char** arrayComando);
 // Devuelve el comando del enum correspondiente
