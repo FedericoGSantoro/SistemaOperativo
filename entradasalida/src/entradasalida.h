@@ -56,6 +56,11 @@ char* path_config;
 // Puntero a funcion para indicar que debe hacer el hilo
 void (*tipoOperacion)();
 
+// Parametro para guardar el tipo de instruccion (por ej: IO_GEN_SLEEP)
+t_nombre_instruccion tipoInstruccion;
+// Lista para guardar los parametros
+t_list* parametrosRecibidos;
+
 
 /*---------HILOS---------*/
 
@@ -75,6 +80,7 @@ op_codigo transformarAOperacion(char* operacionLeida);
 // Inicializa las variables
 void inicializar();
 char* enumToString(t_nombre_instruccion nombreDeInstruccion);
+void recibirIoDetail(t_list* listaPaquete, int ultimo_indice);
 void inicializarLogs();
 void inicializarConexionKernel();
 void inicializarConfig();
