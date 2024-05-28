@@ -190,7 +190,6 @@ void cambiarContexto(t_list* contexto, t_pcb* pcb) {
         agregarPcbCola(cola_blocked_aux, sem_cola_blocked_aux, pcb);
         cambiarEstado(BLOCKED, pcb);        
         sem_post(&semContadorColaBlocked);
-        // Agregar enviar a ready_aux si es necesario
         break;
     case INTERRUPCION_FIN_EVENTO:
         agregarPcbCola(cola_exit, sem_cola_exit, pcb);
@@ -246,6 +245,16 @@ bool coincidePidAEliminarEnExec(void* pidVoid) {
     return pidAComparar == pcbADesalojar;
 }
 
+void setTemporizadorQuantum (int Q) {
+    struct itimerval timer;
+    log_info(logs_auxiliares, "Q: %d", Q);
+    timer.it_value.tv_sec = Q;
+    timer.it_value.tv_usec = 0;
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = 0;
+    setitimer(ITIMER_REAL, &timer, NULL);
+}
+
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
     switch (codigoOperacion) {
@@ -253,20 +262,28 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
         paquete = crear_paquete(CONTEXTO_EJECUCION);
         empaquetar_contexto_ejecucion(paquete, pcb);
         enviar_paquete(paquete, fd_cpu_dispatch);
-        // TODO revisar para VRR
         if ( ALGORITMO_PLANIFICACION == VRR || ALGORITMO_PLANIFICACION == RR ) {
             signal(SIGALRM, mensaje_cpu_interrupt);
-            alarm(QUANTUM);
+            setTemporizadorQuantum(pcb->quantum_faltante);
         }
         pcbADesalojar = pcb->contexto_ejecucion.pid;
         eliminar_paquete(paquete);
         cambiarEstado(EXEC, pcb);
         op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
-        alarm(0);
         if ( codigoOperacion == OK_OPERACION ) {
             // Creo que funciona a chequear
             if ( !comprobarSiSeDebeEliminar(pcb) ) {
                 t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
+                if ( ALGORITMO_PLANIFICACION == VRR ) {
+                    struct itimerval remaining_time;
+                    setitimer(ITIMER_REAL, NULL, &remaining_time);
+                    log_info(logs_auxiliares, "temporizador en %ld", remaining_time.it_value.tv_sec);
+                    if ( remaining_time.it_value.tv_sec == 0 ) {
+                        pcb->quantum_faltante = QUANTUM;
+                    } else {
+                        pcb->quantum_faltante = remaining_time.it_value.tv_sec;
+                    }
+                }
                 cambiarContexto(contextoNuevo, pcb);
                 list_destroy(contextoNuevo);
             } else {
@@ -300,6 +317,13 @@ char* enumEstadoAString(process_state estado) {
     }
 }
 
+char* obtenerPidsColaReadyYReadyAux() {
+    char* pidsReady = string_new();
+    string_append_with_format(&pidsReady, "%s - %s", obtenerPids(cola_ready, sem_cola_ready), obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+    return pidsReady;
+}
+
+
 void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     process_state estadoViejo = pcb->contexto_ejecucion.state;
     log_info(logs_obligatorios, "PID: %d - Estado Anterior: %s - Estado Actual: %s",
@@ -310,7 +334,8 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     switch (estadoNuevo) {
     case READY:
         pcb->contexto_ejecucion.state = READY;
-        log_info(logs_obligatorios, "Cola Ready %s: [%s]", config_get_string_value(config, "ALGORITMO_PLANIFICACION"), obtenerPids(cola_ready, sem_cola_ready));
+        // TODO agregar cola aux a esto
+        log_info(logs_obligatorios, "Cola Ready %s: [%s]", config_get_string_value(config, "ALGORITMO_PLANIFICACION"), obtenerPidsColaReadyYReadyAux());
         break;
     case EXEC:
         pcb->contexto_ejecucion.state = EXEC;
@@ -337,13 +362,16 @@ void corto_plazo_ready() {
         pthread_mutex_unlock(&sem_planificacion);
         sem_wait(&semContadorColaReady);
         sem_wait(&semContadorColaExec);
-        // if ( ALGORITMO_PLANIFICACION == VRR && !queue_is_empty(cola_ready_aux) ) {
-        //     // Agregar bloqueo cola ready aux
-        //     pcb = queue_pop(cola_ready_aux);
-        //     agregarPcbCola(cola_exec, sem_cola_exec, pcb);
-        //     mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
-        //     continue;
-        // }
+        pthread_mutex_lock(&sem_cola_ready_aux);
+        if ( ALGORITMO_PLANIFICACION == VRR && !queue_is_empty(cola_ready_aux) ) {
+            pthread_mutex_unlock(&sem_cola_ready_aux);
+            // Agregar bloqueo cola ready aux
+            pcb = quitarPcbCola(cola_ready_aux, sem_cola_ready_aux);
+            agregarPcbCola(cola_exec, sem_cola_exec, pcb);
+            mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
+            continue;
+        }
+        pthread_mutex_unlock(&sem_cola_ready_aux);
         pcb = quitarPcbCola(cola_ready, sem_cola_ready);
         agregarPcbCola(cola_exec, sem_cola_exec, pcb);
         mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
@@ -698,12 +726,14 @@ t_pcb* buscarPidEnCola(t_queue* cola, pthread_mutex_t semaforo) {
 }
 // Chequear eficiencia
 void eliminarPid() {
-    // TODO añadir cola aux
     t_pcb* pcbAEliminar;
     if ( (pcbAEliminar = buscarPidEnCola(cola_new, sem_cola_new)) != NULL ) {
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaNew);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready, sem_cola_ready)) != NULL ) {
+        enviarPCBExit(pcbAEliminar);
+        sem_wait(&semContadorColaReady);
+    } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready_aux, sem_cola_ready_aux)) != NULL ) {
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaReady);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_exec, sem_cola_exec)) != NULL ) {
@@ -739,21 +769,15 @@ void ejecutar_comando_consola(char** arrayComando) {
         crear_pcb();
         break;
     case FINALIZAR_PROCESO:
-        // TODO Cambiar con idea 2: simplemente agregarlo a lista de pids a eliminar y que todo chequee con eso
         pidAEliminar = atoi(arrayComando[1]);
-        // (deberá liberar recursos, archivos y memoria)
-        //pthread_mutex_lock(&mutexEliminarProceso);
         pthread_mutex_lock(&sem_planificacion);
         planificacionNoEjecutandosePorFinalizarProceso = true;
         pthread_mutex_unlock(&sem_planificacion);
-        //pthread_mutex_unlock(&mutexEliminarProceso);
         eliminarPid();
         log_info(logs_auxiliares, "Proceso %d finalizado", pidAEliminar);
         pthread_mutex_lock(&sem_planificacion);
-        //pthread_mutex_lock(&mutexEliminarProceso);
         planificacionNoEjecutandosePorFinalizarProceso = false;
         pthread_mutex_unlock(&sem_planificacion);
-        //pthread_mutex_unlock(&mutexEliminarProceso);
         pthread_cond_broadcast(&condicion_planificacion);
         break;
     case DETENER_PLANIFICACION:
@@ -940,6 +964,7 @@ void atender_cliente(interfazConectada* datosInterfaz) {
                 sem_post(&datosInterfaz->libre);
             }
             else {
+                pcbAEjecutar->contexto_ejecucion.motivo_bloqueo = NOTHING;
                 pthread_mutex_lock(&sem_cola_blocked);
                 for(int i = 0; i < list_size(cola_blocked); i++) {
                     uint32_t pidAChequear = *(uint32_t*) list_get(cola_blocked, i);
@@ -948,10 +973,14 @@ void atender_cliente(interfazConectada* datosInterfaz) {
                     }
                 }       
                 pthread_mutex_unlock(&sem_cola_blocked);
-                agregarPcbCola(cola_ready, sem_cola_ready, pcbAEjecutar);
-                cambiarEstado(READY, pcbAEjecutar);
-                sem_post(&semContadorColaReady);
-                sem_post(&datosInterfaz->libre);
+                if ( ALGORITMO_PLANIFICACION == VRR && pcbAEjecutar->quantum_faltante != QUANTUM ) {
+                    agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbAEjecutar);
+                } else {
+                    agregarPcbCola(cola_ready, sem_cola_ready, pcbAEjecutar);
+                }
+                    cambiarEstado(READY, pcbAEjecutar);
+                    sem_post(&semContadorColaReady);
+                    sem_post(&datosInterfaz->libre);
             }
             break;
         default:
