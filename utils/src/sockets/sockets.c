@@ -14,11 +14,13 @@ int iniciar_servidor(char* puerto, t_log* loggerAuxiliar, t_log* loggerError) {
 
 	// Creamos el socket de escucha del servidor
 	socket_servidor = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-	if (socket_servidor == -1) {
-		log_error(loggerError, "El socket no pudo ser creado");
-		abort();
+	// if (socket_servidor == -1) {
+	// 	log_error(loggerError, "El socket no pudo ser creado");
+	// 	abort();
+	// }
+	if (setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0) {
+    	error("setsockopt(SO_REUSEADDR) failed");
 	}
-
 	// Asociamos el socket a un puerto
 	if (bind(socket_servidor, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
 		log_error(loggerError, "El socket no pudo ser asociado a un puerto");

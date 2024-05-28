@@ -14,6 +14,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 /*---------DEFINES---------*/
 
@@ -132,6 +134,7 @@ pthread_t thread_consola_interactiva;
 /*---------SEMAFOROS---------*/
 
 //pthread_mutex_t sem_gradoMultiprogramacion;
+pthread_mutex_t mutexListaPidsAFinalizar;
 pthread_mutex_t mutexEliminarProceso;
 pthread_mutex_t mutexpidAEnviarExit;
 pthread_mutex_t mutexInterfazAEliminar;
@@ -232,8 +235,6 @@ char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo);
 void ejecutar_script(char* pathScript);
 // Devuelve los pids bloqueados
 char* obtenerPidsBloqueados();
-// Comprueba si la planificacion esta ejecutandose
-bool planificacionEstaEjecutandose();
 // Ejecuta el comando correspondiente
 void ejecutar_comando_consola(char** arrayComando);
 // Devuelve el comando del enum correspondiente
