@@ -11,6 +11,9 @@
 //cache para almacenar lista de instrucciones (key = PID, value = lista de instrucciones)
 extern t_dictionary* cache_instrucciones;
 
+//mapa para almacenar tablas por procesos (key = PID, value = lista, la cual sera la tabla de paginas)
+extern t_dictionary* cache_tabla_por_proceso;
+
 //Globales del Config
 typedef struct {
     char* puertoEscucha;
@@ -21,6 +24,17 @@ typedef struct {
 } t_mem_config;
 
 extern t_mem_config memConfig;
+
+//void* para el espacio de usuario, con su semaforo asociado
+typedef struct 
+{
+    void* espacio_usuario;
+    pthread_mutex_t mx_espacio_usuario;
+} t_espacio_usuario;
+
+extern t_espacio_usuario espacio_usuario;
+
+extern int *vector_marcos;
 
 //Variables Globales
 extern t_log* loggerOblig; 

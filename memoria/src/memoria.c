@@ -1,6 +1,7 @@
 #include "./includes/memoria.h"
 
-void inicializar_diccionario();
+void inicializar_diccionario(t_dictionary* diccionario);
+void inicializar_memoria_almacenamiento();
 void crear_proceso(int fd_cliente_kernel);
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel);
 char* fetch_instruccion_de_cliente(int fd_cliente);
@@ -13,11 +14,14 @@ int main(void)
     inicializar_loggers();
     inicializar_config();
     inicializar_semaforos();
-    //al ser dinámico el diccionario se inicializa en el main y no como constante global, pues la memoria cambia
-    inicializar_diccionario();
+    //al ser dinámico los diccionarios se inicializan en el main y no como constante global, pues la memoria cambia
+    inicializar_diccionario(cache_instrucciones);
+    inicializar_diccionario(cache_tabla_por_proceso);
+    inicializar_memoria_almacenamiento();    
+    
     socketFdMemoria = iniciar_servidor(memConfig.puertoEscucha, loggerAux, loggerError);
-
     while (server_escuchar(socketFdMemoria)); // server escuchar devuelve 0 o 1 (false o true basicamente)
+    
     terminar_programa();
     return 0;
 }
@@ -110,14 +114,12 @@ void crear_proceso(int fd_cliente_kernel) {
     int pid = *(int*) list_get(paquete_recibido, 0);
     // recibirPath
     char *path = (char*) list_get(paquete_recibido, 1);
+    
+    inicializar_tabla_paginas(pid);
     crear_instrucciones(path, pid);
+    
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(paquete_recibido);
-    //---------BORRAR PUES ESTO SE HACE DENTRO DEL CASE----------- TODO: (recordatorio)
-    // Enviar confirmacion de creacion de espacios de memoria
-    //t_paquete* paquete_respuesta = crear_paquete(OK_OPERACION);
-    //enviar_paquete(paquete_respuesta, fd_cliente_kernel);
-    //eliminar_paquete(paquete_respuesta);
 }
 
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel) {
@@ -175,8 +177,22 @@ void inicializar_semaforos(){
     sem_init(&sem_retardo, 0, 0);
 }
 
-void inicializar_diccionario(){
-    cache_instrucciones = dictionary_create();
+void inicializar_diccionario(t_dictionary* diccionario){
+    diccionario = dictionary_create();
+}
+
+void inicializar_memoria_almacenamiento() {
+
+    int cant_marcos = memConfig.tamMemoria / memConfig.tamPagina;
+    espacio_usuario.espacio_usuario = malloc(sizeof(memConfig.tamMemoria));// inicializa todos sus bytes a cero.
+    pthread_mutex_init(&espacio_usuario.mx_espacio_usuario, NULL);
+    vector_marcos = calloc(cant_marcos, sizeof(int));
+
+    for(int i=0; i< tam_memoria() / tam_pagina(); i++) //creo los marcos/paginas 
+    {
+       vector_marcos[i] =  0;
+    }
+    log_info(loggerAux, "Memoria dividida en %d marcos creada", cant_marcos);
 }
 
 void terminar_programa()
@@ -187,4 +203,8 @@ void terminar_programa()
     config_destroy(config);
     liberar_conexion(socketFdMemoria);
     dictionary_destroy_and_destroy_elements(cache_instrucciones, destroyer_queue_con_datos_simples);
+    dictionary_destroy_and_destroy_elements(cache_tabla_por_proceso, liberar_lista_de_datos_planos);
+    free(vector_marcos);
+    free(espacio_usuario.espacio_usuario);
+    sem_destroy(&espacio_usuario.sem_espacio_usuario);
 }

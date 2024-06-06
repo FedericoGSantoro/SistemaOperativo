@@ -3,8 +3,16 @@
 //cache para almacenar queue de instrucciones
 t_dictionary* cache_instrucciones;
 
+//mapa para almacenar tablas por procesos
+t_dictionary* cache_tabla_por_proceso;
+
 //Globales del Config
 t_mem_config memConfig;
+
+//Global para espacio de usuario
+t_espacio_usuario espacio_usuario;
+
+int *vector_marcos;
 
 //Variables Globales
 t_log* loggerOblig; 
