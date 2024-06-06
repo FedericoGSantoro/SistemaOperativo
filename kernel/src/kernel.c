@@ -282,8 +282,8 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
         op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
         if ( codigoOperacion == OK_OPERACION ) {
             // Creo que funciona a chequear
+            t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
             if ( !comprobarSiSeDebeEliminar(pcb) ) {
-                t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
                 if ( ALGORITMO_PLANIFICACION == VRR ) {
                     struct itimerval remaining_time;
                     setitimer(ITIMER_REAL, NULL, &remaining_time);
@@ -341,7 +341,8 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                 }
                 comprobarContextoNuevo(pcb);
             } else {
-                t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
+                //quitarPcbCola(cola_exec, sem_cola_exec);
+                sem_post(&semContadorColaExec);
                 list_destroy(contextoNuevo);
                 enviarPCBExit(pcb);
             }
@@ -694,6 +695,7 @@ void atender_recurso(recursoSistema* dataRecurso) {
 }
 
 void inicializarRecursos() {
+    listaRecursosSistema = list_create();
     for(int i = 0; RECURSOS[i] != NULL; i++) {
         recursoSistema* nuevoRecurso = malloc(sizeof(recursoSistema));
         nuevoRecurso -> nombre = RECURSOS[i];
@@ -1308,6 +1310,19 @@ void eliminarInterfaz(interfazConectada* interfazAEliminar) {
     free(interfazAEliminar);
 }
 
+void eliminarRecurso(recursoSistema* recursoAEliminar) {
+    pthread_mutex_destroy(&recursoAEliminar->mutexCantidadInstancias);
+    pthread_mutex_destroy(&recursoAEliminar->mutexCola);
+    sem_destroy(&recursoAEliminar->semCantidadInstancias);
+    sem_destroy(&recursoAEliminar->semCola);
+    queue_destroy_and_destroy_elements(recursoAEliminar->cola, (void*) enviarPCBExit);
+    free(recursoAEliminar);
+}
+
+void liberarRecursos() {
+    list_destroy_and_destroy_elements(listaRecursosSistema, (void*) eliminarRecurso);
+}
+
 void liberarInterfaces() {
     list_destroy_and_destroy_elements(interfacesGenericas, (void*) eliminarInterfaz);
     list_destroy_and_destroy_elements(interfacesSTDIN, (void*) eliminarInterfaz);
@@ -1353,4 +1368,5 @@ void terminarPrograma() {
     sem_destroy(&semContadorColaBlocked);
     sem_destroy(&semContadorColaExit);
     liberarInterfaces();
+    liberarRecursos();
 }

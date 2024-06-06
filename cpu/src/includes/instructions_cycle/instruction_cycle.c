@@ -84,7 +84,7 @@ void jnz_instruction(t_list* parametros) {
     uint32_t* instruccion_a_moverse_mapeada = mapear_registro(instruccion_a_moverse);
 
     if (registro_mapeado != 0) {
-        registros_cpu.pc = *instruccion_a_moverse_mapeada - 2; //restamos uno porque despues vamos a sumar uno con el proximo PC++, al finalizar un ciclo de instruccion que tenga a JNZ. Me llevo a consultar si queda en bulce infinito, o como cortamos el JNZ. El otro -1 es para que no se nos vaya la posicion del array
+        registros_cpu.pc = *instruccion_a_moverse_mapeada - 1; //restamos uno porque despues vamos a sumar uno con el proximo PC++, al finalizar un ciclo de instruccion que tenga a JNZ. Me llevo a consultar si queda en bulce infinito, o como cortamos el JNZ. El otro -1 es para que no se nos vaya la posicion del array
     }
 }
 
