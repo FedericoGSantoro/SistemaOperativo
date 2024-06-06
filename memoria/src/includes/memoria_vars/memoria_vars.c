@@ -3,7 +3,7 @@
 //cache para almacenar queue de instrucciones
 t_dictionary* cache_instrucciones;
 
-//cache para almacenar tablas por procesos
+//mapa para almacenar tablas por procesos
 t_dictionary* cache_tabla_por_proceso;
 
 //Globales del Config
