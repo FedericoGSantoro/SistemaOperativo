@@ -39,6 +39,11 @@ bool buscarIO(void* interfaz) {
     return strcmp(interfazConvertida->nombre, ioBuscada) == 0;
 }
 
+bool buscarRecurso(void* recurso) {
+    recursoSistema* recursoConvertido = (recursoSistema*) recurso;
+    return strcmp(recursoConvertido->nombre, recursoBuscado) == 0;
+}
+
 void corto_plazo_blocked() {
     while(1) {
         pthread_mutex_lock(&sem_planificacion);
@@ -51,11 +56,6 @@ void corto_plazo_blocked() {
         t_pcb* pcbBloqueado = queue_pop(cola_blocked_aux);
         pthread_mutex_unlock(&sem_cola_blocked_aux);
         ioBuscada = pcbBloqueado->contexto_ejecucion.io_detail.nombre_io;
-        /*
-        LOG OBLIGATORIO: Motivo de Bloqueo 
-        "PID: <PID> - Bloqueado por: <INTERFAZ / NOMBRE_RECURSO>"
-        */
-        // TODO: Agregar cambio para nombre recurso
         log_info(logs_obligatorios, "PID: %d - Bloqueado por: %s", pcbBloqueado->contexto_ejecucion.pid, ioBuscada);
         interfazConectada* interfazEncontrada = NULL;
         switch (pcbBloqueado->contexto_ejecucion.io_detail.io_instruccion) {
@@ -175,8 +175,7 @@ void agregarPcbCola(t_queue* cola, pthread_mutex_t semaforo, t_pcb* pcb) {
     pthread_mutex_unlock(&semaforo);
 }
 
-void cambiarContexto(t_list* contexto, t_pcb* pcb) {
-    cargar_contexto_recibido(contexto, pcb);
+void comprobarContextoNuevo(t_pcb* pcb) {
     quitarPcbCola(cola_exec, sem_cola_exec);
     sem_post(&semContadorColaExec);
     switch (pcb->contexto_ejecucion.motivo_bloqueo) { 
@@ -255,6 +254,17 @@ void setTemporizadorQuantum (int Q) {
     setitimer(ITIMER_REAL, &timer, NULL);
 }
 
+void bloquearPCBPorRecurso(recursoSistema* recurso, t_pcb* pcb) {
+    pthread_mutex_lock(&(recurso->mutexCola));
+    queue_push(recurso->cola, pcb);
+    pthread_mutex_unlock(&(recurso->mutexCola));
+    sem_post(&(recurso->semCola));
+    pthread_mutex_lock(&sem_cola_blocked);
+    list_add(cola_blocked, &(pcb->contexto_ejecucion.pid));
+    pthread_mutex_unlock(&sem_cola_blocked);
+    log_info(logs_obligatorios, "PID: %d - Bloqueado por: %s", pcb->contexto_ejecucion.pid, recurso->nombre);
+}
+
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
     switch (codigoOperacion) {
@@ -272,8 +282,8 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
         op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
         if ( codigoOperacion == OK_OPERACION ) {
             // Creo que funciona a chequear
+            t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
             if ( !comprobarSiSeDebeEliminar(pcb) ) {
-                t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
                 if ( ALGORITMO_PLANIFICACION == VRR ) {
                     struct itimerval remaining_time;
                     setitimer(ITIMER_REAL, NULL, &remaining_time);
@@ -284,10 +294,55 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                         pcb->quantum_faltante = remaining_time.it_value.tv_sec;
                     }
                 }
-                cambiarContexto(contextoNuevo, pcb);
+                cargar_contexto_recibido(contextoNuevo, pcb);
                 list_destroy(contextoNuevo);
+                if ( pcb->contexto_ejecucion.io_detail.io_instruccion == SIGNAL ) {
+                    recursoSistema* recursoEncontrado = NULL;
+                    recursoBuscado = pcb->contexto_ejecucion.io_detail.nombre_io;
+                    recursoEncontrado = list_find(listaRecursosSistema, buscarRecurso);
+                    if ( recursoEncontrado != NULL ) {
+                        log_info(logs_auxiliares, "Recurso encontrado %s", recursoEncontrado->nombre);
+                        pthread_mutex_lock(&(recursoEncontrado->mutexCantidadInstancias));
+                        sem_post(&(recursoEncontrado->semCantidadInstancias));
+                        recursoEncontrado->cantidadInstancias++;
+                        pthread_mutex_unlock(&(recursoEncontrado->mutexCantidadInstancias));
+                        mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
+                    } else {
+                        log_warning(logs_auxiliares, "Recurso %s no encontrado", recursoBuscado);
+                        agregarPcbCola(cola_exit, sem_cola_exit, pcb);
+                        cambiarEstado(EXIT, pcb);
+                        sem_post(&semContadorColaExit);
+                    }
+                    break;
+                } else if ( pcb->contexto_ejecucion.io_detail.io_instruccion == WAIT ) {
+                    recursoSistema* recursoEncontrado = NULL;
+                    recursoBuscado = pcb->contexto_ejecucion.io_detail.nombre_io;
+                    recursoEncontrado = list_find(listaRecursosSistema, buscarRecurso);
+                    if ( recursoEncontrado != NULL ) {
+                        log_info(logs_auxiliares, "Recurso encontrado %s", recursoEncontrado->nombre);
+                        pthread_mutex_lock(&(recursoEncontrado->mutexCantidadInstancias));
+                        if ( recursoEncontrado->cantidadInstancias > 0 ) {
+                            sem_wait(&(recursoEncontrado->semCantidadInstancias));
+                            recursoEncontrado->cantidadInstancias--;
+                            pthread_mutex_unlock(&(recursoEncontrado->mutexCantidadInstancias));
+                            mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
+                            break;
+                        }
+                        pthread_mutex_unlock(&(recursoEncontrado->mutexCantidadInstancias));
+                        cambiarEstado(BLOCKED, pcb);
+                        bloquearPCBPorRecurso(recursoEncontrado, pcb);
+                    } else {
+                        log_warning(logs_auxiliares, "Recurso %s no encontrado", recursoBuscado);
+                        agregarPcbCola(cola_exit, sem_cola_exit, pcb);
+                        cambiarEstado(EXIT, pcb);
+                        sem_post(&semContadorColaExit);
+                    }
+                    break;
+                }
+                comprobarContextoNuevo(pcb);
             } else {
-                t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
+                //quitarPcbCola(cola_exec, sem_cola_exec);
+                sem_post(&semContadorColaExec);
                 list_destroy(contextoNuevo);
                 enviarPCBExit(pcb);
             }
@@ -334,7 +389,6 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     switch (estadoNuevo) {
     case READY:
         pcb->contexto_ejecucion.state = READY;
-        // TODO agregar cola aux a esto
         log_info(logs_obligatorios, "Cola Ready %s: [%s]", config_get_string_value(config, "ALGORITMO_PLANIFICACION"), obtenerPidsColaReadyYReadyAux());
         break;
     case EXEC:
@@ -603,6 +657,68 @@ void inicializarListasInterfaces() {
     pthread_mutex_init(&mutexInterfacesFS, NULL);
 }
 
+void atender_recurso(recursoSistema* dataRecurso) {
+    t_pcb* pcbDesbloqueado;
+    while(1) {
+        pthread_mutex_lock(&sem_planificacion);
+        while( !planificacionEjecutandose || planificacionNoEjecutandosePorFinalizarProceso ) {
+            pthread_cond_wait(&condicion_planificacion, &sem_planificacion);
+        }
+        pthread_mutex_unlock(&sem_planificacion);
+        sem_wait(&dataRecurso->semCola);
+        sem_wait(&dataRecurso->semCantidadInstancias);
+        pthread_mutex_lock(&dataRecurso->mutexCantidadInstancias);
+        dataRecurso->cantidadInstancias--;
+        pthread_mutex_unlock(&dataRecurso->mutexCantidadInstancias);
+
+        pthread_mutex_lock(&dataRecurso->mutexCola);
+        pcbDesbloqueado = queue_pop(dataRecurso->cola);
+        pthread_mutex_unlock(&dataRecurso->mutexCola);
+
+        pcbDesbloqueado->contexto_ejecucion.motivo_bloqueo = NOTHING;
+        pthread_mutex_lock(&sem_cola_blocked);
+        for(int i = 0; i < list_size(cola_blocked); i++) {
+            uint32_t pidAChequear = *(uint32_t*) list_get(cola_blocked, i);
+            if ( pidAChequear == pcbDesbloqueado->contexto_ejecucion.pid ) {
+                list_remove(cola_blocked, i);
+            }
+        }       
+        pthread_mutex_unlock(&sem_cola_blocked);
+        if ( ALGORITMO_PLANIFICACION == VRR && pcbDesbloqueado->quantum_faltante != QUANTUM ) {
+            agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbDesbloqueado);
+        } else {
+            agregarPcbCola(cola_ready, sem_cola_ready, pcbDesbloqueado);
+        }
+        cambiarEstado(READY, pcbDesbloqueado);
+        sem_post(&semContadorColaReady);
+    }
+}
+
+void inicializarRecursos() {
+    listaRecursosSistema = list_create();
+    for(int i = 0; RECURSOS[i] != NULL; i++) {
+        recursoSistema* nuevoRecurso = malloc(sizeof(recursoSistema));
+        nuevoRecurso -> nombre = RECURSOS[i];
+        nuevoRecurso -> cola = queue_create();
+        sem_t semaforoCola;
+        sem_init(&semaforoCola, 0, 0);
+        nuevoRecurso -> semCola = semaforoCola;
+        sem_t semaforoCantidadRecurso;
+        sem_init(&semaforoCantidadRecurso, 0, INSTANCIAS_RECURSOS[i]);
+        nuevoRecurso -> semCantidadInstancias = semaforoCantidadRecurso;
+        nuevoRecurso -> cantidadInstancias = INSTANCIAS_RECURSOS[i];
+        pthread_mutex_t mutexCantidadInstancias;
+        pthread_mutex_init(&mutexCantidadInstancias, NULL);
+        nuevoRecurso -> mutexCantidadInstancias = mutexCantidadInstancias;
+        pthread_mutex_t mutexCola;
+        pthread_mutex_init(&mutexCola, NULL);
+        nuevoRecurso -> mutexCola = mutexCola;
+        list_add(listaRecursosSistema, nuevoRecurso);
+        pthread_t thread_recurso;
+        crearHiloDetach(&thread_recurso, (void*) atender_recurso, (recursoSistema*) nuevoRecurso, nuevoRecurso->nombre, logs_auxiliares, logs_error);
+    }
+}
+
 void inicializarVariables() {
     // Creacion de logs
     crearLogs();
@@ -612,6 +728,9 @@ void inicializarVariables() {
 
     // Inicializar semaforos
     inicializarSemaforos();
+
+    // Inicializar estructura de recursos
+    inicializarRecursos();
     
     // Inicializacion servidor
     socket_servidor = iniciar_servidor(PUERTO_ESCUCHA, logs_auxiliares, logs_error);
@@ -1191,6 +1310,19 @@ void eliminarInterfaz(interfazConectada* interfazAEliminar) {
     free(interfazAEliminar);
 }
 
+void eliminarRecurso(recursoSistema* recursoAEliminar) {
+    pthread_mutex_destroy(&recursoAEliminar->mutexCantidadInstancias);
+    pthread_mutex_destroy(&recursoAEliminar->mutexCola);
+    sem_destroy(&recursoAEliminar->semCantidadInstancias);
+    sem_destroy(&recursoAEliminar->semCola);
+    queue_destroy_and_destroy_elements(recursoAEliminar->cola, (void*) enviarPCBExit);
+    free(recursoAEliminar);
+}
+
+void liberarRecursos() {
+    list_destroy_and_destroy_elements(listaRecursosSistema, (void*) eliminarRecurso);
+}
+
 void liberarInterfaces() {
     list_destroy_and_destroy_elements(interfacesGenericas, (void*) eliminarInterfaz);
     list_destroy_and_destroy_elements(interfacesSTDIN, (void*) eliminarInterfaz);
@@ -1236,4 +1368,5 @@ void terminarPrograma() {
     sem_destroy(&semContadorColaBlocked);
     sem_destroy(&semContadorColaExit);
     liberarInterfaces();
+    liberarRecursos();
 }

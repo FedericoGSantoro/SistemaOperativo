@@ -53,6 +53,18 @@ char** RECURSOS;
 int* INSTANCIAS_RECURSOS;
 int GRADO_MULTIPROGRAMACION;
 
+typedef struct {
+    char* nombre;
+    t_queue* cola;
+    sem_t semCola;
+    sem_t semCantidadInstancias;
+    int cantidadInstancias;
+    pthread_mutex_t mutexCantidadInstancias;
+    pthread_mutex_t mutexCola;
+} recursoSistema;
+
+t_list* listaRecursosSistema;
+
 /*---------ESTRUCTURAS INTERFACES IO---------*/
 
 
@@ -66,6 +78,7 @@ pthread_mutex_t mutexInterfacesSTDOUT;
 pthread_mutex_t mutexInterfacesFS;
 
 char* ioBuscada;
+char* recursoBuscado;
 typedef enum{
     GENERICA,
     STDIN,

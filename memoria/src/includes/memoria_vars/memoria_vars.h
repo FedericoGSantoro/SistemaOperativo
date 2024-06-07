@@ -11,7 +11,7 @@
 //cache para almacenar lista de instrucciones (key = PID, value = lista de instrucciones)
 extern t_dictionary* cache_instrucciones;
 
-//cache para almacenar tablas por procesos (key = PID, value = lista, la cual sera la tabla de paginas)
+//mapa para almacenar tablas por procesos (key = PID, value = lista, la cual sera la tabla de paginas)
 extern t_dictionary* cache_tabla_por_proceso;
 
 //Globales del Config
