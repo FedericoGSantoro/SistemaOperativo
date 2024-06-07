@@ -188,7 +188,7 @@ void inicializar_memoria_almacenamiento() {
     pthread_mutex_init(&espacio_usuario.mx_espacio_usuario, NULL);
     vector_marcos = calloc(cant_marcos, sizeof(int));
 
-    for(int i=0; i< tam_memoria() / tam_pagina(); i++) //creo los marcos/paginas 
+    for(int i=0; i < cant_marcos; i++) //creo los marcos/paginas 
     {
        vector_marcos[i] =  0;
     }
@@ -206,5 +206,5 @@ void terminar_programa()
     dictionary_destroy_and_destroy_elements(cache_tabla_por_proceso, liberar_lista_de_datos_planos);
     free(vector_marcos);
     free(espacio_usuario.espacio_usuario);
-    sem_destroy(&espacio_usuario.sem_espacio_usuario);
+    pthread_mutex_destroy(&espacio_usuario.mx_espacio_usuario);
 }
