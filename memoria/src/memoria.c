@@ -16,7 +16,7 @@ int main(void)
     inicializar_semaforos();
     //al ser dinámico los diccionarios se inicializan en el main y no como constante global, pues la memoria cambia
     inicializar_diccionario(cache_instrucciones);
-    inicializar_diccionario(cache_tabla_por_proceso);
+    inicializar_diccionario(tablas_por_proceso);
     inicializar_memoria_almacenamiento();    
     
     socketFdMemoria = iniciar_servidor(memConfig.puertoEscucha, loggerAux, loggerError);
@@ -84,6 +84,16 @@ void gestionar_conexion(void *puntero_fd_cliente)
             t_list *valoresPaquete = recibir_paquete(fd_cliente);
             list_iterate(valoresPaquete, (void *)iteradorPaquete);
             break;
+        case DEVOLVER_TAM_PAGINA:
+            char* tam_pagina_str = int_to_string(memConfig.tamPagina);
+            enviar_mensaje(tam_pagina_str, fd_cliente);
+            free(tam_pagina_str);
+            break;
+        case DEVOLVER_MARCO:
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
+            devolver_marco(fd_cliente);
+            break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
             crear_proceso(fd_cliente);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
@@ -105,6 +115,20 @@ void gestionar_conexion(void *puntero_fd_cliente)
             break;
         }
     }
+}
+
+void devolver_marco(int fd_cliente_cpu) {
+
+    t_list *paquete_recibido = recibir_paquete(fd_cliente_cpu); 
+    
+    // recibirNumPagina
+    int numero_pagina = *(int*) list_get(paquete_recibido, 0);
+    // recibirPID
+    int pid = *(int*) list_get(paquete_recibido, 1);
+   
+    int numero_marco = resolver_solicitud_de_marco(numero_pagina, pid);
+
+    send(fd_cliente_cpu, &numero_marco, sizeof(int),0);
 }
 
 void crear_proceso(int fd_cliente_kernel) {
@@ -203,7 +227,7 @@ void terminar_programa()
     config_destroy(config);
     liberar_conexion(socketFdMemoria);
     dictionary_destroy_and_destroy_elements(cache_instrucciones, destroyer_queue_con_datos_simples);
-    dictionary_destroy_and_destroy_elements(cache_tabla_por_proceso, liberar_lista_de_datos_planos);
+    dictionary_destroy_and_destroy_elements(tablas_por_proceso, liberar_lista_de_datos_planos);
     free(vector_marcos);
     free(espacio_usuario.espacio_usuario);
     pthread_mutex_destroy(&espacio_usuario.mx_espacio_usuario);

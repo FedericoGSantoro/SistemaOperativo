@@ -113,6 +113,27 @@ void io_gen_sleep_instruction(t_list* parametros) {
     free(io_instruccion);
 }
 
+void mov_in_instruction(t_list* parametros) {
+
+    char* registro = (char*) list_get(parametros, 0);
+    uint32_t* registro_mapeado = mapear_registro(registro);
+
+    int dir_logica = string_to_int(parametros[1]);
+    int dir_fisica = traducir_direccion_mmu(dir_logica, pid);
+    if(dir_fisica == -1)
+    {
+        //TODO: Revisar que hacer en caso de error
+       return;
+    }
+    
+    char *valor_leido = leer_de_memoria(dir_fisica, pid);
+    *registro_mapeado = int_to_string(valor_leido);
+
+    log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %s", pid, dir_fisica, valor_leido);
+    free(valor_leido);
+}
+
+
 void exit_instruction(t_list* parametros) {
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
 }

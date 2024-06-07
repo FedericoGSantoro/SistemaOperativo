@@ -1,5 +1,12 @@
 #include "./includes/cpu.h"
 
+void getTamanioPagina() {
+    enviar_codigo_op(DEVOLVER_TAM_PAGINA, fd_memoria);
+    recibir_operacion(fd_memoria);
+    char* tam_pagina_obtenido = recibir_mensaje(fd_memoria);
+    tam_pagina = string_to_int(tam_pagina_obtenido);
+}
+
 int main(int argc, char *argv[]) {
 
     iniciarLogs();
@@ -11,6 +18,7 @@ int main(int argc, char *argv[]) {
 
     iniciarServidoresCpu();
     iniciarConexionCpuMemoria();
+    getTamanioPagina();
     while (esperarClientes());
 
     terminarPrograma();

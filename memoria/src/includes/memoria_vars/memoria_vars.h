@@ -12,7 +12,7 @@
 extern t_dictionary* cache_instrucciones;
 
 //mapa para almacenar tablas por procesos (key = PID, value = lista, la cual sera la tabla de paginas)
-extern t_dictionary* cache_tabla_por_proceso;
+extern t_dictionary* tablas_por_proceso;
 
 //Globales del Config
 typedef struct {
@@ -35,6 +35,18 @@ typedef struct
 extern t_espacio_usuario espacio_usuario;
 
 extern int *vector_marcos;
+
+// estructura para las paginas en la tabla de paginas (la lista del mapa de tablas por proceso, contiene por cada objeto, una estructura de estas)
+typedef struct{
+    int marco;
+    bool presencia;
+    int modificado;
+    int pos_en_swap;
+    time_t tiempo_carga;//Para FIFO
+    time_t ultima_referencia;//Para LRU
+    int PID;
+    int indice_pag;
+} t_pagina;
 
 //Variables Globales
 extern t_log* loggerOblig; 

@@ -4,7 +4,7 @@
 t_dictionary* cache_instrucciones;
 
 //mapa para almacenar tablas por procesos
-t_dictionary* cache_tabla_por_proceso;
+t_dictionary* tablas_por_proceso;
 
 //Globales del Config
 t_mem_config memConfig;

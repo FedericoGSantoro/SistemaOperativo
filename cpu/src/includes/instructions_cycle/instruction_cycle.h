@@ -7,6 +7,8 @@
 #include "../../../../utils/src/types/types.h"
 #include "../../../../utils/src/liberador/liberador.h"
 #include "../../../../utils/src/castingfunctions/castfunctions.h"
+#include "../mmu/mmu.h"
+
 
 // Estructuras de instruccion
 

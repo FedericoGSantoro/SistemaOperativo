@@ -25,6 +25,9 @@ extern int fd_kernel_dispatch;
 extern int fd_kernel_interrupt;
 extern int fd_memoria;
 
+// tamanio de pagina de memoria
+extern int tam_pagina;
+
 // hilos
 extern pthread_t hilo_kernel_dispatch_cpu;
 extern pthread_t hilo_kernel_interrumpt_cpu;
