@@ -39,3 +39,33 @@ int traducir_direccion_mmu(int dir_logica, int pid)
     int dir_fisica = (num_marco * tam_pagina) + desplazamiento;
     return dir_fisica;
 }
+
+char* leer_de_memoria(int dir_fisica, int pid)
+{
+    t_paquete *paquete = crear_paquete(LEER_VALOR_MEMORIA);
+
+    agregar_a_paquete(paquete, &dir_fisica, sizeof(int));
+
+    agregar_a_paquete(paquete, &pid, sizeof(int));
+
+    enviar_paquete(paquete, fd_memoria);
+
+    t_buffer *buffer = crear_buffer();
+    op_codigo cod_op = recibir_operacion(fd_memoria);
+    if(cod_op != WRITE)
+    {
+        log_error(logger_aux_cpu, "Ocurrio un error al hacer MOV_IN");
+    }
+
+    buffer->stream = recibir_buffer(&(buffer->size), fd_memoria);
+
+    uint32_t valor_leido;
+    memcpy(&valor_leido, buffer->stream, sizeof(uint32_t));
+
+    char* valor_cadena = (char*)malloc(12 * sizeof(char));
+
+    snprintf(valor_cadena, 12, "%u", valor_leido);
+    
+    liberar_buffer(buffer); 
+    return valor_cadena;
+}
