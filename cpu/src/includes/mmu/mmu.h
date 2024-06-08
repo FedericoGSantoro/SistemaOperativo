@@ -6,5 +6,6 @@
 
 int traducir_direccion_mmu(int dir_logica, int pid);
 char* leer_de_memoria(int dir_fisica, int pid);
+void escribir_en_memoria(int dir_fisica, int pid, uint32_t registro, int num_pagina);
 
 #endif

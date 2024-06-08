@@ -101,6 +101,11 @@ void gestionar_conexion(void *puntero_fd_cliente)
             alarm(memConfig.retardoRespuesta / 1000);
             leer_valor_memoria(fd_cliente);
             break;
+        case ESCRIBIR_VALOR_MEMORIA:
+
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
+            break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
             crear_proceso(fd_cliente);
             enviar_codigo_op(OK_OPERACION, fd_cliente);

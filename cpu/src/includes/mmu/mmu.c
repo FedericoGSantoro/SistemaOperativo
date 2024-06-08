@@ -63,3 +63,30 @@ char* leer_de_memoria(int dir_fisica, int pid)
     
     return valor_cadena;
 }
+
+void escribir_en_memoria(int dir_fisica, int pid, uint32_t registro, int num_pagina)
+{
+    t_paquete *paquete = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
+
+    agregar_a_paquete(paquete, &dir_fisica, sizeof(int));
+
+    agregar_a_paquete(paquete, &pid, sizeof(int));
+
+    agregar_a_paquete(paquete, &registro, sizeof(uint32_t));
+
+    agregar_a_paquete(paquete, &num_pagina, sizeof(int));
+
+    enviar_paquete(paquete, fd_memoria);
+    
+    op_codigo cod_op = recibir_operacion(fd_memoria);
+    while(cod_op == OK_OPERACION){
+        cod_op = recibir_operacion(fd_memoria);
+    }
+    if(cod_op != ESCRIBIR_VALOR_MEMORIA)
+    {
+        log_error(logger_aux_cpu, "Error al escribir en memoria");
+        return;
+    }
+
+    log_info(logger_aux_cpu, "SE ESCRIBIO EN MEMORIA");
+}

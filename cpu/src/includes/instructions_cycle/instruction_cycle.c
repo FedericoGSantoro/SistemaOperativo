@@ -133,6 +133,23 @@ void mov_in_instruction(t_list* parametros) {
     free(valor_leido);
 }
 
+void mov_out_instruction(t_list* parametros) {
+
+    char* registro = (char*) list_get(parametros, 1);
+    uint32_t* registro_mapeado = mapear_registro(registro);
+
+    int dir_logica = string_to_int((char*) list_get(parametros, 0));
+    int dir_fisica = traducir_direccion_mmu(dir_logica, pid);
+    if(dir_fisica == -1) {   
+        log_info(logger_aux_cpu, "HUBO PAGE FAULT");
+        return;
+    }
+    
+    int num_pagina = numero_pagina(dir_logica);
+    escribir_en_memoria(dir_fisica, pid, *registro, num_pagina);
+
+    log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", ctx->pid, dir_fisica, *registro);
+}
 
 void exit_instruction(t_list* parametros) {
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
