@@ -3,6 +3,8 @@
 void inicializar_diccionario(t_dictionary* diccionario);
 void inicializar_memoria_almacenamiento();
 void crear_proceso(int fd_cliente_kernel);
+void leer_valor_memoria(int fd_cliente_cpu);
+void devolver_marco(int fd_cliente_cpu);
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel);
 char* fetch_instruccion_de_cliente(int fd_cliente);
 void return_instruccion(char* instruccion, int fd_cliente);
@@ -94,6 +96,11 @@ void gestionar_conexion(void *puntero_fd_cliente)
             alarm(memConfig.retardoRespuesta / 1000);
             devolver_marco(fd_cliente);
             break;
+        case LEER_VALOR_MEMORIA:
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
+            leer_valor_memoria(fd_cliente);
+            break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
             crear_proceso(fd_cliente);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
@@ -129,6 +136,28 @@ void devolver_marco(int fd_cliente_cpu) {
     int numero_marco = resolver_solicitud_de_marco(numero_pagina, pid);
 
     send(fd_cliente_cpu, &numero_marco, sizeof(int),0);
+}
+
+void leer_valor_memoria(int fd_cliente_cpu) {
+
+    t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);            
+    int dir_fisica = list_get(valoresPaquete, 0);
+    int pid = list_get(valoresPaquete, 1);
+
+    uint32_t *valor_leido_de_espacio = (uint32_t *)malloc(sizeof(uint32_t));
+            
+    //semaforo para acceso a espacio compartido
+    sem_wait(&espacio_usuario.mx_espacio_usuario);
+    memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, sizeof(uint32_t));
+    log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
+    sem_post(&espacio_usuario);
+    //semaforo para acceso a espacio compartido
+
+    t_paquete* paquete_a_enviar = crear_paquete(WRITE);
+    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, sizeof(uint32_t));
+    enviar_paquete(paquete_a_enviar, *fd_cliente_cpu);
+
+    free(valor_leido_de_espacio);
 }
 
 void crear_proceso(int fd_cliente_kernel) {
