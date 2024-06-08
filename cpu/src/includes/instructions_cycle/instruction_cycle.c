@@ -148,7 +148,7 @@ void mov_out_instruction(t_list* parametros) {
     int num_pagina = numero_pagina(dir_logica);
     escribir_en_memoria(dir_fisica, pid, *registro, num_pagina);
 
-    log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", ctx->pid, dir_fisica, *registro);
+    log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro);
 }
 
 void exit_instruction(t_list* parametros) {

@@ -4,6 +4,7 @@ void inicializar_diccionario(t_dictionary* diccionario);
 void inicializar_memoria_almacenamiento();
 void crear_proceso(int fd_cliente_kernel);
 void leer_valor_memoria(int fd_cliente_cpu);
+void escribir_valor_memoria(int fd_cliente_cpu);
 void devolver_marco(int fd_cliente_cpu);
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel);
 char* fetch_instruccion_de_cliente(int fd_cliente);
@@ -102,9 +103,9 @@ void gestionar_conexion(void *puntero_fd_cliente)
             leer_valor_memoria(fd_cliente);
             break;
         case ESCRIBIR_VALOR_MEMORIA:
-
             signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
             alarm(memConfig.retardoRespuesta / 1000);
+            escribir_valor_memoria(fd_cliente);
             break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
             crear_proceso(fd_cliente);
@@ -163,6 +164,42 @@ void leer_valor_memoria(int fd_cliente_cpu) {
     enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
 
     free(valor_leido_de_espacio);
+}
+
+void modificar_tabla_paginas(int pid, int num_pag)
+{
+    char* pid_str = int_to_string(pid);
+    t_list* tabla_proceso = dictionary_get(tablas_por_proceso, pid_str);
+    t_pagina *pagina_a_modificar = list_get(tabla_proceso, num_pag);
+
+    pagina_a_modificar->modificado = 1;
+    free(pid_str);
+}
+
+void escribir_valor_memoria(int fd_cliente_cpu) {
+
+    t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);
+
+    int dir_fisica = *(int*) list_get(valoresPaquete, 0);
+    int pid = *(int*) list_get(valoresPaquete, 1);
+
+    uint32_t* registro = (uint32_t*) list_get(valoresPaquete, 2);
+
+    int num_pagina = *(int*) list_get(valoresPaquete, 2);
+            
+    //semaforo para acceso a espacio compartido --> memoria de usuario
+    pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
+    memcpy(espacio_usuario.espacio_usuario + dir_fisica, registro, sizeof(uint32_t));
+    log_info(loggerOblig, "PID: %d - Accion: ESCRIBIR - Direccion fisica: %d", pid, dir_fisica);
+    pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
+    //semaforo para acceso a espacio compartido --> memoria de usuario
+
+    //MODIFICO LA PAGINA
+    modificar_tabla_paginas(pid, num_pagina);
+
+    //LE AVISO A CPU
+    t_paquete* paquete_a_enviar = crear_paquete(WRITE);
+    enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
 }
 
 void crear_proceso(int fd_cliente_kernel) {

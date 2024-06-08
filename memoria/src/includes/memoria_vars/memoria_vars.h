@@ -4,6 +4,7 @@
 #include "../../utils/src/config/configs.h"
 #include <commons/collections/dictionary.h>
 #include <commons/collections/list.h>
+#include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
 

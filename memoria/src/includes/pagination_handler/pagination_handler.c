@@ -1,5 +1,4 @@
 #include "./pagination_handler.h"
-#include "../../../../utils/src/castingfunctions/castfunctions.h"
 
 int obtener_cant_pags(int size_proceso) {
      return ceil(size_proceso / memConfig.tamPagina); //dependiendo del tamaño del proceso se obtiene la cantidad de paginas con la division entera
@@ -17,12 +16,13 @@ void inicializar_tabla_paginas(int pid) {
 
 int resolver_solicitud_de_marco(int numero_pagina, int pid) {
 
-    t_list* tabla_proceso = dictionary_get(tablas_por_proceso, pid);
+    char* pid_str = int_to_string(pid);
+    t_list* tabla_proceso = dictionary_get(pid_str, pid);
 
     if(numero_pagina < 0 || numero_pagina >= (list_size(tabla_proceso))){
         log_error(loggerAux, "El numero de pagina se encuentra fuera de los limites");
         //TODO: Ver que hacer cuando hay errorcito
-        return;
+        return -1;
     }
 
     t_pagina *pagina = list_get(tabla_proceso, numero_pagina);
@@ -31,7 +31,7 @@ int resolver_solicitud_de_marco(int numero_pagina, int pid) {
     {
         log_error(loggerAux, "La pagina no se encuentra en memoria");
         //TODO: Ver que hacer cuando hay errorcito
-        return;
+        return -1;
     }
 
     int numero_marco = pagina -> marco;
@@ -39,5 +39,6 @@ int resolver_solicitud_de_marco(int numero_pagina, int pid) {
     
     log_info(loggerOblig, "PID: %d - Pagina: %d - Marco: %d",pid, numero_pagina, numero_marco);
 
+    free(pid_str);
     return numero_marco;
 }
