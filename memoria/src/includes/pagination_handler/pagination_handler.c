@@ -15,11 +15,11 @@ void inicializar_tabla_paginas(int pid) {
     log_info(loggerOblig, "PID: %d - Tamaño: %d", pid, cant_paginas);
 }
 
-void resolver_solicitud_de_marco(int numero_pagina, int pid) {
+int resolver_solicitud_de_marco(int numero_pagina, int pid) {
 
     t_list* tabla_proceso = dictionary_get(tablas_por_proceso, pid);
 
-    if(numero_pagina < 0 || numero_pagina >= (list_size(tabla_proceso->tabla_paginas))){
+    if(numero_pagina < 0 || numero_pagina >= (list_size(tabla_proceso))){
         log_error(loggerAux, "El numero de pagina se encuentra fuera de los limites");
         //TODO: Ver que hacer cuando hay errorcito
         return;

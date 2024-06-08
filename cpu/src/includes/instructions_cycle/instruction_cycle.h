@@ -35,6 +35,7 @@ void sub_instruction(t_list* parametros);
 void set_instruction(t_list* parametros);
 void jnz_instruction(t_list* parametros);
 void io_gen_sleep_instruction(t_list* parametros);
+void mov_in_instruction(t_list* parametros);
 void exit_instruction(t_list* parametros);
 t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion);
 t_instruccion *new_instruction(t_tipo_instruccion tipo_instruccion, t_list *parametros);

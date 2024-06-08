@@ -141,21 +141,21 @@ void devolver_marco(int fd_cliente_cpu) {
 void leer_valor_memoria(int fd_cliente_cpu) {
 
     t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);            
-    int dir_fisica = list_get(valoresPaquete, 0);
-    int pid = list_get(valoresPaquete, 1);
+    int dir_fisica = *(int*) list_get(valoresPaquete, 0);
+    int pid = *(int*) list_get(valoresPaquete, 1);
 
     uint32_t *valor_leido_de_espacio = (uint32_t *)malloc(sizeof(uint32_t));
             
     //semaforo para acceso a espacio compartido
-    sem_wait(&espacio_usuario.mx_espacio_usuario);
+    pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
     memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, sizeof(uint32_t));
     log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
-    sem_post(&espacio_usuario);
+    pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
 
     t_paquete* paquete_a_enviar = crear_paquete(WRITE);
     agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, sizeof(uint32_t));
-    enviar_paquete(paquete_a_enviar, *fd_cliente_cpu);
+    enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
 
     free(valor_leido_de_espacio);
 }

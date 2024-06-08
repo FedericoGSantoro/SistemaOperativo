@@ -5,6 +5,6 @@
 #include <math.h>
 
 void inicializar_tabla_paginas();
-void resolver_solicitud_de_marco(int numero_pagina, int pid);
+int resolver_solicitud_de_marco(int numero_pagina, int pid);
 
 #endif

@@ -118,7 +118,7 @@ void mov_in_instruction(t_list* parametros) {
     char* registro = (char*) list_get(parametros, 0);
     uint32_t* registro_mapeado = mapear_registro(registro);
 
-    int dir_logica = string_to_int(parametros[1]);
+    int dir_logica = string_to_int((char*) list_get(parametros, 1));
     int dir_fisica = traducir_direccion_mmu(dir_logica, pid);
     if(dir_fisica == -1)
     {
@@ -127,7 +127,7 @@ void mov_in_instruction(t_list* parametros) {
     }
     
     char *valor_leido = leer_de_memoria(dir_fisica, pid);
-    *registro_mapeado = int_to_string(valor_leido);
+    *registro_mapeado = string_to_int(valor_leido);
 
     log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %s", pid, dir_fisica, valor_leido);
     free(valor_leido);
@@ -155,8 +155,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
         tipo_instruccion_mapped.nombre_instruccion = SUB;
         tipo_instruccion_mapped.execute = sub_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "MOV_IN"))
+    else if (string_equals_ignore_case(nombre_instruccion, "MOV_IN")) {
         tipo_instruccion_mapped.nombre_instruccion = MOV_IN;
+        tipo_instruccion_mapped.execute = mov_in_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "MOV_OUT"))
         tipo_instruccion_mapped.nombre_instruccion = MOV_OUT;
     else if (string_equals_ignore_case(nombre_instruccion, "RESIZE"))
