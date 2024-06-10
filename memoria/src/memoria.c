@@ -165,7 +165,7 @@ void leer_valor_memoria(int fd_cliente_cpu) {
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
 
-    t_paquete* paquete_a_enviar = crear_paquete(WRITE);
+    t_paquete* paquete_a_enviar = crear_paquete(WRITE_EN_MEMORIA);
     agregar_a_paquete(paquete_a_enviar, &valor_leido_de_espacio, sizeof(uint32_t));
     enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
 }

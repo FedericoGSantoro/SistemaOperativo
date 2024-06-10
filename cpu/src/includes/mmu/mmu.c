@@ -51,7 +51,7 @@ uint32_t* leer_de_memoria(int dir_fisica, int pid)
     enviar_paquete(paquete, fd_memoria);
 
     op_codigo cod_op = recibir_operacion(fd_memoria);
-    if(cod_op != WRITE)
+    if(cod_op != WRITE_EN_MEMORIA)
     {
         log_error(logger_aux_cpu, "Ocurrio un error al hacer MOV_IN");
     }
