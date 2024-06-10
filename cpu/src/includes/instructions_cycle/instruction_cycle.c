@@ -118,9 +118,9 @@ void mov_in_instruction(t_list* parametros) {
     char* registro_datos = (char*) list_get(parametros, 0);
     uint32_t* registro_datos_mapeado = mapear_registro(registro_datos);
     char* registro_direccion = (char*) list_get(parametros, 1);
-    uint32_t registro_direccion_mapeado = *mapear_registro(registro_direccion);
+    uint32_t* registro_direccion_mapeado = mapear_registro(registro_direccion);
 
-    int dir_fisica = traducir_direccion_mmu(registro_direccion_mapeado, pid);
+    int dir_fisica = traducir_direccion_mmu(*registro_direccion_mapeado, pid);
     if(dir_fisica == -1)
     {
         //TODO: Revisar que hacer en caso de error
@@ -128,8 +128,9 @@ void mov_in_instruction(t_list* parametros) {
     }
 
     uint32_t* valor_leido = leer_de_memoria(dir_fisica, pid);
-    //*registro_datos_mapeado = *valor_leido;
-
+    *registro_datos_mapeado = *valor_leido;
+    *registro_direccion_mapeado = *valor_leido;
+    //revisar esto porlas!
     log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_mapeado);
 }
 

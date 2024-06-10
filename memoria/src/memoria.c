@@ -159,7 +159,6 @@ void leer_valor_memoria(int fd_cliente_cpu) {
             
     //semaforo para acceso a espacio compartido
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
-    //TODO: preguntar si hay que reemplazar o no el valor! memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, sizeof(uint32_t));
     valor_leido_de_espacio = *(uint32_t*) (espacio_usuario.espacio_usuario + dir_fisica);
     log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
