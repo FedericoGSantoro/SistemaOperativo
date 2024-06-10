@@ -25,7 +25,7 @@ int obtener_cant_marcos() {
 void inicializar_memoria_almacenamiento() {
 
     int cant_marcos = obtener_cant_marcos();
-    espacio_usuario.espacio_usuario = malloc(sizeof(memConfig.tamMemoria));// inicializa todos sus bytes a cero.
+    espacio_usuario.espacio_usuario = calloc(1, sizeof(memConfig.tamMemoria));// inicializa todos sus bytes a cero.
     pthread_mutex_init(&espacio_usuario.mx_espacio_usuario, NULL);
     vector_marcos = calloc(cant_marcos, sizeof(int));
 

@@ -130,7 +130,7 @@ void mov_in_instruction(t_list* parametros) {
     uint32_t* valor_leido = leer_de_memoria(dir_fisica, pid);
     *registro_datos_mapeado = *valor_leido;
     *registro_direccion_mapeado = *valor_leido;
-    //revisar esto porlas!
+    //revisar esto
     log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_mapeado);
 }
 

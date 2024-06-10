@@ -155,18 +155,19 @@ void leer_valor_memoria(int fd_cliente_cpu) {
     int dir_fisica = *(int*) list_get(valoresPaquete, 0);
     int pid = *(int*) list_get(valoresPaquete, 1);
 
-    uint32_t valor_leido_de_espacio;
+    uint32_t* valor_leido_de_espacio = (uint32_t*) malloc(sizeof(uint32_t));
             
     //semaforo para acceso a espacio compartido
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
-    valor_leido_de_espacio = *(uint32_t*) (espacio_usuario.espacio_usuario + dir_fisica);
+    memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, sizeof(uint32_t));
     log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
 
     t_paquete* paquete_a_enviar = crear_paquete(WRITE_EN_MEMORIA);
-    agregar_a_paquete(paquete_a_enviar, &valor_leido_de_espacio, sizeof(uint32_t));
+    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, sizeof(uint32_t));
     enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
+    free(valor_leido_de_espacio);
 }
 
 void resize_memoria(int fd_cliente_cpu) {
@@ -211,7 +212,8 @@ void escribir_valor_memoria(int fd_cliente_cpu) {
 
     int dir_fisica = *(int*) list_get(valoresPaquete, 0);
     int pid = *(int*) list_get(valoresPaquete, 1);
-    uint32_t* registro = (uint32_t*) list_get(valoresPaquete, 2);
+    uint32_t *registro = malloc(sizeof(uint32_t));
+    *registro = *(uint32_t*) list_get(valoresPaquete, 2);
     int num_pagina = *(int*) list_get(valoresPaquete, 3);
             
     //semaforo para acceso a espacio compartido --> memoria de usuario
@@ -223,6 +225,7 @@ void escribir_valor_memoria(int fd_cliente_cpu) {
 
     //LE AVISO A CPU
     enviar_codigo_op(OK_OPERACION, fd_cliente_cpu);
+    free(registro);
 }
 
 void crear_proceso(int fd_cliente_kernel) {
