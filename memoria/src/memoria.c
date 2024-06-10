@@ -1,8 +1,7 @@
 #include "./includes/memoria.h"
 
-void inicializar_diccionario(t_dictionary* diccionario);
-void inicializar_memoria_almacenamiento();
 void crear_proceso(int fd_cliente_kernel);
+void resize_memoria(int fd_cliente_cpu);
 void leer_valor_memoria(int fd_cliente_cpu);
 void escribir_valor_memoria(int fd_cliente_cpu);
 void devolver_marco(int fd_cliente_cpu);
@@ -18,8 +17,8 @@ int main(void)
     inicializar_config();
     inicializar_semaforos();
     //al ser dinámico los diccionarios se inicializan en el main y no como constante global, pues la memoria cambia
-    inicializar_diccionario(cache_instrucciones);
-    inicializar_diccionario(tablas_por_proceso);
+    cache_instrucciones = dictionary_create();
+    tablas_por_proceso = dictionary_create();
     inicializar_memoria_almacenamiento();    
     
     socketFdMemoria = iniciar_servidor(memConfig.puertoEscucha, loggerAux, loggerError);
@@ -107,6 +106,12 @@ void gestionar_conexion(void *puntero_fd_cliente)
             alarm(memConfig.retardoRespuesta / 1000);
             escribir_valor_memoria(fd_cliente);
             break;
+        case RESIZE_EN_MEMORIA:
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
+            resize_memoria(fd_cliente);
+            enviar_codigo_op(OK_OPERACION, fd_cliente);
+            break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
             crear_proceso(fd_cliente);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
@@ -150,29 +155,54 @@ void leer_valor_memoria(int fd_cliente_cpu) {
     int dir_fisica = *(int*) list_get(valoresPaquete, 0);
     int pid = *(int*) list_get(valoresPaquete, 1);
 
-    uint32_t *valor_leido_de_espacio = (uint32_t *)malloc(sizeof(uint32_t));
+    uint32_t valor_leido_de_espacio;
             
     //semaforo para acceso a espacio compartido
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
-    memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, sizeof(uint32_t));
+    //TODO: preguntar si hay que reemplazar o no el valor! memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, sizeof(uint32_t));
+    valor_leido_de_espacio = *(uint32_t*) (espacio_usuario.espacio_usuario + dir_fisica);
     log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
 
     t_paquete* paquete_a_enviar = crear_paquete(WRITE);
-    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, sizeof(uint32_t));
+    agregar_a_paquete(paquete_a_enviar, &valor_leido_de_espacio, sizeof(uint32_t));
     enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
-
-    free(valor_leido_de_espacio);
 }
 
-void modificar_tabla_paginas(int pid, int num_pag)
-{
-    char* pid_str = int_to_string(pid);
-    t_list* tabla_proceso = dictionary_get(tablas_por_proceso, pid_str);
-    t_pagina *pagina_a_modificar = list_get(tabla_proceso, num_pag);
+void resize_memoria(int fd_cliente_cpu) {
+    
+    t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);
 
-    pagina_a_modificar->modificado = 1;
+    int pid = *(int*) list_get(valoresPaquete, 0);
+    int size_to_resize = *(int*) list_get(valoresPaquete, 1);
+
+    int cant_marcos = obtener_cant_marcos();
+    int cant_pags = obtener_cant_pags(size_to_resize);
+    
+    int cant_pags_usadas = obtener_cant_pags_usadas();
+    if (cant_pags + cant_pags_usadas > cant_marcos) {
+        // TODO: VER DE DEVOLVER UN OUT OF MEMORY PARA CPU!!!!
+    }
+
+    char* pid_str = int_to_string(pid);
+    t_list* tabla_paginas_de_proceso = (t_list*) dictionary_get(tablas_por_proceso, pid_str);
+
+    int index = 0;
+    int size_tablas_paginas_de_proceso = list_size(tabla_paginas_de_proceso);
+    if (size_tablas_paginas_de_proceso != 0) {
+        index = size_tablas_paginas_de_proceso - 1;
+    }
+
+    for(int i = index; i < index + cant_pags; i++) {
+        t_pagina *pagina = (t_pagina*)malloc(sizeof(t_pagina));
+        pagina->marco = asignar_frame_libre();
+        pagina->tiempo_carga = 0; 
+        pagina->ultima_referencia = 0;
+        pagina->pid = pid;
+        list_add_in_index(tabla_paginas_de_proceso, i, pagina);
+    }
+
     free(pid_str);
 }
 
@@ -182,10 +212,8 @@ void escribir_valor_memoria(int fd_cliente_cpu) {
 
     int dir_fisica = *(int*) list_get(valoresPaquete, 0);
     int pid = *(int*) list_get(valoresPaquete, 1);
-
     uint32_t* registro = (uint32_t*) list_get(valoresPaquete, 2);
-
-    int num_pagina = *(int*) list_get(valoresPaquete, 2);
+    int num_pagina = *(int*) list_get(valoresPaquete, 3);
             
     //semaforo para acceso a espacio compartido --> memoria de usuario
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
@@ -194,12 +222,8 @@ void escribir_valor_memoria(int fd_cliente_cpu) {
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido --> memoria de usuario
 
-    //MODIFICO LA PAGINA
-    modificar_tabla_paginas(pid, num_pagina);
-
     //LE AVISO A CPU
-    t_paquete* paquete_a_enviar = crear_paquete(WRITE);
-    enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
+    enviar_codigo_op(OK_OPERACION, fd_cliente_cpu);
 }
 
 void crear_proceso(int fd_cliente_kernel) {
@@ -270,24 +294,6 @@ void inicializar_config()
 
 void inicializar_semaforos(){
     sem_init(&sem_retardo, 0, 0);
-}
-
-void inicializar_diccionario(t_dictionary* diccionario){
-    diccionario = dictionary_create();
-}
-
-void inicializar_memoria_almacenamiento() {
-
-    int cant_marcos = memConfig.tamMemoria / memConfig.tamPagina;
-    espacio_usuario.espacio_usuario = malloc(sizeof(memConfig.tamMemoria));// inicializa todos sus bytes a cero.
-    pthread_mutex_init(&espacio_usuario.mx_espacio_usuario, NULL);
-    vector_marcos = calloc(cant_marcos, sizeof(int));
-
-    for(int i=0; i < cant_marcos; i++) //creo los marcos/paginas 
-    {
-       vector_marcos[i] =  0;
-    }
-    log_info(loggerAux, "Memoria dividida en %d marcos creada", cant_marcos);
 }
 
 void terminar_programa()

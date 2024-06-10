@@ -115,40 +115,51 @@ void io_gen_sleep_instruction(t_list* parametros) {
 
 void mov_in_instruction(t_list* parametros) {
 
-    char* registro = (char*) list_get(parametros, 0);
-    uint32_t* registro_mapeado = mapear_registro(registro);
+    char* registro_datos = (char*) list_get(parametros, 0);
+    uint32_t* registro_datos_mapeado = mapear_registro(registro_datos);
+    char* registro_direccion = (char*) list_get(parametros, 1);
+    uint32_t registro_direccion_mapeado = *mapear_registro(registro_direccion);
 
-    int dir_logica = string_to_int((char*) list_get(parametros, 1));
-    int dir_fisica = traducir_direccion_mmu(dir_logica, pid);
+    int dir_fisica = traducir_direccion_mmu(registro_direccion_mapeado, pid);
     if(dir_fisica == -1)
     {
         //TODO: Revisar que hacer en caso de error
        return;
     }
-    
-    char *valor_leido = leer_de_memoria(dir_fisica, pid);
-    *registro_mapeado = string_to_int(valor_leido);
 
-    log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %s", pid, dir_fisica, valor_leido);
-    free(valor_leido);
+    uint32_t* valor_leido = leer_de_memoria(dir_fisica, pid);
+    //*registro_datos_mapeado = *valor_leido;
+
+    log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_mapeado);
 }
 
 void mov_out_instruction(t_list* parametros) {
 
-    char* registro = (char*) list_get(parametros, 1);
-    uint32_t* registro_mapeado = mapear_registro(registro);
+    char* registro_datos = (char*) list_get(parametros, 1);
+    uint32_t* registro_datos_mapeado = mapear_registro(registro_datos);
+    char* registro_direccion = (char*) list_get(parametros, 0);
+    uint32_t* registro_direccion_mapeado = mapear_registro(registro_direccion);
 
-    int dir_logica = string_to_int((char*) list_get(parametros, 0));
-    int dir_fisica = traducir_direccion_mmu(dir_logica, pid);
+    int dir_fisica = traducir_direccion_mmu(*registro_direccion_mapeado, pid);
     if(dir_fisica == -1) {   
         log_info(logger_aux_cpu, "HUBO PAGE FAULT");
         return;
     }
     
-    int num_pagina = numero_pagina(dir_logica);
-    escribir_en_memoria(dir_fisica, pid, *registro, num_pagina);
+    int num_pagina = numero_pagina(*registro_direccion_mapeado);
+    escribir_en_memoria(dir_fisica, pid, *registro_datos_mapeado, num_pagina);
 
-    log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro);
+    log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_mapeado);
+}
+
+void resize_instruction(t_list* parametros) {
+
+    int size_to_resize = string_to_int((char*) list_get(parametros, 0));
+
+    resize_en_memoria(pid, size_to_resize);
+    op_codigo codigoOperacion = recibir_operacion(fd_memoria);
+
+    log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 
 void exit_instruction(t_list* parametros) {
@@ -176,10 +187,14 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion) {
         tipo_instruccion_mapped.nombre_instruccion = MOV_IN;
         tipo_instruccion_mapped.execute = mov_in_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "MOV_OUT"))
+    else if (string_equals_ignore_case(nombre_instruccion, "MOV_OUT")) {
         tipo_instruccion_mapped.nombre_instruccion = MOV_OUT;
-    else if (string_equals_ignore_case(nombre_instruccion, "RESIZE"))
+        tipo_instruccion_mapped.execute = mov_out_instruction;
+    }
+    else if (string_equals_ignore_case(nombre_instruccion, "RESIZE")) {
         tipo_instruccion_mapped.nombre_instruccion = RESIZE;
+        tipo_instruccion_mapped.execute = resize_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "JNZ")) {
         tipo_instruccion_mapped.nombre_instruccion = JNZ;
         tipo_instruccion_mapped.execute = jnz_instruction;

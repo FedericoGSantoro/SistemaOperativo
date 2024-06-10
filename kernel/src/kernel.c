@@ -339,6 +339,7 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                     }
                     break;
                 }
+                
                 comprobarContextoNuevo(pcb);
             } else {
                 //quitarPcbCola(cola_exec, sem_cola_exec);

@@ -40,13 +40,9 @@ extern int *vector_marcos;
 // estructura para las paginas en la tabla de paginas (la lista del mapa de tablas por proceso, contiene por cada objeto, una estructura de estas)
 typedef struct{
     int marco;
-    bool presencia;
-    int modificado;
-    int pos_en_swap;
     time_t tiempo_carga;//Para FIFO
     time_t ultima_referencia;//Para LRU
-    int PID;
-    int indice_pag;
+    int pid;
 } t_pagina;
 
 //Variables Globales
