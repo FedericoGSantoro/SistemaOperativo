@@ -15,8 +15,6 @@ int main(int argc, char *argv[]) {
     leerConfig();
 
     iniciarMutex();
-    registros_cpu.ax = malloc(sizeof(uint32_t));
-    registros_cpu.bx = malloc(sizeof(uint32_t));
     iniciarServidoresCpu();
     iniciarConexionCpuMemoria();
     getTamanioPagina();
@@ -237,8 +235,8 @@ void empaquetarContextoEjecucion(t_paquete *paquete) {
     agregar_a_paquete(paquete, &(pid), sizeof(uint32_t));
     agregar_a_paquete(paquete, &(registro_estados), sizeof(uint64_t));
     agregar_a_paquete(paquete, &(registros_cpu.pc), sizeof(uint32_t));
-    agregar_a_paquete(paquete, registros_cpu.ax, sizeof(uint8_t));
-    agregar_a_paquete(paquete, registros_cpu.bx, sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(registros_cpu.ax), sizeof(uint8_t));
+    agregar_a_paquete(paquete, &(registros_cpu.bx), sizeof(uint8_t));
     agregar_a_paquete(paquete, &(registros_cpu.cx), sizeof(uint8_t));
     agregar_a_paquete(paquete, &(registros_cpu.dx), sizeof(uint8_t));
     agregar_a_paquete(paquete, &(registros_cpu.eax), sizeof(uint32_t));
@@ -263,8 +261,8 @@ void desempaquetarContextoEjecucion(t_list *paquete) {
     pid = *(uint32_t *)list_get(paquete, 0);
     registro_estados = *(uint64_t *)list_get(paquete, 1);
     registros_cpu.pc = *(uint32_t *)list_get(paquete, 2);
-    *registros_cpu.ax = *(uint8_t *)list_get(paquete, 3);
-    *registros_cpu.bx = *(uint8_t *)list_get(paquete, 4);
+    registros_cpu.ax = *(uint8_t *)list_get(paquete, 3);
+    registros_cpu.bx = *(uint8_t *)list_get(paquete, 4);
     registros_cpu.cx = *(uint8_t *)list_get(paquete, 5);
     registros_cpu.dx = *(uint8_t *)list_get(paquete, 6);
     registros_cpu.eax = *(uint32_t *)list_get(paquete, 7);

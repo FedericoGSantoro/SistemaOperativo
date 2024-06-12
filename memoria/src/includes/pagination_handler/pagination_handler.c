@@ -46,10 +46,15 @@ void inicializar_memoria_almacenamiento() {
     int cant_marcos = obtener_cant_marcos();
     espacio_usuario.espacio_usuario = malloc(memConfig.tamMemoria);// inicializa todos sus bytes a cero.
     lista_marcos = list_create();
-
+    espacio_usuario.tipo_de_dato_almacenado = list_create();
     for(int i=0; i < cant_marcos; i++) //creo los marcos/paginas 
     {
         list_add(lista_marcos, crear_marco(i));
+    }
+
+    for(int i=0; i < memConfig.tamMemoria; i++) //creo los marcos/paginas 
+    {
+        list_add_in_index(espacio_usuario.tipo_de_dato_almacenado, i, 0);
     }
     
     log_info(loggerAux, "Memoria dividida en %d marcos creada", cant_marcos);

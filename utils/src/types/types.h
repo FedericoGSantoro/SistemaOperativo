@@ -9,6 +9,8 @@
 typedef enum {
     STRING,
 	INT,
+	UINT32,
+	UINT8,
 } tipo_de_dato;
 
 // Operaciones de Instrucciones de CPU
@@ -89,8 +91,8 @@ typedef struct{
 // Registros de la CPU
 typedef struct{
 	uint32_t pc; // program counter es la siguiente instruccion a ejecutar
-	uint32_t* ax;
-	uint32_t* bx;
+	uint8_t ax;
+	uint8_t bx;
 	uint8_t cx;
 	uint8_t dx;
 	uint32_t eax;

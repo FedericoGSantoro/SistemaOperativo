@@ -41,7 +41,7 @@ uint32_t traducir_direccion_mmu(uint32_t dir_logica, int pid)
     return dir_fisica;
 }
 
-uint32_t leer_de_memoria(int dir_fisica, int pid)
+t_valor_obtenido_de_memoria leer_de_memoria(int dir_fisica, int pid)
 {
     t_paquete *paquete = crear_paquete(LEER_VALOR_MEMORIA);
 
@@ -56,14 +56,21 @@ uint32_t leer_de_memoria(int dir_fisica, int pid)
     {
         cod_op = recibir_operacion(fd_memoria);
     }
-    t_list *paquete_recibido = recibir_paquete(fd_memoria);
 
-    uint32_t valor_leido = *(uint32_t*) list_get(paquete_recibido, 0);
-    
-    return valor_leido;
+    t_list *paquete_recibido = recibir_paquete(fd_memoria);
+    tipo_de_dato tipo_de_dato_recibido = *(tipo_de_dato*) list_get(paquete_recibido, 0);
+    void* valor_leido = list_get(paquete_recibido, 1);
+
+    t_valor_obtenido_de_memoria valor_obtenido_de_memoria;
+    valor_obtenido_de_memoria.valor = valor_leido;
+    valor_obtenido_de_memoria.tipo_de_dato_valor = tipo_de_dato_recibido;
+
+    list_destroy(paquete_recibido);
+
+    return valor_obtenido_de_memoria;
 }
 
-void escribir_en_memoria(uint32_t dir_fisica, int pid, uint32_t registro, uint32_t num_pagina)
+void escribir_en_memoria(uint32_t dir_fisica, int pid, void* registro, tipo_de_dato tipo_de_dato_datos, uint32_t num_pagina)
 {
     t_paquete *paquete = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
 
@@ -71,9 +78,18 @@ void escribir_en_memoria(uint32_t dir_fisica, int pid, uint32_t registro, uint32
 
     agregar_a_paquete(paquete, &pid, sizeof(int));
 
+    if (tipo_de_dato_datos == UINT32)
+    {
+        agregar_a_paquete(paquete, registro, sizeof(uint32_t));
+    } else {
+        agregar_a_paquete(paquete, registro, sizeof(uint8_t));
+    }
+
     agregar_a_paquete(paquete, &registro, sizeof(uint32_t));
 
     agregar_a_paquete(paquete, &num_pagina, sizeof(uint32_t));
+
+    agregar_a_paquete(paquete, &tipo_de_dato_datos, sizeof(tipo_de_dato));
 
     enviar_paquete(paquete, fd_memoria);
     
