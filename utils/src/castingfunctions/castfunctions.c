@@ -22,16 +22,13 @@ int string_to_int(const char* input){
 }
 
 bool is_number(char *str) {
-    // Check if the string is empty
+
     if (*str == '\0') return 0;
 
-    // Check each character of the string
     while (*str) {
-        // If any character is not a digit, return false
         if (!isdigit(*str)) return 0;
         str++;
     }
 
-    // If all characters are digits, return true
     return 1;
 }
