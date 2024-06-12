@@ -140,34 +140,38 @@ void devolver_marco(int fd_cliente_cpu) {
     t_list *paquete_recibido = recibir_paquete(fd_cliente_cpu); 
     
     // recibirNumPagina
-    int numero_pagina = *(int*) list_get(paquete_recibido, 0);
+    uint32_t numero_pagina = *(uint32_t*) list_get(paquete_recibido, 0);
     // recibirPID
     int pid = *(int*) list_get(paquete_recibido, 1);
    
-    int numero_marco = resolver_solicitud_de_marco(numero_pagina, pid);
+    uint32_t numero_marco = resolver_solicitud_de_marco(numero_pagina, pid);
 
-    send(fd_cliente_cpu, &numero_marco, sizeof(int),0);
+    t_paquete* paquete_a_enviar = crear_paquete(DEVOLVER_MARCO);
+    agregar_a_paquete(paquete_a_enviar, &numero_marco, sizeof(uint32_t));
+    enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
 }
 
 void leer_valor_memoria(int fd_cliente_cpu) {
 
     t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);            
-    int dir_fisica = *(int*) list_get(valoresPaquete, 0);
+    uint32_t dir_fisica = *(uint32_t*) list_get(valoresPaquete, 0);
     int pid = *(int*) list_get(valoresPaquete, 1);
 
-    uint32_t* valor_leido_de_espacio = (uint32_t*) malloc(sizeof(uint32_t));
+    uint32_t valor_leido_de_espacio;
             
     //semaforo para acceso a espacio compartido
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
-    memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, sizeof(uint32_t));
-    log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
+    memcpy(&valor_leido_de_espacio,(uint32_t*)((char*)espacio_usuario.espacio_usuario + dir_fisica),sizeof(uint32_t));
+	log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
 
-    t_paquete* paquete_a_enviar = crear_paquete(WRITE_EN_MEMORIA);
-    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, sizeof(uint32_t));
+    t_paquete* paquete_a_enviar = crear_paquete(LEER_VALOR_MEMORIA);
+    agregar_a_paquete(paquete_a_enviar, &valor_leido_de_espacio, sizeof(uint32_t));
     enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
-    free(valor_leido_de_espacio);
+
+    //libero la lista generada del paquete deserializado
+    liberar_lista_de_datos_con_punteros(valoresPaquete);
 }
 
 void resize_memoria(int fd_cliente_cpu) {
@@ -177,55 +181,30 @@ void resize_memoria(int fd_cliente_cpu) {
     int pid = *(int*) list_get(valoresPaquete, 0);
     int size_to_resize = *(int*) list_get(valoresPaquete, 1);
 
-    int cant_marcos = obtener_cant_marcos();
-    int cant_pags = obtener_cant_pags(size_to_resize);
-    
-    int cant_pags_usadas = obtener_cant_pags_usadas();
-    if (cant_pags + cant_pags_usadas > cant_marcos) {
-        // TODO: VER DE DEVOLVER UN OUT OF MEMORY PARA CPU!!!!
-    }
-
-    char* pid_str = int_to_string(pid);
-    t_list* tabla_paginas_de_proceso = (t_list*) dictionary_get(tablas_por_proceso, pid_str);
-
-    int index = 0;
-    int size_tablas_paginas_de_proceso = list_size(tabla_paginas_de_proceso);
-    if (size_tablas_paginas_de_proceso != 0) {
-        index = size_tablas_paginas_de_proceso - 1;
-    }
-
-    for(int i = index; i < index + cant_pags; i++) {
-        t_pagina *pagina = (t_pagina*)malloc(sizeof(t_pagina));
-        pagina->marco = asignar_frame_libre();
-        pagina->tiempo_carga = 0; 
-        pagina->ultima_referencia = 0;
-        pagina->pid = pid;
-        list_add_in_index(tabla_paginas_de_proceso, i, pagina);
-    }
-
-    free(pid_str);
+    resize_proceso(pid, size_to_resize);
 }
 
 void escribir_valor_memoria(int fd_cliente_cpu) {
 
     t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);
 
-    int dir_fisica = *(int*) list_get(valoresPaquete, 0);
+    uint32_t dir_fisica = *(uint32_t*) list_get(valoresPaquete, 0);
     int pid = *(int*) list_get(valoresPaquete, 1);
-    uint32_t *registro = malloc(sizeof(uint32_t));
-    *registro = *(uint32_t*) list_get(valoresPaquete, 2);
-    int num_pagina = *(int*) list_get(valoresPaquete, 3);
+    uint32_t registro = *(uint32_t*) list_get(valoresPaquete, 2);
+    uint32_t num_pagina = *(uint32_t*) list_get(valoresPaquete, 3);
             
     //semaforo para acceso a espacio compartido --> memoria de usuario
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
-    memcpy(espacio_usuario.espacio_usuario + dir_fisica, registro, sizeof(uint32_t));
+    memcpy((void*)(((char*)espacio_usuario.espacio_usuario + dir_fisica)),(void*)&registro,sizeof(uint32_t));
     log_info(loggerOblig, "PID: %d - Accion: ESCRIBIR - Direccion fisica: %d", pid, dir_fisica);
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido --> memoria de usuario
 
     //LE AVISO A CPU
-    enviar_codigo_op(OK_OPERACION, fd_cliente_cpu);
-    free(registro);
+    enviar_codigo_op(ESCRIBIR_VALOR_MEMORIA, fd_cliente_cpu);
+
+    //libero la lista generada del paquete deserializado
+    liberar_lista_de_datos_con_punteros(valoresPaquete);
 }
 
 void crear_proceso(int fd_cliente_kernel) {
@@ -307,7 +286,7 @@ void terminar_programa()
     liberar_conexion(socketFdMemoria);
     dictionary_destroy_and_destroy_elements(cache_instrucciones, destroyer_queue_con_datos_simples);
     dictionary_destroy_and_destroy_elements(tablas_por_proceso, liberar_lista_de_datos_planos);
-    free(vector_marcos);
+    //free(vector_marcos);
     free(espacio_usuario.espacio_usuario);
     pthread_mutex_destroy(&espacio_usuario.mx_espacio_usuario);
 }

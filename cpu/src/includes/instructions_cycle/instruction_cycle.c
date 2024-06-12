@@ -12,31 +12,33 @@ t_instruccion* instruccion;
 
 uint32_t* mapear_registro(char *nombre_registro) {
     
-    if (string_equals_ignore_case(nombre_registro, "AX"))
-        return &(registros_cpu.ax);
+    if (string_equals_ignore_case(nombre_registro, "AX")){
+        return (uint32_t*) registros_cpu.ax;
+    }
     else if (string_equals_ignore_case(nombre_registro, "PC"))
-        return &(registros_cpu.pc);
-    else if (string_equals_ignore_case(nombre_registro, "BX"))
-        return &(registros_cpu.bx);
+        return (uint32_t*)&(registros_cpu.pc);
+    else if (string_equals_ignore_case(nombre_registro, "BX")){
+        return (uint32_t*) registros_cpu.bx;
+    }
     else if (string_equals_ignore_case(nombre_registro, "CX"))
-        return &(registros_cpu.cx);
+        return (uint32_t*)&(registros_cpu.cx);
     else if (string_equals_ignore_case(nombre_registro, "DX"))
-        return &(registros_cpu.dx);
+        return (uint32_t*)&(registros_cpu.dx);
     else if (string_equals_ignore_case(nombre_registro, "EAX"))
-        return &(registros_cpu.eax);
+        return (uint32_t*)&(registros_cpu.eax);
     else if (string_equals_ignore_case(nombre_registro, "EBX"))
-        return &(registros_cpu.ebx);
+        return (uint32_t*)&(registros_cpu.ebx);
     else if (string_equals_ignore_case(nombre_registro, "ECX"))
-        return &(registros_cpu.ecx);
+        return (uint32_t*)&(registros_cpu.ecx);
     else if (string_equals_ignore_case(nombre_registro, "EDX"))
-        return &(registros_cpu.edx);
+        return (uint32_t*)&(registros_cpu.edx);
     else if (string_equals_ignore_case(nombre_registro, "SI"))
-        return &(registros_cpu.si);
+        return (uint32_t*)&(registros_cpu.si);
     else if (string_equals_ignore_case(nombre_registro, "DI"))
-        return &(registros_cpu.di);
+        return (uint32_t*)&(registros_cpu.di);
     else {
         valor_registro_numerico = string_to_int(nombre_registro);
-        return &valor_registro_numerico;
+        return (uint32_t*)&valor_registro_numerico;
     }
 }
 
@@ -120,16 +122,15 @@ void mov_in_instruction(t_list* parametros) {
     char* registro_direccion = (char*) list_get(parametros, 1);
     uint32_t* registro_direccion_mapeado = mapear_registro(registro_direccion);
 
-    int dir_fisica = traducir_direccion_mmu(*registro_direccion_mapeado, pid);
+    uint32_t dir_fisica = traducir_direccion_mmu(*registro_direccion_mapeado, pid);
     if(dir_fisica == -1)
     {
         //TODO: Revisar que hacer en caso de error
        return;
     }
 
-    uint32_t* valor_leido = leer_de_memoria(dir_fisica, pid);
-    *registro_datos_mapeado = *valor_leido;
-    *registro_direccion_mapeado = *valor_leido;
+    uint32_t valor_leido = leer_de_memoria(dir_fisica, pid);
+    *registro_datos_mapeado = valor_leido;
     //revisar esto
     log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_mapeado);
 }
@@ -141,13 +142,13 @@ void mov_out_instruction(t_list* parametros) {
     char* registro_direccion = (char*) list_get(parametros, 0);
     uint32_t* registro_direccion_mapeado = mapear_registro(registro_direccion);
 
-    int dir_fisica = traducir_direccion_mmu(*registro_direccion_mapeado, pid);
+    uint32_t dir_fisica = traducir_direccion_mmu(*registro_direccion_mapeado, pid);
     if(dir_fisica == -1) {   
         log_info(logger_aux_cpu, "HUBO PAGE FAULT");
         return;
     }
     
-    int num_pagina = numero_pagina(*registro_direccion_mapeado);
+    uint32_t num_pagina = numero_pagina(*registro_direccion_mapeado);
     escribir_en_memoria(dir_fisica, pid, *registro_datos_mapeado, num_pagina);
 
     log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_mapeado);
