@@ -19,9 +19,7 @@
 			"random": "c",
 			"*.tcc": "c",
 			"string": "c",
-			"istream": "c",
-			"compare": "c",
-			"new": "c"
+			"istream": "c"
 		},
 		"C_Cpp.errorSquiggles": "disabled",
 	},

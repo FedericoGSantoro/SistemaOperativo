@@ -114,7 +114,7 @@ uint32_t resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
 
     pthread_mutex_lock(pagina->mx_pagina);
     uint32_t numero_marco = pagina->marco;
-    pagina -> ultima_referencia = time(NULL);
+    pagina->ultima_referencia = time(NULL);
     pthread_mutex_unlock(pagina->mx_pagina);
 
     log_info(loggerOblig, "PID: %d - Pagina: %d - Marco: %d",pid, numero_pagina, numero_marco);
