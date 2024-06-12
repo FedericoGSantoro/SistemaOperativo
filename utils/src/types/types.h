@@ -48,6 +48,8 @@ typedef enum {
 	OK_OPERACION,
 	ERROR_OPERACION,
 	INTERRUPCION,
+	LECTURA,
+	ESCRITURA
 } op_codigo;
 
 // Razones de bloqueo
