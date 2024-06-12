@@ -1,5 +1,12 @@
 #include "./includes/cpu.h"
 
+void getTamanioPagina() {
+    enviar_codigo_op(DEVOLVER_TAM_PAGINA, fd_memoria);
+    recibir_operacion(fd_memoria);
+    char* tam_pagina_obtenido = recibir_mensaje(fd_memoria);
+    tam_pagina = string_to_int(tam_pagina_obtenido);
+}
+
 int main(int argc, char *argv[]) {
 
     iniciarLogs();
@@ -8,9 +15,9 @@ int main(int argc, char *argv[]) {
     leerConfig();
 
     iniciarMutex();
-
     iniciarServidoresCpu();
     iniciarConexionCpuMemoria();
+    getTamanioPagina();
     while (esperarClientes());
 
     terminarPrograma();
@@ -82,13 +89,14 @@ void iniciar_ciclo_instruccion() {
         log_info(logger_aux_cpu, "Inicio ciclo de instruccion");
         ejecutarCicloInstruccion();
         // Aumento en 1 al final del ciclo para que apunte a la siguiente instruccion
+        log_info(logger_aux_cpu, "valores registros importantes AX: %d BX: %d PC: %d", registros_cpu.ax, registros_cpu.bx, registros_cpu.pc);
         registros_cpu.pc++;
         pthread_mutex_lock(&variableInterrupcion);
     }
     log_info(logger_aux_cpu, "motivo nuevo: %d", motivo_bloqueo);
+    enviarContextoEjecucion();
     pthread_mutex_unlock(&variableInterrupcion);
     // Empaquetamos el contexto de ejecucion y se lo enviamos a Kernel
-    enviarContextoEjecucion();
     log_info(logger_aux_cpu, "Envie el contexto de ejecucion!");
 }
 

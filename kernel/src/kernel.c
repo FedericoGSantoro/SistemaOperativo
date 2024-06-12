@@ -159,7 +159,7 @@ void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.di = *(uint32_t*)list_get(contexto, 12);
     pcb->contexto_ejecucion.motivo_bloqueo = *(blocked_reason*) list_get(contexto, 13);
     cargar_io_detail_en_context(pcb, contexto, 13);
-    log_info(logs_auxiliares, "AX: %d, BX: %d", pcb->contexto_ejecucion.registros_cpu.ax, pcb->contexto_ejecucion.registros_cpu.bx);
+    log_info(logs_auxiliares, "AX: %d, BX: %d, CX: %d, DX: %d", pcb->contexto_ejecucion.registros_cpu.ax, pcb->contexto_ejecucion.registros_cpu.bx, pcb->contexto_ejecucion.registros_cpu.cx, pcb->contexto_ejecucion.registros_cpu.dx);
 }
 
 t_pcb* quitarPcbCola(t_queue* cola, pthread_mutex_t semaforo) {
@@ -339,6 +339,7 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                     }
                     break;
                 }
+                
                 comprobarContextoNuevo(pcb);
             } else {
                 //quitarPcbCola(cola_exec, sem_cola_exec);

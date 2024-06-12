@@ -1,8 +1,10 @@
 #include "./includes/memoria.h"
 
-void inicializar_diccionario(t_dictionary* diccionario);
-void inicializar_memoria_almacenamiento();
 void crear_proceso(int fd_cliente_kernel);
+void resize_memoria(int fd_cliente_cpu);
+void leer_valor_memoria(int fd_cliente_cpu);
+void escribir_valor_memoria(int fd_cliente_cpu);
+void devolver_marco(int fd_cliente_cpu);
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel);
 char* fetch_instruccion_de_cliente(int fd_cliente);
 void return_instruccion(char* instruccion, int fd_cliente);
@@ -15,8 +17,8 @@ int main(void)
     inicializar_config();
     inicializar_semaforos();
     //al ser dinámico los diccionarios se inicializan en el main y no como constante global, pues la memoria cambia
-    inicializar_diccionario(cache_instrucciones);
-    inicializar_diccionario(cache_tabla_por_proceso);
+    cache_instrucciones = dictionary_create();
+    tablas_por_proceso = dictionary_create();
     inicializar_memoria_almacenamiento();    
     
     socketFdMemoria = iniciar_servidor(memConfig.puertoEscucha, loggerAux, loggerError);
@@ -84,6 +86,32 @@ void gestionar_conexion(void *puntero_fd_cliente)
             t_list *valoresPaquete = recibir_paquete(fd_cliente);
             list_iterate(valoresPaquete, (void *)iteradorPaquete);
             break;
+        case DEVOLVER_TAM_PAGINA:
+            char* tam_pagina_str = int_to_string(memConfig.tamPagina);
+            enviar_mensaje(tam_pagina_str, fd_cliente);
+            free(tam_pagina_str);
+            break;
+        case DEVOLVER_MARCO:
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
+            devolver_marco(fd_cliente);
+            break;
+        case LEER_VALOR_MEMORIA:
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
+            leer_valor_memoria(fd_cliente);
+            break;
+        case ESCRIBIR_VALOR_MEMORIA:
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
+            escribir_valor_memoria(fd_cliente);
+            break;
+        case RESIZE_EN_MEMORIA:
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
+            alarm(memConfig.retardoRespuesta / 1000);
+            resize_memoria(fd_cliente);
+            enviar_codigo_op(OK_OPERACION, fd_cliente);
+            break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
             crear_proceso(fd_cliente);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
@@ -105,6 +133,103 @@ void gestionar_conexion(void *puntero_fd_cliente)
             break;
         }
     }
+}
+
+void devolver_marco(int fd_cliente_cpu) {
+
+    t_list *paquete_recibido = recibir_paquete(fd_cliente_cpu); 
+    
+    // recibirNumPagina
+    uint32_t numero_pagina = *(uint32_t*) list_get(paquete_recibido, 0);
+    // recibirPID
+    int pid = *(int*) list_get(paquete_recibido, 1);
+   
+    uint32_t numero_marco = resolver_solicitud_de_marco(numero_pagina, pid);
+
+    t_paquete* paquete_a_enviar = crear_paquete(DEVOLVER_MARCO);
+    agregar_a_paquete(paquete_a_enviar, &numero_marco, sizeof(uint32_t));
+    enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
+
+    liberar_lista_de_datos_con_punteros(paquete_recibido);
+}
+
+void leer_valor_memoria(int fd_cliente_cpu) {
+
+    t_list *paquete_recibido = recibir_paquete(fd_cliente_cpu);            
+    uint32_t dir_fisica = *(uint32_t*) list_get(paquete_recibido, 0);
+    int pid = *(int*) list_get(paquete_recibido, 1);
+
+    tipo_de_dato tipo_de_dato_almacenado;
+            
+    t_paquete* paquete_a_enviar = crear_paquete(LEER_VALOR_MEMORIA);
+    
+    //semaforo para acceso a espacio compartido
+    pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
+    
+    tipo_de_dato_almacenado = *(tipo_de_dato*) list_get(espacio_usuario.tipo_de_dato_almacenado, dir_fisica);
+    agregar_a_paquete(paquete_a_enviar, &tipo_de_dato_almacenado, sizeof(tipo_de_dato));
+    if (tipo_de_dato_almacenado == UINT32) {
+        uint32_t valor_leido_de_espacio;
+        memcpy(&valor_leido_de_espacio,(uint32_t*)((char*)espacio_usuario.espacio_usuario + dir_fisica),sizeof(uint32_t));
+        agregar_a_paquete(paquete_a_enviar, &valor_leido_de_espacio, sizeof(uint32_t));
+        enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
+    } else {
+        uint8_t valor_leido_de_espacio;
+        memcpy(&valor_leido_de_espacio,(uint8_t*)((char*)espacio_usuario.espacio_usuario + dir_fisica),sizeof(uint8_t));
+        agregar_a_paquete(paquete_a_enviar, &valor_leido_de_espacio, sizeof(uint8_t));
+        enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
+    }
+    
+    log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
+    pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
+    //semaforo para acceso a espacio compartido
+
+    //libero la lista generada del paquete deserializado
+    liberar_lista_de_datos_con_punteros(paquete_recibido);
+}
+
+void resize_memoria(int fd_cliente_cpu) {
+    
+    t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);
+
+    int pid = *(int*) list_get(valoresPaquete, 0);
+    int size_to_resize = *(int*) list_get(valoresPaquete, 1);
+
+    resize_proceso(pid, size_to_resize);
+
+    liberar_lista_de_datos_con_punteros(valoresPaquete);
+}
+
+void escribir_valor_memoria(int fd_cliente_cpu) {
+
+    t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);
+
+    uint32_t dir_fisica = *(uint32_t*) list_get(valoresPaquete, 0);
+    int pid = *(int*) list_get(valoresPaquete, 1);
+    void* registro = list_get(valoresPaquete, 2);
+    uint32_t num_pagina = *(uint32_t*) list_get(valoresPaquete, 3);
+    tipo_de_dato tipo_de_dato_a_almacenar = *(tipo_de_dato*) list_get(valoresPaquete, 4);
+            
+    //semaforo para acceso a espacio compartido --> memoria de usuario
+    pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
+
+    if (tipo_de_dato_a_almacenar == UINT32) {
+        uint32_t* registro_casteado = (uint32_t*) registro;
+        memcpy((void*)(((char*)espacio_usuario.espacio_usuario + dir_fisica)), (void*)registro_casteado, sizeof(uint32_t));
+    } else {
+        uint8_t* registro_casteado = (uint8_t*) registro;
+        memcpy((void*)(((char*)espacio_usuario.espacio_usuario + dir_fisica)),(void*)registro_casteado,sizeof(uint8_t));
+    }
+    list_add_in_index(espacio_usuario.tipo_de_dato_almacenado, dir_fisica, &tipo_de_dato_a_almacenar);
+    log_info(loggerOblig, "PID: %d - Accion: ESCRIBIR - Direccion fisica: %d", pid, dir_fisica);
+    pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
+    //semaforo para acceso a espacio compartido --> memoria de usuario
+
+    //LE AVISO A CPU
+    enviar_codigo_op(ESCRIBIR_VALOR_MEMORIA, fd_cliente_cpu);
+
+    //libero la lista generada del paquete deserializado
+    liberar_lista_de_datos_con_punteros(valoresPaquete);
 }
 
 void crear_proceso(int fd_cliente_kernel) {
@@ -177,24 +302,6 @@ void inicializar_semaforos(){
     sem_init(&sem_retardo, 0, 0);
 }
 
-void inicializar_diccionario(t_dictionary* diccionario){
-    diccionario = dictionary_create();
-}
-
-void inicializar_memoria_almacenamiento() {
-
-    int cant_marcos = memConfig.tamMemoria / memConfig.tamPagina;
-    espacio_usuario.espacio_usuario = malloc(sizeof(memConfig.tamMemoria));// inicializa todos sus bytes a cero.
-    pthread_mutex_init(&espacio_usuario.mx_espacio_usuario, NULL);
-    vector_marcos = calloc(cant_marcos, sizeof(int));
-
-    for(int i=0; i < cant_marcos; i++) //creo los marcos/paginas 
-    {
-       vector_marcos[i] =  0;
-    }
-    log_info(loggerAux, "Memoria dividida en %d marcos creada", cant_marcos);
-}
-
 void terminar_programa()
 {
     log_destroy(loggerAux);
@@ -203,8 +310,14 @@ void terminar_programa()
     config_destroy(config);
     liberar_conexion(socketFdMemoria);
     dictionary_destroy_and_destroy_elements(cache_instrucciones, destroyer_queue_con_datos_simples);
-    dictionary_destroy_and_destroy_elements(cache_tabla_por_proceso, liberar_lista_de_datos_planos);
-    free(vector_marcos);
+    //free(vector_marcos);
+    t_list* todas_las_paginas = dictionary_elements(tablas_por_proceso);
+    for (int i = 0; i < list_size(todas_las_paginas); i++) {
+        t_pagina pagina = *(t_pagina*) list_get(todas_las_paginas, i);
+        pthread_mutex_destroy(pagina.mx_pagina);
+    }
+    dictionary_destroy_and_destroy_elements(tablas_por_proceso, liberar_lista_de_datos_planos);
+    liberar_lista_de_datos_planos(espacio_usuario.tipo_de_dato_almacenado);
     free(espacio_usuario.espacio_usuario);
     pthread_mutex_destroy(&espacio_usuario.mx_espacio_usuario);
 }

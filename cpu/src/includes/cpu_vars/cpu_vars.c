@@ -20,6 +20,9 @@ int fd_kernel_dispatch;
 int fd_kernel_interrupt;
 int fd_memoria;
 
+// tamanio de pagina de memoria
+int tam_pagina;
+
 // hilos
 pthread_t hilo_kernel_dispatch_cpu;
 pthread_t hilo_kernel_interrumpt_cpu;

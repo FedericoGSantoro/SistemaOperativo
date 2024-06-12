@@ -5,6 +5,11 @@
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/hilos/hilos.h"
 
+typedef struct {
+    void* valor;
+    tipo_de_dato tipo_de_dato_valor;
+} t_valor_obtenido_de_memoria;
+
 extern t_log* logger_obligatorio_cpu;
 extern t_log* logger_aux_cpu;
 extern t_log* logger_error_cpu;
@@ -24,6 +29,9 @@ extern int fd_cpu_interrupt;
 extern int fd_kernel_dispatch;
 extern int fd_kernel_interrupt;
 extern int fd_memoria;
+
+// tamanio de pagina de memoria
+extern int tam_pagina;
 
 // hilos
 extern pthread_t hilo_kernel_dispatch_cpu;

@@ -6,6 +6,7 @@
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
 #include "./instruction_fetcher/instruction_fetcher.h"
+#include "./pagination_handler/pagination_handler.h"
 #include "./memoria_vars/memoria_vars.h"
 #include "../../../utils/src/liberador/liberador.h"
 
