@@ -246,6 +246,51 @@ void resize_instruction(t_list *parametros)
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 
+int* peticion_de_paginas(uint32_t *cantidad_bytes) {
+    uint32_t nueva_dir_fisica_si = registros_cpu.si;
+    uint32_t num_pagina = numero_pagina(registros_cpu.si);
+    uint32_t tam_pagina_restante = cantidad_bytes;
+    int desplazamiento = registros_cpu.si - num_pagina * tam_pagina;
+    int i = 0;
+
+    int* dir_fisica_si = malloc(sizeof(int));
+    
+    // Para el caso que se pase del tamanio (cantidad_bytes)
+    do {
+        // Traducimos direccion logica a direccion fisica y aumentamos indice, y chequeamos si falta leer algo
+        dir_fisica_si[i] = traducir_direccion_mmu(nueva_dir_fisica_si, pid);
+        i++;
+        // if (nueva_dir_fisica_si == -1) {
+            // // TODO: Revisar que hacer en caso de error
+            // return;
+            //}
+        if (desplazamiento + cantidad_bytes >= tam_pagina) {
+            dir_fisica_si = realloc(dir_fisica_si, sizeof(int) * i + 1);
+            tam_pagina_restante = cantidad_bytes - tam_pagina + desplazamiento;
+            nueva_dir_fisica_si = nueva_dir_fisica_si + tam_pagina - desplazamiento;
+        }
+    } while (tam_pagina_restante > 0);
+    
+    return dir_fisica_si;
+}
+
+void copy_string_instruction (t_list *parametros){
+    uint32_t *cantidad_bytes = (uint32_t *)list_get(parametros, 0);
+    int* dir_fisica_si = peticion_de_paginas(cantidad_bytes);
+    
+    // Traducimos direccion logica de DI a direccion fisica
+    // uint32_t dir_fisica_di = traducir_direccion_mmu(registros_cpu.di, pid);
+    // if (dir_fisica_di == -1) {
+    //     // TODO: Revisar que hacer en caso de error
+    //     return;
+    // }
+
+    //t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica_si, pid);
+    
+    //TO-DO: free + seguir con esta funcion
+
+}
+
 void exit_instruction(t_list *parametros)
 {
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
