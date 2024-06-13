@@ -149,7 +149,6 @@ void jnz_instruction(t_list *parametros)
 
 void io_gen_sleep_instruction(t_list *parametros)
 {
-
     char *nombre_io = (char *)list_get(parametros, 0);
     char *cantidad_tiempo_sleep = (char *)list_get(parametros, 1);
     int *cantidad_tiempo_sleep_parseado = malloc(sizeof(int));
@@ -252,6 +251,29 @@ void resize_instruction(t_list *parametros)
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 
+void io_stdin_read_instruction(t_list *parametros){
+    //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
+
+    //enviar a kernel el tipo instruccion (iosdtfiaisdsai(yo)), nombre interfaz tal cual, 
+    //la o las direcciones fisicas y el tamaño del registro a leer
+
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *registro_direccion = (char *)list_get(parametros, 1);
+    int *registro_tamaño = (char *)list_get(parametros, 2);
+   
+    void* reg_dir = mapear_registro(*registro_direccion);
+    //ver como armar las estructuras
+    uint32_t direcciones[10]; //deberia ser el maximo de páginas del sist. Ver si es algo que deberia conocer cpu
+    direcciones[0] = traducir_direccion_mmu(*registro_direccion, pid);
+    do
+    {
+        /* code */
+    } while (/* condition */);
+    
+    
+    
+}
+
 void exit_instruction(t_list *parametros)
 {
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
@@ -308,6 +330,7 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
     }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ"))
         tipo_instruccion_mapped.nombre_instruccion = IO_STDIN_READ;
+        tipo_instruccion_mapped.execute = io_stdin_read_instruction;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE"))
         tipo_instruccion_mapped.nombre_instruccion = IO_STDOUT_WRITE;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_CREATE"))
