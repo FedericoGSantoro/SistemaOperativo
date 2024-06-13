@@ -195,7 +195,7 @@ void resize_memoria(int fd_cliente_cpu) {
     int pid = *(int*) list_get(valoresPaquete, 0);
     int size_to_resize = *(int*) list_get(valoresPaquete, 1);
 
-    resize_proceso(pid, size_to_resize);
+    resize_proceso(pid, size_to_resize, fd_cliente_cpu);
 
     liberar_lista_de_datos_con_punteros(valoresPaquete);
 }
