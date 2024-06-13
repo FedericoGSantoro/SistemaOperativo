@@ -46,7 +46,7 @@ void *mapear_registro(char *nombre_registro)
 
 tipo_de_dato mapear_tipo_de_dato(char *nombre_registro)
 {
-
+    // TODO: Corregir caso SI y DI siendo de 32 bits
     if (!is_number(nombre_registro) && string_length(nombre_registro) == 2 && !string_equals_ignore_case(nombre_registro, "PC"))
     {
         return UINT8;
@@ -68,6 +68,7 @@ void sum_instruction(t_list *parametros)
     tipo_de_dato tipo_de_dato_destino = mapear_tipo_de_dato(destino);
     tipo_de_dato tipo_de_dato_origen = mapear_tipo_de_dato(origen);
 
+    // TODO: No podria ser un uint32 con un uint8 juntos (ambos casos)?
     if (tipo_de_dato_destino == UINT8 || tipo_de_dato_origen == UINT8)
     {
         uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
@@ -116,6 +117,7 @@ void set_instruction(t_list *parametros)
     tipo_de_dato tipo_de_dato_destino = mapear_tipo_de_dato(destino);
     tipo_de_dato tipo_de_dato_origen = mapear_tipo_de_dato(origen);
 
+    // TODO: Revisar que el numero siempre es de 32 segun mapear tipo de dato
     if (tipo_de_dato_destino == UINT8 || tipo_de_dato_origen == UINT8)
     {
         uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
@@ -134,10 +136,12 @@ void jnz_instruction(t_list *parametros)
     char *registro = (char *)list_get(parametros, 0);
     char *instruccion_a_moverse = (char *)list_get(parametros, 1);
 
+    // TODO: El registro mapeado puede ser de 8 bits
     uint32_t *registro_mapeado = mapear_registro(registro);
     uint32_t *instruccion_a_moverse_mapeada = mapear_registro(instruccion_a_moverse);
 
-    if (registro_mapeado != 0)
+    // Cambio de registro_mapeado a *registro_mapeado para acceder al dato y no al puntero
+    if (*registro_mapeado != 0)
     {
         registros_cpu.pc = *instruccion_a_moverse_mapeada - 1; // restamos uno porque despues vamos a sumar uno con el proximo PC++, al finalizar un ciclo de instruccion que tenga a JNZ. Me llevo a consultar si queda en bulce infinito, o como cortamos el JNZ.
     }
@@ -166,6 +170,7 @@ void io_gen_sleep_instruction(t_list *parametros)
     manejarInterrupciones(LLAMADA_SISTEMA);
 
     // liberacion de recursos
+    // TODO: free de cantidad_tiempo_sleep_parseado y parametro_io?
     free(io_instruccion);
 }
 
@@ -187,6 +192,7 @@ void mov_in_instruction(t_list *parametros)
     t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica, pid);
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
 
+    // TODO: Funcion generica para esto:
     if (tipo_de_dato_datos == UINT8 || valor_obtenido_de_memoria.tipo_de_dato_valor == UINT8)
     {
         uint8_t *registro_datos_casteado = (uint8_t *)registro_datos_mapeado;
@@ -198,6 +204,7 @@ void mov_in_instruction(t_list *parametros)
         *registro_destino_casteado = *registro_origen_casteado;
     }
     
+    // TODO: en vez de registro_direccion_mapeado(DL) no seria valor_casteado(Valor leido)?
     log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *(uint32_t*) registro_direccion_mapeado);
 }
 
@@ -216,12 +223,15 @@ void mov_out_instruction(t_list *parametros)
         return;
     }
 
+    // TODO: Para que quiero el numero de pagina?
     uint32_t num_pagina = numero_pagina(*(uint32_t*) registro_direccion_mapeado);
 
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
 
+    // TODO: Para que quiero pasar el numero de pagina?
     escribir_en_memoria(dir_fisica, pid, registro_datos_mapeado, tipo_de_dato_datos, num_pagina);
 
+    // TODO: en vez de registro_direccion_mapeado(DL) no seria registro_datos_mapeado(Valor escrito)?
     log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, dir_fisica, *(uint32_t*) registro_direccion_mapeado);
 }
 
@@ -232,7 +242,7 @@ void resize_instruction(t_list *parametros)
 
     resize_en_memoria(pid, size_to_resize);
     op_codigo codigoOperacion = recibir_operacion(fd_memoria);
-
+    // TODO: Recibir operacion y fijarse si es Out Of Memory o OK
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 

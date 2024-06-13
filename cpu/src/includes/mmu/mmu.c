@@ -10,6 +10,8 @@ uint32_t solicitar_numero_de_marco(uint32_t num_pagina, int pid)
     enviar_paquete(paquete, fd_memoria);
 
     op_codigo cod_op = recibir_operacion(fd_memoria);
+
+    // TODO: Por que esta asi, que significa?
     while (cod_op != DEVOLVER_MARCO)
     {
         cod_op = recibir_operacion(fd_memoria);
@@ -51,6 +53,7 @@ t_valor_obtenido_de_memoria leer_de_memoria(int dir_fisica, int pid)
 
     enviar_paquete(paquete, fd_memoria);
 
+    // TODO: Eliminar paquete
     op_codigo cod_op = recibir_operacion(fd_memoria);
     while (cod_op != LEER_VALOR_MEMORIA)
     {
@@ -85,8 +88,10 @@ void escribir_en_memoria(uint32_t dir_fisica, int pid, void* registro, tipo_de_d
         agregar_a_paquete(paquete, registro, sizeof(uint8_t));
     }
 
+    // TODO: Que es esto?
     agregar_a_paquete(paquete, &registro, sizeof(uint32_t));
 
+    // TODO: Para que es esto?
     agregar_a_paquete(paquete, &num_pagina, sizeof(uint32_t));
 
     agregar_a_paquete(paquete, &tipo_de_dato_datos, sizeof(tipo_de_dato));
