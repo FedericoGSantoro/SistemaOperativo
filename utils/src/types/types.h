@@ -5,7 +5,7 @@
 
 /* ------------ ENUMS --------*/
 
-// Codigos de operaciones
+// Tipo de datos
 typedef enum {
     STRING,
 	INT,
@@ -57,6 +57,7 @@ typedef enum {
 	OK_OPERACION,
 	ERROR_OPERACION,
 	INTERRUPCION,
+	OUT_OF_MEMORY
 } op_codigo;
 
 // Razones de bloqueo

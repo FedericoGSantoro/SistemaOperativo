@@ -243,6 +243,12 @@ void resize_instruction(t_list *parametros)
     resize_en_memoria(pid, size_to_resize);
     op_codigo codigoOperacion = recibir_operacion(fd_memoria);
     // TODO: Recibir operacion y fijarse si es Out Of Memory o OK
+    int op = recibir_operacion(fd_memoria);
+    if (op == OUT_OF_MEMORY){
+        manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
+        log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
+        return;
+    } //no considero necesario un chequeo de OK_OPERACION pq si
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 

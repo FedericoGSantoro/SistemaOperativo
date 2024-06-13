@@ -123,14 +123,16 @@ uint32_t resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
     return numero_marco;
 }
 
-void resize_proceso(int pid, int size_to_resize) {
+void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
 
     int cant_marcos = obtener_cant_marcos();
     int cant_pags = obtener_cant_pags(size_to_resize);
     
     int cant_pags_usadas = obtener_cant_pags_usadas();
     if (cant_pags + cant_pags_usadas > cant_marcos) {
-        // TODO: VER DE DEVOLVER UN OUT OF MEMORY PARA CPU!!!!
+        // outofmemory
+        enviar_codigo_op(OUT_OF_MEMORY, fd_cliente_cpu);
+        return;
     }
 
     char* pid_str = int_to_string(pid);
@@ -155,4 +157,5 @@ void resize_proceso(int pid, int size_to_resize) {
     log_info(loggerAux, "Quedaron %d paginas", list_size(tabla_paginas_de_proceso));
 
     free(pid_str);
+    enviar_codigo_op(OK_OPERACION, fd_cliente_cpu);
 }
