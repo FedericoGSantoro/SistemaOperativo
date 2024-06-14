@@ -1,12 +1,5 @@
 #include "./includes/cpu.h"
 
-void getTamanioPagina() {
-    enviar_codigo_op(DEVOLVER_TAM_PAGINA, fd_memoria);
-    recibir_operacion(fd_memoria);
-    char* tam_pagina_obtenido = recibir_mensaje(fd_memoria);
-    tam_pagina = string_to_int(tam_pagina_obtenido);
-}
-
 int main(int argc, char *argv[]) {
 
     iniciarLogs();
@@ -17,7 +10,9 @@ int main(int argc, char *argv[]) {
     iniciarMutex();
     iniciarServidoresCpu();
     iniciarConexionCpuMemoria();
+
     getTamanioPagina();
+
     while (esperarClientes());
 
     terminarPrograma();
@@ -63,6 +58,13 @@ void iniciarServidoresCpu() {
     fd_cpu_interrupt = iniciar_servidor(PUERTO_ESCUCHA_INTERRUPT, logger_aux_cpu, logger_error_cpu);
 }
 
+void getTamanioPagina() {
+    enviar_codigo_op(DEVOLVER_TAM_PAGINA, fd_memoria);
+    recibir_operacion(fd_memoria);
+    char* tam_pagina_obtenido = recibir_mensaje(fd_memoria);
+    tam_pagina = string_to_int(tam_pagina_obtenido);
+}
+
 void enviarMsjMemoria() {
     enviar_mensaje("Hola, soy CPU!", fd_memoria);
 }
@@ -95,8 +97,9 @@ void iniciar_ciclo_instruccion() {
     }
     log_info(logger_aux_cpu, "motivo nuevo: %d", motivo_bloqueo);
     pthread_mutex_unlock(&variableInterrupcion);
-    enviarContextoEjecucion();
     // Empaquetamos el contexto de ejecucion y se lo enviamos a Kernel
+    enviarContextoEjecucion();
+    
     log_info(logger_aux_cpu, "Envie el contexto de ejecucion!");
 }
 
@@ -191,7 +194,6 @@ void recvInterrupcion() {
 }
 
 void agregar_io_detail(t_paquete *paquete) {
-
     agregar_a_paquete(paquete, &(io_detail.parametros->elements_count), sizeof(int));
     
     if (io_detail.parametros == NULL || io_detail.parametros->elements_count == 0) {
@@ -219,7 +221,6 @@ void agregar_io_detail(t_paquete *paquete) {
 }
 
 void eliminar_io_detail() {
-    
     if (io_detail.parametros == NULL || io_detail.parametros->elements_count == 0) {
         return;
     }
@@ -228,7 +229,7 @@ void eliminar_io_detail() {
         void* parametro_a_eliminar = list_get(io_detail.parametros, i);
         free(parametro_a_eliminar);
     }
-    list_clean(io_detail.parametros); // TODO Esto no elimina la lista, deberia eliminarse
+    list_destroy(io_detail.parametros);
 }
 
 void empaquetarContextoEjecucion(t_paquete *paquete) {
