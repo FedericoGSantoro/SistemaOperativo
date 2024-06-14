@@ -252,25 +252,44 @@ void resize_instruction(t_list *parametros)
 }
 
 void io_stdin_read_instruction(t_list *parametros){
+    //leo parametros
     //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
-
-    //enviar a kernel el tipo instruccion (iosdtfiaisdsai(yo)), nombre interfaz tal cual, 
-    //la o las direcciones fisicas y el tamaño del registro a leer
-
     char *nombre_io = (char *)list_get(parametros, 0);
     char *registro_direccion = (char *)list_get(parametros, 1);
-    int *registro_tamaño = (char *)list_get(parametros, 2);
-   
-    void* reg_dir = mapear_registro(*registro_direccion);
-    //ver como armar las estructuras
-    uint32_t direcciones[10]; //deberia ser el maximo de páginas del sist. Ver si es algo que deberia conocer cpu
-    direcciones[0] = traducir_direccion_mmu(*registro_direccion, pid);
-    do
-    {
-        /* code */
-    } while (/* condition */);
+    char *registro_tamanio = (char *)list_get(parametros, 2);
+    //mapeo
+    uint32_t* reg_dir = (uint32_t*) mapear_registro(registro_direccion);
+    uint32_t* reg_tam = (uint32_t*) mapear_registro(registro_tamanio);
     
-    
+    //armo el array con las direcs fis. y agrego a los parametros c/ posicion
+    int* array_a_enviar = peticion_de_direcciones_fisicas(*reg_tam, reg_dir);
+    for (int i = 0; i < array_a_enviar[0]; i++){
+        agregarAPaqueteParaKernel(array_a_enviar[i+1]); // i+1 pues la primera posicion tiene la cant. de dir_fis.
+    }
+    free(array_a_enviar);
+    //agrego el valor del tamaño a leer por ultimo
+    t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
+    parametro_io_tamanio->tipo_de_dato = INT;
+    parametro_io_tamanio->valor = reg_tam;
+    list_add(io_detail.parametros, parametro_io_tamanio);
+    //cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = IO_STDIN_READ;
+    io_detail.io_instruccion = *io_instruccion;
+    //cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+}
+
+void agregar_direccion_fisica_a_lista(int dir_fis){
+    t_params_io *parametro_io = malloc(sizeof(int) * 2);
+    parametro_io->tipo_de_dato = INT;
+    parametro_io->valor = dir_fis;
+    list_add(io_detail.parametros, parametro_io);
+    //no se si hace falta un free() uwu
+} 
     
 void copy_string_instruction (t_list *parametros){
     char* parametro_numerico = (char *)list_get(parametros, 0);
