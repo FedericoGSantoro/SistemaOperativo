@@ -1,5 +1,45 @@
 #include "mmu.h"
 
+
+int cantidad_paginas_necesarias (uint32_t cantidad_bytes, uint32_t dir_logica) {
+    // Calculamos offset, cantidad de bytes a leer o escribir a partir del offset y determinamos cantidad de paginas en 1
+    // Se asume que no va a haber casos que se lean o escriban 0 bytes
+    int desplazamiento = dir_logica % tam_pagina; 
+    int cantidad_faltante = cantidad_bytes - (tam_pagina - desplazamiento); 
+    int cantidad_paginas = 1;
+
+    // Si falta bytes por leer o escribir sumamos una pagina 
+    for(int i = 0; cantidad_faltante > 0; i++) {
+        cantidad_faltante = cantidad_faltante - tam_pagina; 
+        cantidad_paginas++; 
+    }
+    return cantidad_paginas;
+}
+
+int* peticion_de_direcciones_fisicas(uint32_t cantidad_bytes, uint32_t* direccion_logica) {
+    // Creamos una copia del dato para no modificar el dato original
+    uint32_t dir_logica = *direccion_logica; 
+    int num_pagina = numero_pagina(dir_logica);
+
+    // Calculamos la cantidad de paginas necesarias
+    int cantidad_paginas = cantidad_paginas_necesarias(cantidad_bytes, dir_logica);
+
+    // Creamos dinamicamente el array de direcciones fisicas
+    int* dir_fisicas = malloc(sizeof(int) * (cantidad_paginas + 1));
+    // Asignamos al primer elemento la cantidad de direcciones fisicas
+    dir_fisicas[0] = cantidad_paginas;
+    // Por cada pagina necesitada se realiza la traduccion a direccion fisica de la direccion logica
+    for (int i = 1; i < cantidad_paginas; i++) {
+        // En el primer caso se realiza con la direccion logica original, despues con una calculada que apunta a la siguiente paginas
+        dir_fisicas[i] = traducir_direccion_mmu((uint32_t)dir_logica, pid); 
+        // Se cambia la direccion logica para que apunte a la siguiente pagina
+        dir_logica = ( num_pagina + i ) * tam_pagina; 
+    }
+
+    return dir_fisicas;
+}
+
+
 uint32_t solicitar_numero_de_marco(uint32_t num_pagina, int pid)
 {
     t_paquete *paquete = crear_paquete(DEVOLVER_MARCO);
