@@ -246,6 +246,25 @@ void resize_instruction(t_list *parametros)
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 
+void copy_string_instruction (t_list *parametros){
+    char* parametro_numerico = (char *)list_get(parametros, 0);
+    uint32_t* cantidad_bytes = mapear_registro(parametro_numerico);
+    uint32_t* registro_si = mapear_registro("SI");
+    int* dir_fisicas = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si);
+    
+    // Traducimos direccion logica de DI a direccion fisica
+    // uint32_t dir_fisica_di = traducir_direccion_mmu(registros_cpu.di, pid);
+    // if (dir_fisica_di == -1) {
+    //     // TODO: Revisar que hacer en caso de error
+    //     return;
+    // }
+
+    //t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica_si, pid);
+    
+    //TO-DO: free + seguir con esta funcion
+    free(dir_fisicas);
+}
+
 void exit_instruction(t_list *parametros)
 {
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);

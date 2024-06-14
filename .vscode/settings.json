@@ -4,6 +4,7 @@
         "stdio.h": "c",
         "netdb.h": "c",
         "configs.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "stdbool.h": "c"
     }
 }

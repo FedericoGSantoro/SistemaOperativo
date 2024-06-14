@@ -23,11 +23,9 @@ void iniciarConexionCpuMemoria();
 // Esperaramos conexion del cliente kernel modo dispatch y modo interrupt
 bool esperarClientes();
 
-/* 
-Las funciones atenderKernelDispatch, atenderKernelInterrup y atenderMemoria dentro ejecutan un while infinito,
-es por eso que necesitamos crear 3 hilos. Cada uno de los hilos ejecutara cada uno de estos procesos como si
-fuera en paralelo para que no se bloqueen entre si.
-*/
+//
+void getTamanioPagina();
+
 // Atendemos al cliente Kernel modo Dispatch, recibimos mensajes ejecutamos ciclo de instruccion y enviamos el contexto de ejecucion a Kernel
 void atenderKernelDispatch();
 // Atendemos al cliente Kernel modo Interrupt, UNICAMENTE recibimos mensajes, NO enviamos nada a Kernel en modo interrumpt
@@ -60,10 +58,7 @@ void enviarContextoEjecucion();
 void fetch();
 void decode();
 void execute();
-
-// Ejecutamos ciclo de instruccion
 void ejecutarCicloInstruccion();
-// Iniciamos ciclo de instruccion
 void iniciar_ciclo_instruccion();
 
 // Liberaramos espacio de memoria
