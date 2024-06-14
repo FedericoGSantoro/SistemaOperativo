@@ -357,8 +357,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = JNZ;
         tipo_instruccion_mapped.execute = jnz_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "COPY_STRING"))
+    else if (string_equals_ignore_case(nombre_instruccion, "COPY_STRING")) {
         tipo_instruccion_mapped.nombre_instruccion = COPY_STRING;
+        tipo_instruccion_mapped.execute = copy_string_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_GEN_SLEEP"))
     {
         tipo_instruccion_mapped.nombre_instruccion = IO_GEN_SLEEP;
