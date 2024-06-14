@@ -251,7 +251,7 @@ void resize_instruction(t_list *parametros)
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 
-void io_stdin_read_instruction(t_list *parametros){
+void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
     //leo parametros
     //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
     char *nombre_io = (char *)list_get(parametros, 0);
@@ -264,7 +264,7 @@ void io_stdin_read_instruction(t_list *parametros){
     //armo el array con las direcs fis. y agrego a los parametros c/ posicion
     int* array_a_enviar = peticion_de_direcciones_fisicas(*reg_tam, reg_dir);
     for (int i = 0; i < array_a_enviar[0]; i++){
-        agregarAPaqueteParaKernel(array_a_enviar[i+1]); // i+1 pues la primera posicion tiene la cant. de dir_fis.
+        agregar_direccion_fisica_a_lista(&array_a_enviar[i+1]); // i+1 pues la primera posicion tiene la cant. de dir_fis.
     }
     free(array_a_enviar);
     //agrego el valor del tamaño a leer por ultimo
@@ -283,7 +283,7 @@ void io_stdin_read_instruction(t_list *parametros){
     free(io_instruccion);
 }
 
-void agregar_direccion_fisica_a_lista(int dir_fis){
+void agregar_direccion_fisica_a_lista(int* dir_fis){
     t_params_io *parametro_io = malloc(sizeof(int) * 2);
     parametro_io->tipo_de_dato = INT;
     parametro_io->valor = dir_fis;
@@ -364,11 +364,14 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_GEN_SLEEP;
         tipo_instruccion_mapped.execute = io_gen_sleep_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ"))
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ")){
         tipo_instruccion_mapped.nombre_instruccion = IO_STDIN_READ;
-        tipo_instruccion_mapped.execute = io_stdin_read_instruction;
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE"))
+        tipo_instruccion_mapped.execute = io_std_IN_OUT;
+    }
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE")){
         tipo_instruccion_mapped.nombre_instruccion = IO_STDOUT_WRITE;
+        tipo_instruccion_mapped.execute = io_std_IN_OUT;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_CREATE"))
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_CREATE;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_DELETE"))
