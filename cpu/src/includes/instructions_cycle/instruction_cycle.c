@@ -149,7 +149,6 @@ void jnz_instruction(t_list *parametros)
 
 void io_gen_sleep_instruction(t_list *parametros)
 {
-
     char *nombre_io = (char *)list_get(parametros, 0);
     char *cantidad_tiempo_sleep = (char *)list_get(parametros, 1);
     int *cantidad_tiempo_sleep_parseado = malloc(sizeof(int));
@@ -243,9 +242,55 @@ void resize_instruction(t_list *parametros)
     resize_en_memoria(pid, size_to_resize);
     op_codigo codigoOperacion = recibir_operacion(fd_memoria);
     // TODO: Recibir operacion y fijarse si es Out Of Memory o OK
+    int op = recibir_operacion(fd_memoria);
+    if (op == OUT_OF_MEMORY){
+        manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
+        log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
+        return;
+    } //no considero necesario un chequeo de OK_OPERACION pq si
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 
+void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
+    //leo parametros
+    //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *registro_direccion = (char *)list_get(parametros, 1);
+    char *registro_tamanio = (char *)list_get(parametros, 2);
+    //mapeo
+    uint32_t* reg_dir = (uint32_t*) mapear_registro(registro_direccion);
+    uint32_t* reg_tam = (uint32_t*) mapear_registro(registro_tamanio);
+    
+    //armo el array con las direcs fis. y agrego a los parametros c/ posicion
+    int* array_a_enviar = peticion_de_direcciones_fisicas(*reg_tam, reg_dir);
+    for (int i = 0; i < array_a_enviar[0]; i++){
+        agregar_direccion_fisica_a_lista(&array_a_enviar[i+1]); // i+1 pues la primera posicion tiene la cant. de dir_fis.
+    }
+    free(array_a_enviar);
+    //agrego el valor del tamaño a leer por ultimo
+    t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
+    parametro_io_tamanio->tipo_de_dato = INT;
+    parametro_io_tamanio->valor = reg_tam;
+    list_add(io_detail.parametros, parametro_io_tamanio);
+    //cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = IO_STDIN_READ;
+    io_detail.io_instruccion = *io_instruccion;
+    //cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+}
+
+void agregar_direccion_fisica_a_lista(int* dir_fis){
+    t_params_io *parametro_io = malloc(sizeof(int) * 2);
+    parametro_io->tipo_de_dato = INT;
+    parametro_io->valor = dir_fis;
+    list_add(io_detail.parametros, parametro_io);
+    //no se si hace falta un free() uwu
+} 
+    
 void copy_string_instruction (t_list *parametros){
     char* parametro_numerico = (char *)list_get(parametros, 0);
     uint32_t* cantidad_bytes = mapear_registro(parametro_numerico);
@@ -319,10 +364,14 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_GEN_SLEEP;
         tipo_instruccion_mapped.execute = io_gen_sleep_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ"))
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ")){
         tipo_instruccion_mapped.nombre_instruccion = IO_STDIN_READ;
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE"))
+        tipo_instruccion_mapped.execute = io_std_IN_OUT;
+    }
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE")){
         tipo_instruccion_mapped.nombre_instruccion = IO_STDOUT_WRITE;
+        tipo_instruccion_mapped.execute = io_std_IN_OUT;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_CREATE"))
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_CREATE;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_DELETE"))
