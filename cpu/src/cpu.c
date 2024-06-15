@@ -312,7 +312,7 @@ void decode() {
 }
 
 void execute() {
-    log_info(logger_obligatorio_cpu, "PID: %d - Ejecutando: %d - [%s]", pid, instruccion->tipo_instruccion.nombre_instruccion, instruccion->parametros_string);
+    log_info(logger_obligatorio_cpu, "PID: %d - Ejecutando: %s - [%s]", pid, mapeo_nombre_instruccion(instruccion->tipo_instruccion.nombre_instruccion), instruccion->parametros_string);
     instruccion->tipo_instruccion.execute(instruccion->parametros);
 }
 
