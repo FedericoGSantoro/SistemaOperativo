@@ -68,9 +68,29 @@ void sum_instruction(t_list *parametros)
     tipo_de_dato tipo_de_dato_destino = mapear_tipo_de_dato(destino);
     tipo_de_dato tipo_de_dato_origen = mapear_tipo_de_dato(origen);
 
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8) {
+        uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
+        uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
+        *registro_destino_casteado += *registro_origen_casteado;
+        return;
+    }
+
+    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8) {
+        uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
+        uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
+        *registro_destino_casteado += *registro_origen_casteado;
+        return;
+    }
+
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32) {
+        uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
+        uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
+        *registro_destino_casteado += *registro_origen_casteado;
+        return;
+    }
+
     uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
     uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
-
     *registro_destino_casteado += *registro_origen_casteado;
 }
 
@@ -83,9 +103,32 @@ void sub_instruction(t_list *parametros)
     void *registro_destino = mapear_registro(destino);
     void *registro_origen = mapear_registro(origen);
 
+    tipo_de_dato tipo_de_dato_destino = mapear_tipo_de_dato(destino);
+    tipo_de_dato tipo_de_dato_origen = mapear_tipo_de_dato(origen);
+
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8) {
+        uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
+        uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
+        *registro_destino_casteado -= *registro_origen_casteado;
+        return;
+    }
+
+    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8) {
+        uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
+        uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
+        *registro_destino_casteado -= *registro_origen_casteado;
+        return;
+    }
+
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32) {
+        uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
+        uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
+        *registro_destino_casteado -= *registro_origen_casteado;
+        return;
+    }
+
     uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
     uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
-
     *registro_destino_casteado -= *registro_origen_casteado;
 }
 
@@ -98,9 +141,32 @@ void set_instruction(t_list *parametros)
     void *registro_destino = mapear_registro(destino);
     void *registro_origen = mapear_registro(origen);
 
+    tipo_de_dato tipo_de_dato_destino = mapear_tipo_de_dato(destino);
+    tipo_de_dato tipo_de_dato_origen = mapear_tipo_de_dato(origen);
+
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8) {
+        uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
+        uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
+        *registro_destino_casteado = *registro_origen_casteado;
+        return;
+    }
+
+    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8) {
+        uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
+        uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
+        *registro_destino_casteado = *registro_origen_casteado;
+        return;
+    }
+
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32) {
+        uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
+        uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
+        *registro_destino_casteado = *registro_origen_casteado;
+        return;
+    }
+
     uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
     uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
-
     *registro_destino_casteado = *registro_origen_casteado;
 }
 
@@ -110,15 +176,23 @@ void jnz_instruction(t_list *parametros)
     char *registro = (char *)list_get(parametros, 0);
     char *instruccion_a_moverse = (char *)list_get(parametros, 1);
 
-    // TODO: El registro mapeado puede ser de 8 bits
-    uint32_t *registro_mapeado = mapear_registro(registro);
-    uint32_t *instruccion_a_moverse_mapeada = mapear_registro(instruccion_a_moverse);
+    void *registro_mapeado = mapear_registro(registro);
+    uint32_t instruccion_a_moverse_mapeada = *(uint32_t*)mapear_registro(instruccion_a_moverse);
+    tipo_de_dato tipo_de_dato_registro = mapear_tipo_de_dato(registro);
+    uint32_t registro_casteado;
 
-    // Cambio de registro_mapeado a *registro_mapeado para acceder al dato y no al puntero
-    if (*registro_mapeado != 0)
-    {
-        registros_cpu.pc = *instruccion_a_moverse_mapeada - 1; // restamos uno porque despues vamos a sumar uno con el proximo PC++, al finalizar un ciclo de instruccion que tenga a JNZ. Me llevo a consultar si queda en bulce infinito, o como cortamos el JNZ.
+    if (tipo_de_dato_registro == UINT8) {
+        uint8_t registro_valor = *(uint8_t*) (registro_mapeado);
+        registro_casteado = registro_valor;
+    } else {
+        registro_casteado = *(uint32_t*) (registro_mapeado);
     }
+
+    if (registro_casteado == 0) {
+        return;
+    }
+
+    registros_cpu.pc = instruccion_a_moverse_mapeada - 1; // restamos uno porque despues vamos a sumar uno con el proximo PC++, al finalizar un ciclo de instruccion que tenga a JNZ. Me llevo a consultar si queda en bulce infinito, o como cortamos el JNZ.
 }
 
 void io_gen_sleep_instruction(t_list *parametros)
@@ -147,15 +221,30 @@ void io_gen_sleep_instruction(t_list *parametros)
     free(io_instruccion);
 }
 
+uint32_t get_direccion_fisica (void *registro_direccion_mapeado, tipo_de_dato tipo_de_dato_registro_direccion) {
+    
+    uint32_t registro_direccion_casteado;
+
+    if (tipo_de_dato_registro_direccion == UINT8) {
+        uint8_t registro_direccion_valor = *(uint8_t*) (registro_direccion_mapeado);
+        registro_direccion_casteado = registro_direccion_valor;
+    } else {
+        registro_direccion_casteado = *(uint32_t*) (registro_direccion_mapeado);
+    }
+
+    return traducir_direccion_mmu(registro_direccion_casteado, pid);
+}
+
 void mov_in_instruction(t_list *parametros)
 {
 
     char *registro_datos = (char *)list_get(parametros, 0);
     void *registro_datos_mapeado = mapear_registro(registro_datos);
     char *registro_direccion = (char *)list_get(parametros, 1);
-    uint32_t *registro_direccion_mapeado = mapear_registro(registro_direccion);
+    void *registro_direccion_mapeado = mapear_registro(registro_direccion);
+    tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_datos);
+    uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
 
-    uint32_t dir_fisica = traducir_direccion_mmu(*registro_direccion_mapeado, pid);
     if (dir_fisica == -1)
     {
         // TODO: Revisar que hacer en caso de error
@@ -165,12 +254,36 @@ void mov_in_instruction(t_list *parametros)
     t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica, pid);
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
 
+    //TODO: Se puede emprolijar un poco mas esto sacando el factor comun del log.
+    if (tipo_de_dato_datos == UINT8 && valor_obtenido_de_memoria.tipo_de_dato_valor == UINT8) {
+        uint8_t *registro_datos_casteado = (uint8_t *)registro_datos_mapeado;
+        uint8_t *valor_casteado = (uint8_t *)valor_obtenido_de_memoria.valor;
+        *registro_datos_casteado = *valor_casteado;
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *valor_casteado);
+        return;
+    }
+
+    if (tipo_de_dato_datos == UINT32 && valor_obtenido_de_memoria.tipo_de_dato_valor == UINT8) {
+        uint32_t *registro_datos_casteado = (uint32_t *)registro_datos_mapeado;
+        uint8_t *valor_casteado = (uint8_t *)valor_obtenido_de_memoria.valor;
+        *registro_datos_casteado = *valor_casteado;
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *valor_casteado);
+        return;
+    }
+
+    if (tipo_de_dato_datos == UINT8 && valor_obtenido_de_memoria.tipo_de_dato_valor == UINT32) {
+        uint8_t *registro_datos_casteado = (uint8_t *)registro_datos_mapeado;
+        uint32_t *valor_casteado = (uint32_t *)valor_obtenido_de_memoria.valor;
+        *registro_datos_casteado = *valor_casteado;
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *valor_casteado);
+        return;
+    }
+
     uint32_t *registro_destino_casteado = (uint32_t *)registro_datos_mapeado;
-    uint32_t *registro_origen_casteado = (uint32_t *)valor_obtenido_de_memoria.valor;
-    *registro_destino_casteado = *registro_origen_casteado;
+    uint32_t *valor_casteado = (uint32_t *)valor_obtenido_de_memoria.valor;
+    *registro_destino_casteado = *valor_casteado;
     
-    // TODO: en vez de registro_direccion_mapeado(DL) no seria valor_casteado(Valor leido)?
-    log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *(uint32_t*) registro_direccion_mapeado);
+    log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *valor_casteado);
 }
 
 void mov_out_instruction(t_list *parametros)
@@ -180,21 +293,19 @@ void mov_out_instruction(t_list *parametros)
     void *registro_datos_mapeado = mapear_registro(registro_datos);
     char *registro_direccion = (char *)list_get(parametros, 0);
     void *registro_direccion_mapeado = mapear_registro(registro_direccion);
+    tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_datos);
+    uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
 
-    uint32_t dir_fisica = traducir_direccion_mmu(*(uint32_t*) registro_direccion_mapeado, pid);
+
     if (dir_fisica == -1)
     {
         log_info(logger_aux_cpu, "HUBO PAGE FAULT");
         return;
     }
 
-    // TODO: Para que quiero el numero de pagina?
-    uint32_t num_pagina = numero_pagina(*(uint32_t*) registro_direccion_mapeado);
-
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
 
-    // TODO: Para que quiero pasar el numero de pagina?
-    escribir_en_memoria(dir_fisica, pid, registro_datos_mapeado, tipo_de_dato_datos, num_pagina);
+    escribir_en_memoria(dir_fisica, pid, registro_datos_mapeado, tipo_de_dato_datos);
 
     // TODO: en vez de registro_direccion_mapeado(DL) no seria registro_datos_mapeado(Valor escrito)?
     log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, dir_fisica, *(uint32_t*) registro_direccion_mapeado);
@@ -208,8 +319,7 @@ void resize_instruction(t_list *parametros)
     resize_en_memoria(pid, size_to_resize);
     op_codigo codigoOperacion = recibir_operacion(fd_memoria);
     // TODO: Recibir operacion y fijarse si es Out Of Memory o OK
-    int op = recibir_operacion(fd_memoria);
-    if (op == OUT_OF_MEMORY){
+    if (codigoOperacion == OUT_OF_MEMORY){
         manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
         log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
         return;

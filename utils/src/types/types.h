@@ -2,6 +2,7 @@
 #define TYPES_H_
 
 #include "../config/configs.h"
+#include <stdint.h>
 
 /* ------------ ENUMS --------*/
 
@@ -139,5 +140,7 @@ typedef struct{
 	t_contexto_ejecucion contexto_ejecucion;
 	char* path_archivo; // archivo con las instrucciones a ejecutar
 } t_pcb;
+
+char* mapeo_nombre_instruccion(t_nombre_instruccion nombre_instruccion);
 
 #endif /* TYPES_VARS_H */
