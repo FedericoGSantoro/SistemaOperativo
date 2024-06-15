@@ -385,58 +385,51 @@ void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
     
 void copy_string_instruction (t_list *parametros) {
     char* parametro_numerico = (char *)list_get(parametros, 0);
-
-    // Obtenemos la cantidad de bytes a copiar
     uint32_t* cantidad_bytes = mapear_registro(parametro_numerico);
-
     uint32_t* registro_si = mapear_registro("SI");
     uint32_t* registro_di = mapear_registro("DI");
-
+    tipo_de_dato tipo_de_dato_registro_si = mapear_tipo_de_dato("SI");
+    tipo_de_dato tipo_de_dato_registro_di = mapear_tipo_de_dato("DI");
+    t_list* dir_fisicas_si = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si, tipo_de_dato_registro_si);
+    t_list* dir_fisicas_di = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_di, tipo_de_dato_registro_di);
+    void* valor_obtenido_de_memoria;
     char* leido = string_new();
-    int offset = 0;
-    int i;
-
+    
     // Obtenemos las direcciones fisicas de SI y DI
-    int* dir_fisica_si = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si); // 1er elemento es la cant de paginas y desp direcciones fisicas
-    if (dir_fisica_si[0] == 0) {
-        log_error(logger_aux_cpu, "Error al traducir direcciones físicas de SI");
-        free(dir_fisica_si);
-        return;
-    }
-    int* dir_fisica_di = peticion_de_direcciones_fisicas(registros_cpu.di, pid);
-     if (dir_fisica_di[0] == 0) {
-        log_error(logger_aux_cpu, "Error al traducir direcciones físicas de DI");
-        free(dir_fisica_si);
-        free(dir_fisica_di);
+    if ( list_size(dir_fisicas_di) == 0 || list_size(dir_fisicas_si) == 0 ) {
+        log_error(logger_aux_cpu, "Error al traducir direcciones físicas de SI o DI");
+        liberar_lista_de_datos_con_punteros(dir_fisicas_di);
+        liberar_lista_de_datos_con_punteros(dir_fisicas_si);
         return;
     }
 
     // Leemos de memoria desde las direcciones físicas apuntadas por SI
-    for (i = 1; i <= dir_fisica_si[0]; i++) {
-        // DEBERIAMOS PASAR LA CANTIDAD QUE QUEREMOS LEER
-        t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica_si[i], pid);
-        if (dir_fisica_si[0] != i) {
-            string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria.valor);
+    for (int i = 0; i < list_size(dir_fisicas_si); i++) {
+        // Obtenemos la direccion fisica
+        uint32_t* direccion_fisica = (uint32_t*)list_get(dir_fisicas_si, i);
+        // Calculamos los bytes que podemos leer de esa direccion fisica
+        uint32_t cantidad_a_leer = cantidad_bytes_que_se_pueden_leer(*direccion_fisica);
+        // Si lo que podemos leer es menor a la cantidad que nos falta por leer leemos todo lo que podemos
+        // Si no, leemos lo que nos falta
+        if ( cantidad_a_leer < *cantidad_bytes ) {
+            valor_obtenido_de_memoria = leer_de_memoria(direccion_fisica, pid, cantidad_a_leer);
+            cantidad_bytes -= cantidad_a_leer;
         } else {
-            // TO-DO: Aca deberiamos calcular cuantos bytes nos quedaron por leer y limitarlo
-            if (valor_obtenido_de_memoria.tipo_de_dato_valor == INT) {
-                valor_obtenido_de_memoria.valor = string_to_int(valor_obtenido_de_memoria.valor);
-            }
-            string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria.valor);
+            valor_obtenido_de_memoria = leer_de_memoria(direccion_fisica, pid, cantidad_bytes);
         }
+
+        string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria);
     }
 
-    // !!!! NO PODEMOS UTILIZAR LA FUNCION ESCRIBIR_EN_MEMORIA !!!!!
-    //for (i = 1; i <= dir_fisica_di[0]; i++) {
-        //escribir_en_memoria(dir_fisica_di[i], pid, leido + offset, UINT32, *cantidad_bytes);
-        //offset += sizeof(uint32_t);
-    //}
-    // Escribimos el contenido leído en las direcciones físicas apuntadas por DI
+    // Obtenemos de nuevo la cantidad total a escribir
+    cantidad_bytes = mapear_registro(parametro_numerico);
+    //Escribimos el contenido leído en las direcciones físicas apuntadas por DI
+    escribir_en_memoria(dir_fisicas_di, pid, leido, *cantidad_bytes);
 
     // Liberar la memoria asignada
     free(leido);
-    free(dir_fisica_si);
-    free(dir_fisica_di);
+    liberar_lista_de_datos_con_punteros(dir_fisicas_di);
+    liberar_lista_de_datos_con_punteros(dir_fisicas_si);
 }
 
 void exit_instruction(t_list *parametros)
