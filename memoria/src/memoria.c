@@ -113,10 +113,12 @@ void gestionar_conexion(void *puntero_fd_cliente)
             enviar_codigo_op(OK_OPERACION, fd_cliente);
             break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
             crear_proceso(fd_cliente);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
             break;
         case ELIMINAR_PCB: 
+            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
             eliminar_estructuras_asociadas_al_proceso(fd_cliente);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
             break;
@@ -276,6 +278,7 @@ void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel) {
     uint32_t pid = *(uint32_t*) list_get(paquete_recibido, 0);
 
     eliminar_instrucciones(pid);
+    eliminar_paginas(pid);
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(paquete_recibido);
 }

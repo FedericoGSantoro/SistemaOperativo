@@ -13,7 +13,7 @@ uint32_t resolver_solicitud_de_marco(uint32_t numero_pagina, int pid);
 int obtener_cant_pags(int size_proceso);
 int obtener_cant_marcos();
 uint32_t asignar_frame_libre();
-
+void eliminar_paginas(int pid);
 void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu);
 
 #endif
