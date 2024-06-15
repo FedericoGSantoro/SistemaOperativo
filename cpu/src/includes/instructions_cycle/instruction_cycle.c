@@ -364,7 +364,7 @@ void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
     t_list* dir_fisicas = peticion_de_direcciones_fisicas(*reg_tam, reg_dir, tipo_de_dato_registro_direccion);
 
     for (int i = 0; i < list_size(dir_fisicas); i++){
-        agregar_direccion_fisica_a_lista(list_get(dir_fisicas, i)); // i+1 pues la primera posicion tiene la cant. de dir_fis.
+        agregar_direccion_fisica_a_lista(list_get(dir_fisicas, i));
     }
     //agrego el valor del tamaño a leer por ultimo
     t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
