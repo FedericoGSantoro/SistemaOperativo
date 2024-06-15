@@ -196,3 +196,29 @@ void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
 
     log_info(loggerAux, "Quedaron %d paginas para PID: %d", list_size(get_tabla_paginas_por_proceso(pid)), pid);
 }
+
+void destruir_pagina(t_pagina* pagina){
+	pthread_mutex_lock(&mx_lista_marcos);
+	t_marco* marco_a_liberar = list_get(lista_marcos, pagina->marco);
+	pthread_mutex_unlock(&mx_lista_marcos);
+
+	pthread_mutex_lock(marco_a_liberar->mutexMarco);
+	marco_a_liberar->libre = true;
+	pthread_mutex_unlock(marco_a_liberar->mutexMarco);
+	pthread_mutex_destroy(pagina->mx_pagina);
+	free(pagina);
+}
+
+void destruir_tabla_paginas(t_list* tabla_de_paginas){
+	list_destroy_and_destroy_elements(tabla_de_paginas,(void*)destruir_pagina);
+}
+
+void eliminar_paginas(int pid) {
+
+    char* pid_str = int_to_string(pid);
+	if(dictionary_has_key(tablas_por_proceso,pid_str)){
+		t_list* tabla_de_paginas = dictionary_remove(tablas_por_proceso, pid_str);
+		log_info(loggerOblig, "Destruccion Tabla de Paginas PID: %d - Tamaño: %d", pid, list_size(tabla_de_paginas));
+		destruir_tabla_paginas(tabla_de_paginas);
+	}
+}
