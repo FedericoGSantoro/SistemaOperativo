@@ -7,7 +7,8 @@ pthread_mutex_t* crear_mutex(){
 }
 
 int obtener_cant_pags(int size_proceso) {
-     return ceil(size_proceso / memConfig.tamPagina); //dependiendo del tamaño del proceso se obtiene la cantidad de paginas con la division entera
+    float resultado =  ((float) size_proceso / (float) memConfig.tamPagina);
+    return ceil(resultado); //dependiendo del tamaño del proceso se obtiene la cantidad de paginas con la division entera
 }
 
 int obtener_cant_pags_usadas() {
@@ -24,9 +25,25 @@ int obtener_cant_pags_usadas() {
     return cantidad_paginas;
 }
 
+t_list* get_tabla_paginas_por_proceso(uint32_t pid) {
+
+    char* pid_str = int_to_string(pid);
+    return (t_list*) dictionary_get(tablas_por_proceso, pid_str);
+
+    free(pid_str);
+}
+
+int obtener_cant_paginas_usadas_por_proceso(uint32_t pid) {
+
+    t_list* tabla_paginas_de_proceso = get_tabla_paginas_por_proceso(pid);
+    return list_size(tabla_paginas_de_proceso);
+}
+
+
 int obtener_cant_marcos() {
      return memConfig.tamMemoria / memConfig.tamPagina;
 }
+
 
 t_marco* crear_marco(int i){
 	t_marco* nuevo_marco=malloc(sizeof(t_marco));
@@ -123,20 +140,9 @@ uint32_t resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
     return numero_marco;
 }
 
-void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
+void agrandar_proceso(int cant_pags_usadas, int cant_pags_a_risezear, int cant_marcos, int pid) {
 
-    int cant_marcos = obtener_cant_marcos();
-    int cant_pags = obtener_cant_pags(size_to_resize);
-    
-    int cant_pags_usadas = obtener_cant_pags_usadas();
-    if (cant_pags + cant_pags_usadas > cant_marcos) {
-        // outofmemory
-        enviar_codigo_op(OUT_OF_MEMORY, fd_cliente_cpu); //No considero necesario mandar un OK_OPERACION
-        return;
-    }
-
-    char* pid_str = int_to_string(pid);
-    t_list* tabla_paginas_de_proceso = (t_list*) dictionary_get(tablas_por_proceso, pid_str);
+    t_list* tabla_paginas_de_proceso = get_tabla_paginas_por_proceso(pid);
 
     int index = 0;
     int size_tablas_paginas_de_proceso = list_size(tabla_paginas_de_proceso);
@@ -144,7 +150,7 @@ void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
         index = size_tablas_paginas_de_proceso - 1;
     }
 
-    for(int i = index; i < index + cant_pags; i++) {
+    for(int i = index; i < index + cant_pags_a_risezear; i++) {
         t_pagina *pagina = (t_pagina*)malloc(sizeof(t_pagina));
         pagina->marco = asignar_frame_libre();
         pagina->tiempo_carga = 0; 
@@ -153,8 +159,46 @@ void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
         pagina->mx_pagina = crear_mutex();
         list_add_in_index(tabla_paginas_de_proceso, i, pagina);
     }
+}
 
-    log_info(loggerAux, "Quedaron %d paginas", list_size(tabla_paginas_de_proceso));
+void achicar_proceso(int cant_pags_a_risezear, int pid) {
+    
+    t_list* tabla_paginas = get_tabla_paginas_por_proceso(pid);
+    for (int i = list_size(tabla_paginas)-1; i >= cant_pags_a_risezear; i--) {
+        //No usamos mutex porque es independiente por id de proceso! -> NO voy a estar añadiendo nuevas paginas a un proceso mientras estoy removiendo!
+        t_pagina* pagina_removida = (t_pagina*) list_remove(tabla_paginas, i);
+        uint32_t id_marco_usado = pagina_removida->marco;
+        t_marco* marco_usado = list_get(lista_marcos, id_marco_usado);
+        pthread_mutex_lock(marco_usado->mutexMarco);
+        marco_usado->libre = false;
+        pthread_mutex_unlock(marco_usado->mutexMarco); 
+    
+        pthread_mutex_destroy(pagina_removida->mx_pagina);   
+        free(pagina_removida);    
+    }
+}
 
-    free(pid_str);
+void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
+
+    int cant_marcos = obtener_cant_marcos();
+    int cant_pags_a_risezear = obtener_cant_pags(size_to_resize);
+    
+    int cant_pags_usadas = obtener_cant_pags_usadas();
+    if (cant_pags_a_risezear + cant_pags_usadas > cant_marcos) {
+        // outofmemory
+        enviar_codigo_op(OUT_OF_MEMORY, fd_cliente_cpu); //No considero necesario mandar un OK_OPERACION
+        return;
+    }
+
+    int cant_paginas_usadas_por_proceso = obtener_cant_paginas_usadas_por_proceso(pid);
+
+    if (cant_paginas_usadas_por_proceso < cant_pags_a_risezear){ //La cantidad de paginas es menor? Osea, estoy agrandando el proceso?
+        agrandar_proceso(cant_pags_usadas, cant_pags_a_risezear, cant_marcos, pid);
+        log_info(loggerOblig, "PID: %d - Tamaño Actual: %d - Tamaño a Ampliar: %d", pid, cant_paginas_usadas_por_proceso*memConfig.tamPagina, cant_pags_a_risezear*memConfig.tamPagina);
+    } else {
+        achicar_proceso(cant_pags_a_risezear, pid);
+        log_info(loggerOblig, "PID: %d - Tamaño Actual: %d - Tamaño a Reducir: %d", pid, cant_paginas_usadas_por_proceso*memConfig.tamPagina, cant_pags_a_risezear*memConfig.tamPagina);
+    }
+
+    log_info(loggerAux, "Quedaron %d paginas para PID: %d", list_size(get_tabla_paginas_por_proceso(pid)), pid);
 }
