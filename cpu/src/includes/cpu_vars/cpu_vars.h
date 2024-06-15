@@ -5,11 +5,6 @@
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/hilos/hilos.h"
 
-typedef struct {
-    void* valor;
-    tipo_de_dato tipo_de_dato_valor;
-} t_valor_obtenido_de_memoria;
-
 extern t_log* logger_obligatorio_cpu;
 extern t_log* logger_aux_cpu;
 extern t_log* logger_error_cpu;

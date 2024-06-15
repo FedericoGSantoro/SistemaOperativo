@@ -3,7 +3,7 @@
 void crear_proceso(int fd_cliente_kernel);
 void resize_memoria(int fd_cliente_cpu);
 void leer_valor_memoria(int fd_cliente_cpu);
-void escribir_valor_memoria(int fd_cliente_cpu);
+void proceso_escritura_valor_memoria(int fd_cliente_cpu);
 void devolver_marco(int fd_cliente_cpu);
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel);
 char* fetch_instruccion_de_cliente(int fd_cliente);
@@ -104,7 +104,7 @@ void gestionar_conexion(void *puntero_fd_cliente)
         case ESCRIBIR_VALOR_MEMORIA:
             signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
             alarm(memConfig.retardoRespuesta / 1000);
-            escribir_valor_memoria(fd_cliente);
+            proceso_escritura_valor_memoria(fd_cliente);
             break;
         case RESIZE_EN_MEMORIA:
             signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
@@ -157,7 +157,8 @@ void leer_valor_memoria(int fd_cliente_cpu) {
 
     t_list *paquete_recibido = recibir_paquete(fd_cliente_cpu);            
     uint32_t dir_fisica = *(uint32_t*) list_get(paquete_recibido, 0);
-    int pid = *(int*) list_get(paquete_recibido, 1);
+    uint32_t tamanio_a_leer_en_memoria = *(uint32_t*) list_get(paquete_recibido, 1);
+    int pid = *(int*) list_get(paquete_recibido, 2);
 
     tipo_de_dato tipo_de_dato_almacenado;
             
@@ -165,22 +166,13 @@ void leer_valor_memoria(int fd_cliente_cpu) {
     
     //semaforo para acceso a espacio compartido
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
-    
-    tipo_de_dato_almacenado = *(tipo_de_dato*) list_get(espacio_usuario.tipo_de_dato_almacenado, dir_fisica);
-    agregar_a_paquete(paquete_a_enviar, &tipo_de_dato_almacenado, sizeof(tipo_de_dato));
-    if (tipo_de_dato_almacenado == UINT32) {
-        uint32_t valor_leido_de_espacio;
-        memcpy(&valor_leido_de_espacio,(uint32_t*)((char*)espacio_usuario.espacio_usuario + dir_fisica),sizeof(uint32_t));
-        agregar_a_paquete(paquete_a_enviar, &valor_leido_de_espacio, sizeof(uint32_t));
-        enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
-    } else {
-        uint8_t valor_leido_de_espacio;
-        memcpy(&valor_leido_de_espacio,(uint8_t*)((char*)espacio_usuario.espacio_usuario + dir_fisica),sizeof(uint8_t));
-        agregar_a_paquete(paquete_a_enviar, &valor_leido_de_espacio, sizeof(uint8_t));
-        enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
-    }
-    
+
+    void* valor_leido_de_espacio = malloc(tamanio_a_leer_en_memoria);
+    memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, tamanio_a_leer_en_memoria);
+    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, sizeof(tamanio_a_leer_en_memoria));
+    enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
     log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
+
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
 
@@ -200,35 +192,68 @@ void resize_memoria(int fd_cliente_cpu) {
     liberar_lista_de_datos_con_punteros(valoresPaquete);
 }
 
-void escribir_valor_memoria(int fd_cliente_cpu) {
+void escribir_valor_en_espacio(int pid, uint32_t dir_fisica, void* registro, int cantidad_bytes_a_escribir) {
+    
+        //semaforo para acceso a espacio compartido --> memoria de usuario
+        pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
+        memcpy((void*)(((char*)espacio_usuario.espacio_usuario + dir_fisica)), registro, sizeof(cantidad_bytes_a_escribir));
+        log_info(loggerOblig, "PID: %d - Accion: ESCRIBIR - Direccion fisica: %d", pid, dir_fisica);
+        pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
+        //semaforo para acceso a espacio compartido --> memoria de usuario
+}
+
+void proceso_escritura_valor_memoria(int fd_cliente_cpu) {
 
     t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);
 
-    uint32_t dir_fisica = *(uint32_t*) list_get(valoresPaquete, 0);
-    int pid = *(int*) list_get(valoresPaquete, 1);
-    void* registro = list_get(valoresPaquete, 2);
-    tipo_de_dato tipo_de_dato_a_almacenar = *(tipo_de_dato*) list_get(valoresPaquete, 3);
-            
-    //semaforo para acceso a espacio compartido --> memoria de usuario
-    pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
+    int indice_valores_paquetes = 0;
 
-    if (tipo_de_dato_a_almacenar == UINT32) {
-        uint32_t* registro_casteado = (uint32_t*) registro;
-        memcpy((void*)(((char*)espacio_usuario.espacio_usuario + dir_fisica)), (void*)registro_casteado, sizeof(uint32_t));
-    } else {
-        uint8_t* registro_casteado = (uint8_t*) registro;
-        memcpy((void*)(((char*)espacio_usuario.espacio_usuario + dir_fisica)),(void*)registro_casteado,sizeof(uint8_t));
+    int cantidad_direcciones_fisicas = *(int*) list_get(valoresPaquete, indice_valores_paquetes); //esto es lo mismo que decir, cuantas paginas necesite!
+    t_list* direcciones_fisicas = list_create();
+
+    for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
+        indice_valores_paquetes += 1;
+        uint32_t* dir_fisica = (uint32_t*) list_get(valoresPaquete, indice_valores_paquetes);
+        list_add_in_index(direcciones_fisicas, i, dir_fisica);
     }
-    list_add_in_index(espacio_usuario.tipo_de_dato_almacenado, dir_fisica, &tipo_de_dato_a_almacenar);
-    log_info(loggerOblig, "PID: %d - Accion: ESCRIBIR - Direccion fisica: %d", pid, dir_fisica);
-    pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
-    //semaforo para acceso a espacio compartido --> memoria de usuario
+
+    indice_valores_paquetes += 1;
+    int pid = *(int*) list_get(valoresPaquete, indice_valores_paquetes);
+    indice_valores_paquetes += 1;
+    uint32_t cantidad_bytes_a_escribir = *(uint32_t*) list_get(valoresPaquete, indice_valores_paquetes);
+    indice_valores_paquetes += 1;
+    void* registro = list_get(valoresPaquete, indice_valores_paquetes);
+    
+    if (cantidad_direcciones_fisicas == 1) { //esto quiere decir que solo va a haber una pagina en la operacion afectada
+        
+        uint32_t dir_fisica = *(uint32_t*) list_get(direcciones_fisicas, 0);
+        escribir_valor_en_espacio(pid, dir_fisica, registro, cantidad_bytes_a_escribir);
+    } else {
+
+        for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
+
+            uint32_t bytes_a_guardar;
+            uint32_t dir_fisica = *(uint32_t*) list_get(direcciones_fisicas, i);
+            uint32_t diferencia_entre_dir_y_tam_pagina = memConfig.tamPagina - dir_fisica;
+
+            if (diferencia_entre_dir_y_tam_pagina >= cantidad_bytes_a_escribir) {
+                bytes_a_guardar = cantidad_bytes_a_escribir;
+            } else {
+                bytes_a_guardar = diferencia_entre_dir_y_tam_pagina;
+            }
+            
+            cantidad_bytes_a_escribir -= bytes_a_guardar;
+
+            escribir_valor_en_espacio(pid, dir_fisica, registro, bytes_a_guardar);
+        }
+    }
 
     //LE AVISO A CPU
     enviar_codigo_op(ESCRIBIR_VALOR_MEMORIA, fd_cliente_cpu);
 
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(valoresPaquete);
+    liberar_lista_de_datos_planos(direcciones_fisicas);
 }
 
 void crear_proceso(int fd_cliente_kernel) {
