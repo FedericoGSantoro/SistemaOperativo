@@ -160,8 +160,6 @@ void leer_valor_memoria(int fd_cliente_cpu) {
     uint32_t tamanio_a_leer_en_memoria = *(uint32_t*) list_get(paquete_recibido, 1);
     int pid = *(int*) list_get(paquete_recibido, 2);
 
-    tipo_de_dato tipo_de_dato_almacenado;
-            
     t_paquete* paquete_a_enviar = crear_paquete(LEER_VALOR_MEMORIA);
     
     //semaforo para acceso a espacio compartido
@@ -341,7 +339,6 @@ void terminar_programa()
         pthread_mutex_destroy(pagina.mx_pagina);
     }
     dictionary_destroy_and_destroy_elements(tablas_por_proceso, liberar_lista_de_datos_planos);
-    liberar_lista_de_datos_planos(espacio_usuario.tipo_de_dato_almacenado);
     free(espacio_usuario.espacio_usuario);
     pthread_mutex_destroy(&espacio_usuario.mx_espacio_usuario);
 }
