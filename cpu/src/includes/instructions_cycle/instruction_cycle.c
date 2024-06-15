@@ -244,46 +244,43 @@ void mov_in_instruction(t_list *parametros)
     void *registro_direccion_mapeado = mapear_registro(registro_direccion);
     tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_datos);
     uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
-
+    
     if (dir_fisica == -1)
     {
         // TODO: Revisar que hacer en caso de error
         return;
     }
 
-    t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica, pid);
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
-
-    //TODO: Se puede emprolijar un poco mas esto sacando el factor comun del log.
-    if (tipo_de_dato_datos == UINT8 && valor_obtenido_de_memoria.tipo_de_dato_valor == UINT8) {
-        uint8_t *registro_datos_casteado = (uint8_t *)registro_datos_mapeado;
-        uint8_t *valor_casteado = (uint8_t *)valor_obtenido_de_memoria.valor;
-        *registro_datos_casteado = *valor_casteado;
-        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *valor_casteado);
-        return;
+    uint32_t tamanio_a_leer_en_memoria;
+    switch (tipo_de_dato_datos){
+        case UINT32:
+        tamanio_a_leer_en_memoria = sizeof(uint32_t);
+        break;
+        case UINT8:
+        tamanio_a_leer_en_memoria = sizeof(uint8_t);
+        break;
+        case STRING:
+        tamanio_a_leer_en_memoria = string_length(registro_datos) + 1;
+        break;
     }
-
-    if (tipo_de_dato_datos == UINT32 && valor_obtenido_de_memoria.tipo_de_dato_valor == UINT8) {
-        uint32_t *registro_datos_casteado = (uint32_t *)registro_datos_mapeado;
-        uint8_t *valor_casteado = (uint8_t *)valor_obtenido_de_memoria.valor;
-        *registro_datos_casteado = *valor_casteado;
-        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *valor_casteado);
-        return;
-    }
-
-    if (tipo_de_dato_datos == UINT8 && valor_obtenido_de_memoria.tipo_de_dato_valor == UINT32) {
-        uint8_t *registro_datos_casteado = (uint8_t *)registro_datos_mapeado;
-        uint32_t *valor_casteado = (uint32_t *)valor_obtenido_de_memoria.valor;
-        *registro_datos_casteado = *valor_casteado;
-        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *valor_casteado);
-        return;
-    }
-
-    uint32_t *registro_destino_casteado = (uint32_t *)registro_datos_mapeado;
-    uint32_t *valor_casteado = (uint32_t *)valor_obtenido_de_memoria.valor;
-    *registro_destino_casteado = *valor_casteado;
     
-    log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *valor_casteado);
+    void* valor_obtenido_de_memoria = leer_de_memoria(dir_fisica, pid, tamanio_a_leer_en_memoria);
+
+    switch (tipo_de_dato_datos) {
+        case UINT8:
+            uint8_t *valor_obtenido_mapeado1 = (uint8_t *)valor_obtenido_de_memoria;
+            uint8_t *registro_datos_casteado1 = (uint8_t *)registro_datos_mapeado;
+            *registro_datos_casteado1 = *valor_obtenido_mapeado1;
+            log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_casteado1);
+        break;
+        case UINT32:
+            uint32_t *valor_obtenido_mapeado = (uint32_t *)valor_obtenido_de_memoria;
+            uint32_t *registro_datos_casteado = (uint32_t *)registro_datos_mapeado;
+            *registro_datos_casteado = *valor_obtenido_mapeado;
+            log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_casteado);
+        break;
+    }
 }
 
 void mov_out_instruction(t_list *parametros)
@@ -294,21 +291,38 @@ void mov_out_instruction(t_list *parametros)
     char *registro_direccion = (char *)list_get(parametros, 0);
     void *registro_direccion_mapeado = mapear_registro(registro_direccion);
     tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_datos);
-    uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
-
-
-    if (dir_fisica == -1)
-    {
-        log_info(logger_aux_cpu, "HUBO PAGE FAULT");
-        return;
+    //uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
+    
+    tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
+    uint32_t cantidad_bytes;
+    char* valor;
+    switch (tipo_de_dato_datos){
+        case UINT32:
+        cantidad_bytes = sizeof(uint32_t);
+        uint32_t registro_datos_a_parsear1 = *(uint32_t*) registro_datos_mapeado;
+        valor = int_to_string(registro_datos_a_parsear1);
+        break;
+        case UINT8:
+        cantidad_bytes = sizeof(uint8_t);
+        uint8_t registro_datos_a_parsear2 = *(uint8_t*) registro_datos_mapeado;
+        valor = int_to_string(registro_datos_a_parsear2);
+        break;
+        case STRING:
+        cantidad_bytes = string_length(registro_datos) + 1;
+        valor = (char*) registro_datos_mapeado;
+        break;
     }
 
-    tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
+    t_list* devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(cantidad_bytes, registro_direccion_mapeado, tipo_de_dato_registro_direccion); //estas direcciones SIEMPRE debe haber almenos una
+    
+    escribir_en_memoria(devolucion_direcciones_fisicas, pid, registro_datos_mapeado, cantidad_bytes);
 
-    escribir_en_memoria(dir_fisica, pid, registro_datos_mapeado, tipo_de_dato_datos);
+    for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
 
-    // TODO: en vez de registro_direccion_mapeado(DL) no seria registro_datos_mapeado(Valor escrito)?
-    log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, dir_fisica, *(uint32_t*) registro_direccion_mapeado);
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), valor);
+    }
+
+    liberar_lista_de_datos_con_punteros(devolucion_direcciones_fisicas);
 }
 
 void resize_instruction(t_list *parametros)
@@ -327,6 +341,14 @@ void resize_instruction(t_list *parametros)
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 
+void agregar_direccion_fisica_a_lista(uint32_t* dir_fis){
+    t_params_io *parametro_io = malloc(sizeof(int) * 2);
+    parametro_io->tipo_de_dato = INT;
+    parametro_io->valor = dir_fis;
+    list_add(io_detail.parametros, parametro_io);
+    //no se si hace falta un free() uwu
+} 
+
 void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
     //leo parametros
     //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
@@ -338,11 +360,12 @@ void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
     uint32_t* reg_tam = (uint32_t*) mapear_registro(registro_tamanio);
     
     //armo el array con las direcs fis. y agrego a los parametros c/ posicion
-    int* array_a_enviar = peticion_de_direcciones_fisicas(*reg_tam, reg_dir);
-    for (int i = 0; i < array_a_enviar[0]; i++){
-        agregar_direccion_fisica_a_lista(&array_a_enviar[i+1]); // i+1 pues la primera posicion tiene la cant. de dir_fis.
+    tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_direccion);
+    t_list* dir_fisicas = peticion_de_direcciones_fisicas(*reg_tam, reg_dir, tipo_de_dato_registro_direccion);
+
+    for (int i = 0; i < list_size(dir_fisicas); i++){
+        agregar_direccion_fisica_a_lista(list_get(dir_fisicas, i));
     }
-    free(array_a_enviar);
     //agrego el valor del tamaño a leer por ultimo
     t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
     parametro_io_tamanio->tipo_de_dato = INT;
@@ -357,21 +380,15 @@ void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
 
     manejarInterrupciones(LLAMADA_SISTEMA);
     free(io_instruccion);
+    liberar_lista_de_datos_con_punteros(dir_fisicas);
 }
-
-void agregar_direccion_fisica_a_lista(int* dir_fis){
-    t_params_io *parametro_io = malloc(sizeof(int) * 2);
-    parametro_io->tipo_de_dato = INT;
-    parametro_io->valor = dir_fis;
-    list_add(io_detail.parametros, parametro_io);
-    //no se si hace falta un free() uwu
-} 
     
 void copy_string_instruction (t_list *parametros){
     char* parametro_numerico = (char *)list_get(parametros, 0);
     uint32_t* cantidad_bytes = mapear_registro(parametro_numerico);
     uint32_t* registro_si = mapear_registro("SI");
-    int* dir_fisicas = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si);
+    tipo_de_dato tipo_de_dato_registro_si = mapear_tipo_de_dato("SI");
+    t_list* dir_fisicas = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si, tipo_de_dato_registro_si);
     
     // Traducimos direccion logica de DI a direccion fisica
     // uint32_t dir_fisica_di = traducir_direccion_mmu(registros_cpu.di, pid);
@@ -383,7 +400,7 @@ void copy_string_instruction (t_list *parametros){
     //t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica_si, pid);
     
     //TO-DO: free + seguir con esta funcion
-    free(dir_fisicas);
+    liberar_lista_de_datos_con_punteros(dir_fisicas);
 }
 
 void exit_instruction(t_list *parametros)

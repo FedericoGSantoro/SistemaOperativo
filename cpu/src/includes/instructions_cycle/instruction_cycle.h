@@ -37,7 +37,6 @@ void io_gen_sleep_instruction(t_list* parametros);
 void mov_in_instruction(t_list* parametros);
 void mov_out_instruction(t_list* parametros);
 void io_std_IN_OUT(t_list* parametros);
-void agregar_direccion_fisica_a_lista(int* dir_fis);
 void copy_string_instruction (t_list *parametros);
 void exit_instruction(t_list* parametros);
 t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion);

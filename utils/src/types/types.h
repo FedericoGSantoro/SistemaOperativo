@@ -141,6 +141,11 @@ typedef struct{
 	char* path_archivo; // archivo con las instrucciones a ejecutar
 } t_pcb;
 
+typedef struct {
+    uint32_t direccion_fisica;
+    uint32_t numero_marco;
+} t_direcciones_fisicas;
+
 char* mapeo_nombre_instruccion(t_nombre_instruccion nombre_instruccion);
 
 #endif /* TYPES_VARS_H */
