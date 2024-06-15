@@ -291,23 +291,60 @@ void agregar_direccion_fisica_a_lista(int* dir_fis){
     //no se si hace falta un free() uwu
 } 
     
-void copy_string_instruction (t_list *parametros){
+void copy_string_instruction (t_list *parametros) {
     char* parametro_numerico = (char *)list_get(parametros, 0);
-    uint32_t* cantidad_bytes = mapear_registro(parametro_numerico);
-    uint32_t* registro_si = mapear_registro("SI");
-    int* dir_fisicas = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si);
-    
-    // Traducimos direccion logica de DI a direccion fisica
-    // uint32_t dir_fisica_di = traducir_direccion_mmu(registros_cpu.di, pid);
-    // if (dir_fisica_di == -1) {
-    //     // TODO: Revisar que hacer en caso de error
-    //     return;
-    // }
 
-    //t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica_si, pid);
-    
-    //TO-DO: free + seguir con esta funcion
-    free(dir_fisicas);
+    // Obtenemos la cantidad de bytes a copiar
+    uint32_t* cantidad_bytes = mapear_registro(parametro_numerico);
+
+    uint32_t* registro_si = mapear_registro("SI");
+    uint32_t* registro_di = mapear_registro("DI");
+
+    char* leido = string_new();
+    int offset = 0;
+    int i;
+
+    // Obtenemos las direcciones fisicas de SI y DI
+    int* dir_fisica_si = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si); // 1er elemento es la cant de paginas y desp direcciones fisicas
+    if (dir_fisica_si[0] == 0) {
+        log_error(logger_aux_cpu, "Error al traducir direcciones físicas de SI");
+        free(dir_fisica_si);
+        return;
+    }
+    int* dir_fisica_di = peticion_de_direcciones_fisicas(registros_cpu.di, pid);
+     if (dir_fisica_di[0] == 0) {
+        log_error(logger_aux_cpu, "Error al traducir direcciones físicas de DI");
+        free(dir_fisica_si);
+        free(dir_fisica_di);
+        return;
+    }
+
+    // Leemos de memoria desde las direcciones físicas apuntadas por SI
+    for (i = 1; i <= dir_fisica_si[0]; i++) {
+        // DEBERIAMOS PASAR LA CANTIDAD QUE QUEREMOS LEER
+        t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica_si[i], pid);
+        if (dir_fisica_si[0] != i) {
+            string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria.valor);
+        } else {
+            // TO-DO: Aca deberiamos calcular cuantos bytes nos quedaron por leer y limitarlo
+            if (valor_obtenido_de_memoria.tipo_de_dato_valor == INT) {
+                valor_obtenido_de_memoria.valor = string_to_int(valor_obtenido_de_memoria.valor);
+            }
+            string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria.valor);
+        }
+    }
+
+    // !!!! NO PODEMOS UTILIZAR LA FUNCION ESCRIBIR_EN_MEMORIA !!!!!
+    //for (i = 1; i <= dir_fisica_di[0]; i++) {
+        //escribir_en_memoria(dir_fisica_di[i], pid, leido + offset, UINT32, *cantidad_bytes);
+        //offset += sizeof(uint32_t);
+    //}
+    // Escribimos el contenido leído en las direcciones físicas apuntadas por DI
+
+    // Liberar la memoria asignada
+    free(leido);
+    free(dir_fisica_si);
+    free(dir_fisica_di);
 }
 
 void exit_instruction(t_list *parametros)
