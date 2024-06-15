@@ -32,7 +32,6 @@ extern t_mem_config memConfig;
 typedef struct 
 {
     void* espacio_usuario;
-    t_list* tipo_de_dato_almacenado;
     pthread_mutex_t mx_espacio_usuario;
 } t_espacio_usuario;
 
