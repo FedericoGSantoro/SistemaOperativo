@@ -113,7 +113,7 @@ t_valor_obtenido_de_memoria leer_de_memoria(int dir_fisica, int pid)
     return valor_obtenido_de_memoria;
 }
 
-void escribir_en_memoria(uint32_t dir_fisica, int pid, void* registro, tipo_de_dato tipo_de_dato_datos, uint32_t num_pagina)
+void escribir_en_memoria(uint32_t dir_fisica, int pid, void* registro, tipo_de_dato tipo_de_dato_datos)
 {
     t_paquete *paquete = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
 
@@ -127,12 +127,6 @@ void escribir_en_memoria(uint32_t dir_fisica, int pid, void* registro, tipo_de_d
     } else {
         agregar_a_paquete(paquete, registro, sizeof(uint8_t));
     }
-
-    // TODO: Que es esto?
-    agregar_a_paquete(paquete, &registro, sizeof(uint32_t));
-
-    // TODO: Para que es esto?
-    agregar_a_paquete(paquete, &num_pagina, sizeof(uint32_t));
 
     agregar_a_paquete(paquete, &tipo_de_dato_datos, sizeof(tipo_de_dato));
 

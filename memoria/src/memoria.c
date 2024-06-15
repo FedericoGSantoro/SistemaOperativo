@@ -207,9 +207,7 @@ void escribir_valor_memoria(int fd_cliente_cpu) {
     uint32_t dir_fisica = *(uint32_t*) list_get(valoresPaquete, 0);
     int pid = *(int*) list_get(valoresPaquete, 1);
     void* registro = list_get(valoresPaquete, 2);
-    // TODO: para que el numero de pagina?
-    uint32_t num_pagina = *(uint32_t*) list_get(valoresPaquete, 3);
-    tipo_de_dato tipo_de_dato_a_almacenar = *(tipo_de_dato*) list_get(valoresPaquete, 4);
+    tipo_de_dato tipo_de_dato_a_almacenar = *(tipo_de_dato*) list_get(valoresPaquete, 3);
             
     //semaforo para acceso a espacio compartido --> memoria de usuario
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
