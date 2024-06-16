@@ -9,7 +9,6 @@ uint32_t get_registro_direccion_casteado (void *registro_direccion_mapeado, tipo
         return *(uint32_t*) (registro_direccion_mapeado);
     }
 }
-
 uint32_t cantidad_bytes_que_se_pueden_leer(uint32_t dir) {
     uint32_t offset = dir % tam_pagina;
     return tam_pagina - offset;

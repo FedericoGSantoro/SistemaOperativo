@@ -186,6 +186,7 @@ void jnz_instruction(t_list *parametros)
         registro_casteado = registro_valor;
     } else {
         registro_casteado = *(uint32_t*) (registro_mapeado);
+
     }
 
     if (registro_casteado == 0) {
