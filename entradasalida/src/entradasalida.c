@@ -13,6 +13,7 @@ int main(int argc, char* argv[]) {
     path_config = argv[2];
     inicializar();
     op_codigo codigoRecibido;
+    int cantidadParametros;
     while( fd_kernel != -1 ){
         codigoRecibido = recibir_operacion(fd_kernel);
         if ( codigoRecibido == -1 ) {
@@ -41,7 +42,7 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_STDIN_READ a la interfaz no STDIN: %s", nombre);
                 break;
             }
-            int cantidadParametros = list_size(parametrosRecibidos);
+            cantidadParametros = list_size(parametrosRecibidos);
             if(1 < cantidadParametros ){
                 int direccionesMemoria[cantidadParametros-1];
                 for(int i=0; i < cantidadParametros-1; i++){
@@ -53,7 +54,7 @@ int main(int argc, char* argv[]) {
                 for (int i = 0; i < cantidadParametros -1; i++){
                     agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
                 }
-                agregar_a_paquete(paqueteMemoria, tamanio, sizeof(int));
+                agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(int));
                 agregar_a_paquete(paqueteMemoria, valorLeido, strlen(valorLeido) + 1);
                 enviar_paquete(paqueteMemoria, fd_memoria);
                 eliminar_paquete(paqueteMemoria);
@@ -81,7 +82,7 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_STDOUT_WRITE a la interfaz no STDOUT: %s", nombre);
                 break;
             }
-            int cantidadParametros = list_size(parametrosRecibidos);
+            cantidadParametros = list_size(parametrosRecibidos);
             if(1 < cantidadParametros ){
                 int direccionesMemoria[cantidadParametros-1];
                 for(int i=0; i < cantidadParametros-1; i++){
@@ -93,7 +94,7 @@ int main(int argc, char* argv[]) {
                 for (int i = 0; i < cantidadParametros -1; i++){
                     agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
                 }
-                agregar_a_paquete(paqueteMemoria, tamanio, sizeof(int));
+                agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(int));
                 enviar_paquete(paqueteMemoria, fd_memoria);
                 eliminar_paquete(paqueteMemoria);
                 //Ver como recibo valor de memoria
@@ -103,9 +104,9 @@ int main(int argc, char* argv[]) {
                     t_list* paqueteRecibido = recibir_paquete(fd_memoria);
                     char* valorAMostrar = string_new();
                     for (int i = 0; i < cantidadParametros-1; i++){
-                        string_append_with_format(valorAMostrar, "%s", *(char*)list_get(paqueteRecibido,i));
+                        string_append_with_format(&valorAMostrar, "%s", (char*)list_get(paqueteRecibido,i));
                     }
-                    printf(valorAMostrar);
+                    printf("%s", valorAMostrar);
                     enviar_codigo_op(OK_OPERACION, fd_kernel);
                     break;
                 default:
