@@ -25,14 +25,135 @@ int main(int argc, char* argv[]) {
         log_info(logger_obligatorio, "PID: %d - Operacion: %s",pid, enumToString(tipoInstruccion));
         switch (tipoInstruccion) {
         case IO_GEN_SLEEP:
-            // log_info(logger_auxiliar, "Cantidad: %d ", list_size(informacion.parametros));
-            // t_params_io parametro = *(t_params_io*) list_get(informacion.parametros, 0);
+            //chequeo que solo interfaces genericas puedan hacer io_gen_sleep Y lo mismo en los ifs de abajo
+            if(TIPO_INTERFAZ != GENERICA){
+                log_error(logger_error, "Se envió la instrucción IO_GEN_SLEEP a la interfaz no genérica: %s", nombre);
+                break;
+            }
             int cantidadUnidadesTrabajo = *(int*) list_get(parametrosRecibidos, 0);
             int tiempoSleep = cantidadUnidadesTrabajo * TIEMPO_UNIDAD_TRABAJO;
-            // log_info(logger_auxiliar, "SLEEP %d", sleepValue);
             usleep(tiempoSleep);
             enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
+
+        case IO_STDIN_READ:
+            if(TIPO_INTERFAZ != STDIN){
+                log_error(logger_error, "Se envió la instrucción IO_STDIN_READ a la interfaz no STDIN: %s", nombre);
+                break;
+            }
+            int cantidadParametros = list_size(parametrosRecibidos);
+            if(1 < cantidadParametros ){
+                int direccionesMemoria[cantidadParametros-1];
+                for(int i=0; i < cantidadParametros-1; i++){
+                    direccionesMemoria[i] = *(int*) list_get(parametrosRecibidos, i);
+                }
+                int tamanio = *(int*) list_get(parametrosRecibidos, cantidadParametros);
+                char* valorLeido = readline("<Ingrese un valor:> ");
+                t_paquete* paqueteMemoria = crear_paquete(ESCRITURA);
+                for (int i = 0; i < cantidadParametros -1; i++){
+                    agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
+                }
+                agregar_a_paquete(paqueteMemoria, tamanio, sizeof(int));
+                agregar_a_paquete(paqueteMemoria, valorLeido, strlen(valorLeido) + 1);
+                enviar_paquete(paqueteMemoria, fd_memoria);
+                eliminar_paquete(paqueteMemoria);
+                //Ver como recibo valor de memoria
+                op_codigo op = recibir_operacion(fd_memoria);
+                switch (op){
+                case OK_OPERACION:
+                    log_info(logger_auxiliar, "Se escribio el valor '%s' en memoria", valorLeido);
+                    enviar_codigo_op(OK_OPERACION, fd_kernel);
+                    break;
+                default:
+                    log_error(logger_error, "Fallo escritura de Memoria con el valor: %s", valorLeido);
+                    enviar_codigo_op(ERROR_OPERACION, fd_kernel);
+                    break;
+                }
+                free(valorLeido);
+            }else{
+                log_error(logger_error, "No se recibio lo necesario para escribir en memoria");
+                enviar_codigo_op(ERROR_OPERACION, fd_kernel);
+            }
+            break;
+
+        case IO_STDOUT_WRITE:
+            if(TIPO_INTERFAZ != STDOUT){
+                log_error(logger_error, "Se envió la instrucción IO_STDOUT_WRITE a la interfaz no STDOUT: %s", nombre);
+                break;
+            }
+            int cantidadParametros = list_size(parametrosRecibidos);
+            if(1 < cantidadParametros ){
+                int direccionesMemoria[cantidadParametros-1];
+                for(int i=0; i < cantidadParametros-1; i++){
+                    direccionesMemoria[i] = *(int*) list_get(parametrosRecibidos, i);
+                }
+                int tamanio = *(int*) list_get(parametrosRecibidos, cantidadParametros);
+
+                t_paquete* paqueteMemoria = crear_paquete(LECTURA);
+                for (int i = 0; i < cantidadParametros -1; i++){
+                    agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
+                }
+                agregar_a_paquete(paqueteMemoria, tamanio, sizeof(int));
+                enviar_paquete(paqueteMemoria, fd_memoria);
+                eliminar_paquete(paqueteMemoria);
+                //Ver como recibo valor de memoria
+                op_codigo op = recibir_operacion(fd_memoria);
+                switch (op){
+                case OK_OPERACION:
+                    t_list* paqueteRecibido = recibir_paquete(fd_memoria);
+                    char* valorAMostrar = string_new();
+                    for (int i = 0; i < cantidadParametros-1; i++){
+                        string_append_with_format(valorAMostrar, "%s", *(char*)list_get(paqueteRecibido,i));
+                    }
+                    printf(valorAMostrar);
+                    enviar_codigo_op(OK_OPERACION, fd_kernel);
+                    break;
+                default:
+                    log_error(logger_error, "Fallo lectura de Memoria");
+                    enviar_codigo_op(ERROR_OPERACION, fd_kernel);
+                    break;
+                }
+            }else{
+                log_error(logger_error, "No se recibio lo necesario para leer de memoria");
+                enviar_codigo_op(ERROR_OPERACION, fd_kernel);
+            }
+            break;
+        
+        case IO_FS_CREATE:
+            if(TIPO_INTERFAZ != FS){
+                log_error(logger_error, "Se envio la instrucción IO_FS_CREATE a la interfaz no FS: %s", nombre);
+                break;
+            }
+            break;
+
+        case IO_FS_DELETE:
+            if(TIPO_INTERFAZ != FS){
+                log_error(logger_error, "Se envió la instrucción IO_FS_DELETE a la interfaz no FS: %s", nombre);
+                break;
+            }
+            break;
+
+        case IO_FS_READ:
+            if(TIPO_INTERFAZ != FS){
+                log_error(logger_error, "Se envió la instrucción IO_FS_READ a la interfaz no FS: %s", nombre);
+                break;
+            }
+            break;
+
+        case IO_FS_WRITE:
+            if(TIPO_INTERFAZ != FS){
+                log_error(logger_error, "Se envió la instrucción IO_FS_WRITE a la interfaz no FS: %s", nombre);
+                break;
+            }
+            break;
+
+        case IO_FS_TRUNCATE:
+            if(TIPO_INTERFAZ != FS){
+                log_error(logger_error, "Se envió la instrucción IO_FS_TRUNCATE a la interfaz no FS: %s", nombre);
+                break;
+            }
+            break;
+        
         default:
             log_error(logger_error, "Se recibio una instruccion no esperada: %d", tipoInstruccion);
             break;
