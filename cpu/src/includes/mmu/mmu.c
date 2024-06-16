@@ -9,14 +9,15 @@ uint32_t get_registro_direccion_casteado (void *registro_direccion_mapeado, tipo
         return *(uint32_t*) (registro_direccion_mapeado);
     }
 }
-
-
+uint32_t cantidad_bytes_que_se_pueden_leer(uint32_t dir) {
+    uint32_t offset = dir % tam_pagina;
+    return tam_pagina - offset;
+}
 
 int cantidad_paginas_necesarias (uint32_t cantidad_bytes, uint32_t dir_logica) {
     // Calculamos offset, cantidad de bytes a leer o escribir a partir del offset y determinamos cantidad de paginas en 1
     // Se asume que no va a haber casos que se lean o escriban 0 bytes
-    int desplazamiento = dir_logica - numero_pagina(dir_logica) * tam_pagina;
-    int cantidad_faltante = cantidad_bytes - (tam_pagina - desplazamiento); 
+    int cantidad_faltante = cantidad_bytes - cantidad_bytes_que_se_pueden_leer(dir_logica); 
     int cantidad_paginas = 1;
 
     // Si falta bytes por leer o escribir sumamos una pagina 
@@ -134,7 +135,7 @@ void escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro, u
     agregar_a_paquete(paquete, &cantidad_direcciones_fisicas, sizeof(int)); //agrego cuantas direcciones fisicas hay
 
     for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
-        uint32_t direccion_fisica = *(uint32_t*)list_get(direcciones_fisicas, i);
+        //uint32_t direccion_fisica = *(uint32_t*)list_get(direcciones_fisicas, i);
         agregar_a_paquete(paquete, (uint32_t*)list_get(direcciones_fisicas, i), sizeof(uint32_t));
     }
 

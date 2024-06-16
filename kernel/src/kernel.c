@@ -793,6 +793,7 @@ void ejecutar_script(char* pathScript) {
         lineaLeida[strcspn(lineaLeida, "\n")] = 0;
         char** arrayComando = string_split(lineaLeida, " ");
         log_info(logs_auxiliares, "Comando: %s", arrayComando[0]);
+        log_info(logs_auxiliares, "Path: %s", arrayComando[1]);
         ejecutar_comando_consola(arrayComando);
     }
     fclose(archivoScript);

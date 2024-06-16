@@ -186,6 +186,7 @@ void jnz_instruction(t_list *parametros)
         registro_casteado = registro_valor;
     } else {
         registro_casteado = *(uint32_t*) (registro_mapeado);
+
     }
 
     if (registro_casteado == 0) {
@@ -383,24 +384,53 @@ void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
     liberar_lista_de_datos_con_punteros(dir_fisicas);
 }
     
-void copy_string_instruction (t_list *parametros){
+void copy_string_instruction (t_list *parametros) {
     char* parametro_numerico = (char *)list_get(parametros, 0);
     uint32_t* cantidad_bytes = mapear_registro(parametro_numerico);
     uint32_t* registro_si = mapear_registro("SI");
+    uint32_t* registro_di = mapear_registro("DI");
     tipo_de_dato tipo_de_dato_registro_si = mapear_tipo_de_dato("SI");
-    t_list* dir_fisicas = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si, tipo_de_dato_registro_si);
+    tipo_de_dato tipo_de_dato_registro_di = mapear_tipo_de_dato("DI");
+    t_list* dir_fisicas_si = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si, tipo_de_dato_registro_si);
+    t_list* dir_fisicas_di = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_di, tipo_de_dato_registro_di);
+    void* valor_obtenido_de_memoria;
+    char* leido = string_new();
     
-    // Traducimos direccion logica de DI a direccion fisica
-    // uint32_t dir_fisica_di = traducir_direccion_mmu(registros_cpu.di, pid);
-    // if (dir_fisica_di == -1) {
-    //     // TODO: Revisar que hacer en caso de error
-    //     return;
-    // }
+    // Obtenemos las direcciones fisicas de SI y DI
+    if ( list_size(dir_fisicas_di) == 0 || list_size(dir_fisicas_si) == 0 ) {
+        log_error(logger_aux_cpu, "Error al traducir direcciones físicas de SI o DI");
+        liberar_lista_de_datos_con_punteros(dir_fisicas_di);
+        liberar_lista_de_datos_con_punteros(dir_fisicas_si);
+        return;
+    }
 
-    //t_valor_obtenido_de_memoria valor_obtenido_de_memoria = leer_de_memoria(dir_fisica_si, pid);
-    
-    //TO-DO: free + seguir con esta funcion
-    liberar_lista_de_datos_con_punteros(dir_fisicas);
+    // Leemos de memoria desde las direcciones físicas apuntadas por SI
+    for (int i = 0; i < list_size(dir_fisicas_si); i++) {
+        // Obtenemos la direccion fisica
+        uint32_t* direccion_fisica = (uint32_t*)list_get(dir_fisicas_si, i);
+        // Calculamos los bytes que podemos leer de esa direccion fisica
+        uint32_t cantidad_a_leer = cantidad_bytes_que_se_pueden_leer(*direccion_fisica);
+        // Si lo que podemos leer es menor a la cantidad que nos falta por leer leemos todo lo que podemos
+        // Si no, leemos lo que nos falta
+        if ( cantidad_a_leer < *cantidad_bytes ) {
+            valor_obtenido_de_memoria = leer_de_memoria(direccion_fisica, pid, cantidad_a_leer);
+            cantidad_bytes -= cantidad_a_leer;
+        } else {
+            valor_obtenido_de_memoria = leer_de_memoria(direccion_fisica, pid, cantidad_bytes);
+        }
+
+        string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria);
+    }
+
+    // Obtenemos de nuevo la cantidad total a escribir
+    cantidad_bytes = mapear_registro(parametro_numerico);
+    //Escribimos el contenido leído en las direcciones físicas apuntadas por DI
+    escribir_en_memoria(dir_fisicas_di, pid, leido, *cantidad_bytes);
+
+    // Liberar la memoria asignada
+    free(leido);
+    liberar_lista_de_datos_con_punteros(dir_fisicas_di);
+    liberar_lista_de_datos_con_punteros(dir_fisicas_si);
 }
 
 void exit_instruction(t_list *parametros)
@@ -450,8 +480,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = JNZ;
         tipo_instruccion_mapped.execute = jnz_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "COPY_STRING"))
+    else if (string_equals_ignore_case(nombre_instruccion, "COPY_STRING")) {
         tipo_instruccion_mapped.nombre_instruccion = COPY_STRING;
+        tipo_instruccion_mapped.execute = copy_string_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_GEN_SLEEP"))
     {
         tipo_instruccion_mapped.nombre_instruccion = IO_GEN_SLEEP;

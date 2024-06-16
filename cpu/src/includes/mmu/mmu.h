@@ -23,5 +23,10 @@ cantidad_bytes = cantidad de bytes a leer o escribir
 direccion_logica = direccion logica inicial
 */
 int cantidad_paginas_necesarias (uint32_t cantidad_bytes, uint32_t dir_logica);
+/*
+Retorna la cantidad de bytes que se pueden leer a partir del offset de la direccion hasta el final de pagina
+dir_logica = direccion logica a comprobar
+*/
+uint32_t cantidad_bytes_que_se_pueden_leer(uint32_t dir_logica);
 
 #endif

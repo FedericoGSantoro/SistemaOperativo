@@ -25,12 +25,12 @@ int main(int argc, char* argv[]) {
         log_info(logger_obligatorio, "PID: %d - Operacion: %s",pid, enumToString(tipoInstruccion));
         switch (tipoInstruccion) {
         case IO_GEN_SLEEP:
-            // TODO rompe aca al leer los parametros
             // log_info(logger_auxiliar, "Cantidad: %d ", list_size(informacion.parametros));
             // t_params_io parametro = *(t_params_io*) list_get(informacion.parametros, 0);
-            int sleepValue = *(int*) list_get(parametrosRecibidos, 0);
+            int cantidadUnidadesTrabajo = *(int*) list_get(parametrosRecibidos, 0);
+            int tiempoSleep = cantidadUnidadesTrabajo * TIEMPO_UNIDAD_TRABAJO;
             // log_info(logger_auxiliar, "SLEEP %d", sleepValue);
-            sleep(sleepValue);
+            usleep(tiempoSleep);
             enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
         default:
