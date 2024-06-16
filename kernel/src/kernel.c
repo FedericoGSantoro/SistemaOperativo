@@ -246,8 +246,9 @@ bool coincidePidAEliminarEnExec(void* pidVoid) {
 
 void setTemporizadorQuantum (int Q) {
     struct itimerval timer;
-    log_info(logs_auxiliares, "Q: %d", Q);
-    timer.it_value.tv_sec = Q;
+    float segundos = (float) Q / 1000;
+    log_info(logs_auxiliares, "Q: %f", segundos);
+    timer.it_value.tv_sec = segundos;
     timer.it_value.tv_usec = 0;
     timer.it_interval.tv_sec = 0;
     timer.it_interval.tv_usec = 0;
@@ -588,7 +589,7 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
     case CREAR_PCB:
         paquete = crear_paquete(CREAR_PCB);
         agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
-        agregar_a_paquete(paquete, pathArchivo, strlen(pathArchivo) + 1);
+        agregar_a_paquete(paquete, pcb->path_archivo, strlen(pcb->path_archivo) + 1);
         enviar_paquete(paquete, fd_memoria);
         if ( !evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, CREAR_PCB) ) {
             log_warning(logs_auxiliares, "Reintentando creacion pid: %d", pcb->contexto_ejecucion.pid);
