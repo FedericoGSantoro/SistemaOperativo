@@ -30,9 +30,9 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_GEN_SLEEP a la interfaz no genérica: %s", nombre);
                 break;
             }
-            int sleepValue = *(int*) list_get(parametrosRecibidos, 0);
-            // log_info(logger_auxiliar, "SLEEP %d", sleepValue);
-            sleep(sleepValue);
+            int cantidadUnidadesTrabajo = *(int*) list_get(parametrosRecibidos, 0);
+            int tiempoSleep = cantidadUnidadesTrabajo * TIEMPO_UNIDAD_TRABAJO;
+            usleep(tiempoSleep);
             enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
 

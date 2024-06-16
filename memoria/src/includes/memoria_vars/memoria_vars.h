@@ -4,6 +4,8 @@
 #include "../../utils/src/config/configs.h"
 #include <commons/collections/dictionary.h>
 #include <commons/collections/list.h>
+#include <commons/temporal.h>
+#include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
 
@@ -12,7 +14,8 @@
 extern t_dictionary* cache_instrucciones;
 
 //mapa para almacenar tablas por procesos (key = PID, value = lista, la cual sera la tabla de paginas)
-extern t_dictionary* cache_tabla_por_proceso;
+extern t_dictionary* tablas_por_proceso;
+extern pthread_mutex_t mx_tablas_paginas;
 
 //Globales del Config
 typedef struct {
@@ -34,7 +37,25 @@ typedef struct
 
 extern t_espacio_usuario espacio_usuario;
 
-extern int *vector_marcos;
+// estructura para las paginas en la tabla de paginas (la lista del mapa de tablas por proceso, contiene por cada objeto, una estructura de estas)
+typedef struct{
+    uint32_t marco;
+    time_t tiempo_carga;//Para FIFO
+    time_t ultima_referencia;//Para LRU
+    int pid;
+	pthread_mutex_t* mx_pagina;
+} t_pagina;
+
+typedef struct {
+	bool libre;
+	int base;
+	int limite;
+    time_t* ultimo_uso;
+    pthread_mutex_t* mutexMarco;
+} t_marco;
+
+extern t_list* lista_marcos;
+extern pthread_mutex_t mx_lista_marcos;
 
 //Variables Globales
 extern t_log* loggerOblig; 

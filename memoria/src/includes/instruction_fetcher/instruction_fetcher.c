@@ -63,4 +63,5 @@ void eliminar_instrucciones(int pid) {
 
     char* pid_convertido = int_to_string(pid);
     destroyer_dictionary_key_con_estructuras(cache_instrucciones, pid_convertido, liberar_lista_de_datos_con_punteros);
+    free(pid_convertido);
 }

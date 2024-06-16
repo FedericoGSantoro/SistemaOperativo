@@ -4,7 +4,9 @@
 t_dictionary* cache_instrucciones;
 
 //mapa para almacenar tablas por procesos
-t_dictionary* cache_tabla_por_proceso;
+t_dictionary* tablas_por_proceso;
+pthread_mutex_t mx_tablas_paginas;
+
 
 //Globales del Config
 t_mem_config memConfig;
@@ -12,7 +14,8 @@ t_mem_config memConfig;
 //Global para espacio de usuario
 t_espacio_usuario espacio_usuario;
 
-int *vector_marcos;
+t_list* lista_marcos;
+pthread_mutex_t mx_lista_marcos;
 
 //Variables Globales
 t_log* loggerOblig; 

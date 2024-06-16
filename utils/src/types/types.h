@@ -2,13 +2,16 @@
 #define TYPES_H_
 
 #include "../config/configs.h"
+#include <stdint.h>
 
 /* ------------ ENUMS --------*/
 
-// Codigos de operaciones
+// Tipo de datos
 typedef enum {
     STRING,
 	INT,
+	UINT32,
+	UINT8,
 } tipo_de_dato;
 
 // Operaciones de Instrucciones de CPU
@@ -44,12 +47,20 @@ typedef enum {
 	CREAR_PCB,
 	ELIMINAR_PCB,
 	FETCH_INSTRUCCION,
+    WRITE_EN_MEMORIA,
+	LEER_VALOR_MEMORIA,
+	RESIZE_EN_MEMORIA,
+	ESCRIBIR_VALOR_MEMORIA,
 	DEVOLVER_INSTRUCCION,
+	DEVOLVER_TAM_PAGINA,
+    DEVOLVER_MARCO,
+	ESCRIBIR_MARCO,
 	OK_OPERACION,
 	ERROR_OPERACION,
 	INTERRUPCION,
 	LECTURA,
-	ESCRITURA
+	ESCRITURA,
+	OUT_OF_MEMORY,
 } op_codigo;
 
 // Razones de bloqueo
@@ -131,5 +142,12 @@ typedef struct{
 	t_contexto_ejecucion contexto_ejecucion;
 	char* path_archivo; // archivo con las instrucciones a ejecutar
 } t_pcb;
+
+typedef struct {
+    uint32_t direccion_fisica;
+    uint32_t numero_marco;
+} t_direcciones_fisicas;
+
+char* mapeo_nombre_instruccion(t_nombre_instruccion nombre_instruccion);
 
 #endif /* TYPES_VARS_H */

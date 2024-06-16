@@ -20,3 +20,15 @@ int string_to_int(const char* input){
     
     return atoi(input);
 }
+
+bool is_number(char *str) {
+
+    if (*str == '\0') return 0;
+
+    while (*str) {
+        if (!isdigit(*str)) return 0;
+        str++;
+    }
+
+    return 1;
+}
