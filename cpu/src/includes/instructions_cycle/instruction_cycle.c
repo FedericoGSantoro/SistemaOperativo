@@ -432,9 +432,6 @@ void copy_string_instruction (t_list *parametros) {
     liberar_lista_de_datos_con_punteros(dir_fisicas_di);
     liberar_lista_de_datos_con_punteros(dir_fisicas_si);
 }
-// una llamada al sistema, la instruccion es wait o signal y el nombre de la io es el nombre del recurso
-//WAIT (Recurso): Esta instrucción solicita al Kernel que se asigne una instancia del recurso indicado por parámetro.
-//SIGNAL (Recurso): Esta instrucción solicita al Kernel que se libere una instancia del recurso indicado por parámetro.
 
 void wait_instruction(t_list *parametros) {
     // Recibimos el recurso
