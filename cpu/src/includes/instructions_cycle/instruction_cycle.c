@@ -432,6 +432,39 @@ void copy_string_instruction (t_list *parametros) {
     liberar_lista_de_datos_con_punteros(dir_fisicas_di);
     liberar_lista_de_datos_con_punteros(dir_fisicas_si);
 }
+// una llamada al sistema, la instruccion es wait o signal y el nombre de la io es el nombre del recurso
+//WAIT (Recurso): Esta instrucción solicita al Kernel que se asigne una instancia del recurso indicado por parámetro.
+//SIGNAL (Recurso): Esta instrucción solicita al Kernel que se libere una instancia del recurso indicado por parámetro.
+
+void wait_instruction(t_list *parametros) {
+    // Recibimos el recurso
+    char *recurso = (char *)list_get(parametros, 0);
+
+    // Cargamos el nombre de la instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = WAIT;
+    io_detail.io_instruccion = *io_instruccion;
+    // Cargamos el recurso
+    io_detail.nombre_io = recurso;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+}
+
+void signal_instruction(t_list *parametros) {
+    // Recibimos el recurso
+    char *recurso = (char *)list_get(parametros, 0);
+
+    // Cargamos el nombre de la instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = SIGNAL;
+    io_detail.io_instruccion = *io_instruccion;
+    // Cargamos el recurso
+    io_detail.nombre_io = recurso;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+}
 
 void exit_instruction(t_list *parametros)
 {
@@ -507,10 +540,14 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_WRITE;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_READ"))
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_READ;
-    else if (string_equals_ignore_case(nombre_instruccion, "WAIT"))
+    else if (string_equals_ignore_case(nombre_instruccion, "WAIT")) {
         tipo_instruccion_mapped.nombre_instruccion = WAIT;
-    else if (string_equals_ignore_case(nombre_instruccion, "SIGNAL"))
+        tipo_instruccion_mapped.execute = wait_instruction;
+    }
+    else if (string_equals_ignore_case(nombre_instruccion, "SIGNAL")) {
         tipo_instruccion_mapped.nombre_instruccion = SIGNAL;
+        tipo_instruccion_mapped.execute = signal_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "EXIT"))
     {
         tipo_instruccion_mapped.nombre_instruccion = EXIT_PROGRAM;

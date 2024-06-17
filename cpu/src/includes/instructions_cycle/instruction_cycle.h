@@ -38,6 +38,8 @@ void mov_in_instruction(t_list* parametros);
 void mov_out_instruction(t_list* parametros);
 void io_std_IN_OUT(t_list* parametros);
 void copy_string_instruction (t_list *parametros);
+void wait_instruction(t_list *parametros);
+void signal_instruction(t_list *parametros);
 void exit_instruction(t_list* parametros);
 t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion);
 t_instruccion *new_instruction(t_tipo_instruccion tipo_instruccion, t_list *parametros);
