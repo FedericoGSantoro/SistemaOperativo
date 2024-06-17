@@ -35,6 +35,18 @@ void iniciarConfig() {
     configuracion_cpu = iniciar_config(rutaConfiguracionCpu, logger_error_cpu, (void *)terminarPrograma);
 }
 
+enumAlgoritmo obtenerAlgoritmoTLB(char* algoritmo) {
+    if ( string_equals_ignore_case(algoritmo, "FIFO") ) {
+        return FIFO;
+    } else if ( string_equals_ignore_case(algoritmo, "LRU") ) {
+        return LRU;
+    } else {
+        log_error(logger_error_cpu, "Error al traducir el algoritmo de la TLB: %s", algoritmo);
+        terminarPrograma();
+        abort();
+    }
+}
+
 void leerConfig() {
     if (configuracion_cpu != NULL) {
         IP_MEMORIA = config_get_string_value(configuracion_cpu, "IP_MEMORIA");
@@ -42,7 +54,9 @@ void leerConfig() {
         PUERTO_ESCUCHA_DISPATCH = config_get_string_value(configuracion_cpu, "PUERTO_ESCUCHA_DISPATCH");
         PUERTO_ESCUCHA_INTERRUPT = config_get_string_value(configuracion_cpu, "PUERTO_ESCUCHA_INTERRUPT");
         CANTIDAD_ENTRADAS_TLB = config_get_int_value(configuracion_cpu, "CANTIDAD_ENTRADAS_TLB");
-        ALGORITMO_TLB = config_get_string_value(configuracion_cpu, "ALGORITMO_TLB");
+        char* algoritmo_leido = config_get_string_value(configuracion_cpu, "ALGORITMO_TLB");
+        ALGORITMO_TLB = obtenerAlgoritmoTLB(algoritmo_leido);
+        listaEntradasTLB = list_create();
     } else {
         terminarPrograma();
         abort();
@@ -341,4 +355,5 @@ void terminarPrograma() {
     liberar_conexion(fd_kernel_dispatch);
     liberar_conexion(fd_kernel_interrupt);
     pthread_mutex_destroy(&variableInterrupcion);
+    liberar_lista_de_datos_con_punteros(listaEntradasTLB);
 }
