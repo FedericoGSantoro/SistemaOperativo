@@ -2,14 +2,13 @@
 #define MMU_H_
 
 #include "../cpu_vars/cpu_vars.h"
+#include "../tlb/tlb.h"
 #include <math.h>
 
-uint32_t traducir_direccion_mmu(uint32_t dir_logica, int pid);
+uint32_t traducir_direccion_mmu(uint32_t dir_logica);
 void* leer_de_memoria(int dir_fisica, int pid, uint32_t tamanio_a_leer_en_memoria);
-uint32_t numero_pagina(uint32_t dir_logica);
 void escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro, uint32_t cantidad_bytes);
 void resize_en_memoria(int pid, int size_to_resize);
-uint32_t solicitar_numero_de_marco(uint32_t num_pagina, int pid);
 /*
 Realiza la peticion de las direcciones fisicas a memoria y las retorna como int* (Hacer free posteriormente)
 cantidad_bytes = cantidad de bytes a leer o escribir
