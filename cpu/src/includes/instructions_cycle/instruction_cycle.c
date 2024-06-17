@@ -233,7 +233,7 @@ uint32_t get_direccion_fisica (void *registro_direccion_mapeado, tipo_de_dato ti
         registro_direccion_casteado = *(uint32_t*) (registro_direccion_mapeado);
     }
 
-    return traducir_direccion_mmu(registro_direccion_casteado, pid);
+    return traducir_direccion_mmu(registro_direccion_casteado);
 }
 
 void mov_in_instruction(t_list *parametros)
@@ -413,10 +413,10 @@ void copy_string_instruction (t_list *parametros) {
         // Si lo que podemos leer es menor a la cantidad que nos falta por leer leemos todo lo que podemos
         // Si no, leemos lo que nos falta
         if ( cantidad_a_leer < *cantidad_bytes ) {
-            valor_obtenido_de_memoria = leer_de_memoria(direccion_fisica, pid, cantidad_a_leer);
+            valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, cantidad_a_leer);
             cantidad_bytes -= cantidad_a_leer;
         } else {
-            valor_obtenido_de_memoria = leer_de_memoria(direccion_fisica, pid, cantidad_bytes);
+            valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, *cantidad_bytes);
         }
 
         string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria);
