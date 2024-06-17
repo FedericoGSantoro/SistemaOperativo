@@ -1,9 +1,7 @@
 #ifndef MMU_H_
 #define MMU_H_
 
-#include "../cpu_vars/cpu_vars.h"
 #include "../tlb/tlb.h"
-#include <math.h>
 
 uint32_t traducir_direccion_mmu(uint32_t dir_logica);
 void* leer_de_memoria(int dir_fisica, int pid, uint32_t tamanio_a_leer_en_memoria);
