@@ -58,8 +58,6 @@ typedef enum {
 	OK_OPERACION,
 	ERROR_OPERACION,
 	INTERRUPCION,
-	LECTURA,
-	ESCRITURA,
 	OUT_OF_MEMORY,
 } op_codigo;
 
