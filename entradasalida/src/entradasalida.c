@@ -42,18 +42,26 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_STDIN_READ a la interfaz no STDIN: %s", nombre);
                 break;
             }
-            cantidadParametros = list_size(parametrosRecibidos);
-            if(1 < cantidadParametros ){
-                int direccionesMemoria[cantidadParametros-1];
-                for(int i=0; i < cantidadParametros-1; i++){
+            cantidadParametros = list_size(parametrosRecibidos) - 1;
+            if(0 < cantidadParametros ){
+                uint32_t direccionesMemoria[cantidadParametros];
+                for(int i=0; i < cantidadParametros; i++){
                     direccionesMemoria[i] = *(int*) list_get(parametrosRecibidos, i);
                 }
                 int tamanio = *(int*) list_get(parametrosRecibidos, cantidadParametros);
-                char* valorLeido = readline("<Ingrese un valor:> ");
-                t_paquete* paqueteMemoria = crear_paquete(ESCRITURA);
-                for (int i = 0; i < cantidadParametros -1; i++){
+                char* valorLeido = readline("Ingrese cadena > ");
+                if (valorLeido != NULL) {
+                    // Si la longitud de la cadena excede 'cantidad', trunca la cadena
+                    if (strlen(valorLeido) > tamanio) {
+                        (valorLeido)[tamanio] = '\0';
+                    }
+                }
+                t_paquete* paqueteMemoria = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
+                agregar_a_paquete(paqueteMemoria, &cantidadParametros, sizeof(int));
+                for (int i = 0; i < cantidadParametros; i++){
                     agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
                 }
+                agregar_a_paquete(paqueteMemoria, &pid, sizeof(uint32_t));
                 agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(int));
                 agregar_a_paquete(paqueteMemoria, valorLeido, strlen(valorLeido) + 1);
                 enviar_paquete(paqueteMemoria, fd_memoria);
@@ -61,7 +69,7 @@ int main(int argc, char* argv[]) {
                 //Ver como recibo valor de memoria
                 op_codigo op = recibir_operacion(fd_memoria);
                 switch (op){
-                case OK_OPERACION:
+                case ESCRIBIR_VALOR_MEMORIA:
                     log_info(logger_auxiliar, "Se escribio el valor '%s' en memoria", valorLeido);
                     enviar_codigo_op(OK_OPERACION, fd_kernel);
                     break;
@@ -82,32 +90,36 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_STDOUT_WRITE a la interfaz no STDOUT: %s", nombre);
                 break;
             }
-            cantidadParametros = list_size(parametrosRecibidos);
-            if(1 < cantidadParametros ){
-                int direccionesMemoria[cantidadParametros-1];
-                for(int i=0; i < cantidadParametros-1; i++){
+            cantidadParametros = list_size(parametrosRecibidos) - 1;
+            if(0 < cantidadParametros ){
+                int direccionesMemoria[cantidadParametros];
+                for(int i=0; i < cantidadParametros; i++){
                     direccionesMemoria[i] = *(int*) list_get(parametrosRecibidos, i);
                 }
                 int tamanio = *(int*) list_get(parametrosRecibidos, cantidadParametros);
 
-                t_paquete* paqueteMemoria = crear_paquete(LECTURA);
-                for (int i = 0; i < cantidadParametros -1; i++){
+                t_paquete* paqueteMemoria = crear_paquete(LEER_VALOR_MEMORIA);
+                //agregar_a_paquete(paqueteMemoria, &(cantidadParametros-1), sizeof(int));
+                for (int i = 0; i < cantidadParametros; i++){
                     agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
                 }
                 agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(int));
+                agregar_a_paquete(paqueteMemoria, &pid, sizeof(uint32_t));
                 enviar_paquete(paqueteMemoria, fd_memoria);
                 eliminar_paquete(paqueteMemoria);
                 //Ver como recibo valor de memoria
                 op_codigo op = recibir_operacion(fd_memoria);
                 switch (op){
-                case OK_OPERACION:
+                case LEER_VALOR_MEMORIA:
                     t_list* paqueteRecibido = recibir_paquete(fd_memoria);
                     char* valorAMostrar = string_new();
-                    for (int i = 0; i < cantidadParametros-1; i++){
+                    for (int i = 0; i < list_size(paqueteRecibido); i++){
                         string_append_with_format(&valorAMostrar, "%s", (char*)list_get(paqueteRecibido,i));
                     }
-                    printf("%s", valorAMostrar);
+                    log_info(logger_auxiliar, "%s", valorAMostrar);
+                    free(valorAMostrar);
                     enviar_codigo_op(OK_OPERACION, fd_kernel);
+                    list_destroy(paqueteRecibido);
                     break;
                 default:
                     log_error(logger_error, "Fallo lectura de Memoria");
@@ -188,8 +200,13 @@ void recibirIoDetail(t_list* listaPaquete, int ultimo_indice) {
                 valor_parametro_a_guardar = malloc(sizeof(int));
                 valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
                 break;
-
+            case UINT32:
+                valor_parametro_a_guardar = malloc(sizeof(uint32_t));
+                valor_parametro_a_guardar = (uint32_t *)valor_parametro_io_recibido;
+                //log_info(logger_auxiliar, "Se envia el parametro %d", *(uint32_t*)valor_parametro_a_guardar);
+                break;
             default:
+                log_error(logger_error, "Error tipo de dato recibido");
                 break;
             }
 
@@ -276,7 +293,7 @@ void inicializar(){
 void inicializarLogs(){
     logger_obligatorio = log_create("entradasalida.log", "LOG_OBLIGATORIO_ENTRADA-SALIDA", true, LOG_LEVEL_INFO);
     logger_auxiliar = log_create("entradasalidaExtras.log", "LOG_EXTRA_ENTRADA_SALIDA", true, LOG_LEVEL_INFO);
-    logger_error = log_create("entradasalidaExtras.log", "LOG_ERROR_ENTRADA_SALIDA", true, LOG_LEVEL_ERROR);
+    logger_error = log_create("entradasalidaExtras.log", "LOG_ERROR_ENTRADA_SALIDA", false, LOG_LEVEL_ERROR);
     // Compruebo que los logs se hayan creado correctamente
     if (logger_auxiliar == NULL || logger_obligatorio == NULL || logger_error == NULL) {
         terminarPrograma();
@@ -309,7 +326,7 @@ void leerConfig() {
     IP_KERNEL = config_get_string_value(configuracion, "IP_KERNEL");
     PUERTO_KERNEL = config_get_string_value(configuracion, "PUERTO_KERNEL");
     TIPO_INTERFAZ = leerTipoDeInterfaz();
-    log_info(logger_auxiliar, "Tipo interfaz: %d", TIPO_INTERFAZ);
+    //log_info(logger_auxiliar, "Tipo interfaz: %d", TIPO_INTERFAZ);
     switch (TIPO_INTERFAZ) {
     case GENERICA:
         TIEMPO_UNIDAD_TRABAJO = config_get_int_value(configuracion, "TIEMPO_UNIDAD_TRABAJO");            
