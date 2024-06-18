@@ -11,12 +11,16 @@ extern t_log* logger_error_cpu;
 extern t_config* configuracion_cpu;
 
 //datos de la configuracion
+typedef enum {
+    FIFO,
+    LRU,
+} enumAlgoritmo;
 extern char* IP_MEMORIA;
 extern char* PUERTO_MEMORIA;
 extern char* PUERTO_ESCUCHA_DISPATCH;
 extern char* PUERTO_ESCUCHA_INTERRUPT;
 extern int CANTIDAD_ENTRADAS_TLB;
-extern char* ALGORITMO_TLB;
+extern enumAlgoritmo ALGORITMO_TLB;
 
 // file descriptor para la conexion con kernel y memoria
 extern int fd_cpu_dispatch;
@@ -48,5 +52,9 @@ extern char* ir;
 // Mutex
 extern pthread_mutex_t variableInterrupcion;
 extern bool hayInterrupcion;
+
+// TLB
+extern t_list* listaEntradasTLB;
+extern int cantidadEntradasActuales;
 
 #endif

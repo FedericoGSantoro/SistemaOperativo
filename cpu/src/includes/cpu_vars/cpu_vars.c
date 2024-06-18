@@ -11,7 +11,7 @@ char *PUERTO_MEMORIA;
 char *PUERTO_ESCUCHA_DISPATCH;
 char *PUERTO_ESCUCHA_INTERRUPT;
 int CANTIDAD_ENTRADAS_TLB;
-char *ALGORITMO_TLB;
+enumAlgoritmo ALGORITMO_TLB;
 
 // file descriptor para la conexion con kernel y memoria
 int fd_cpu_dispatch;
@@ -42,3 +42,7 @@ char *ir;
 
 // Mutex
 pthread_mutex_t variableInterrupcion;
+
+// TLB
+t_list* listaEntradasTLB;
+int cantidadEntradasActuales = 0;

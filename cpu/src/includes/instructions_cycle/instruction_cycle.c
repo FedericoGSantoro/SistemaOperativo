@@ -233,7 +233,7 @@ uint32_t get_direccion_fisica (void *registro_direccion_mapeado, tipo_de_dato ti
         registro_direccion_casteado = *(uint32_t*) (registro_direccion_mapeado);
     }
 
-    return traducir_direccion_mmu(registro_direccion_casteado, pid);
+    return traducir_direccion_mmu(registro_direccion_casteado);
 }
 
 void mov_in_instruction(t_list *parametros)
@@ -314,7 +314,7 @@ void mov_out_instruction(t_list *parametros)
         break;
     }
 
-    t_list* devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(cantidad_bytes, registro_direccion_mapeado, tipo_de_dato_registro_direccion); //estas direcciones SIEMPRE debe haber almenos una
+    t_list* devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&cantidad_bytes, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); //estas direcciones SIEMPRE debe haber almenos una
     
     escribir_en_memoria(devolucion_direcciones_fisicas, pid, registro_datos_mapeado, cantidad_bytes);
 
@@ -344,28 +344,66 @@ void resize_instruction(t_list *parametros)
 
 void agregar_direccion_fisica_a_lista(uint32_t* dir_fis){
     t_params_io *parametro_io = malloc(sizeof(int) * 2);
-    parametro_io->tipo_de_dato = INT;
-    parametro_io->valor = dir_fis;
+    parametro_io->tipo_de_dato = UINT32;
+    parametro_io->valor = malloc(sizeof(uint32_t));
+    *(uint32_t*)parametro_io->valor = *dir_fis;
+    log_info(logger_aux_cpu, "Direccion fisica cargandose: %d", *(uint32_t*) parametro_io->valor);
     list_add(io_detail.parametros, parametro_io);
     //no se si hace falta un free() uwu
 } 
 
-void io_std_IN_OUT(t_list *parametros){ //honores to: capo master fede (s, no w)
+void io_stdout_write_instruction(t_list *parametros){ //honores to: capo master fede (s, no w)
     //leo parametros
     //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
     char *nombre_io = (char *)list_get(parametros, 0);
     char *registro_direccion = (char *)list_get(parametros, 1);
     char *registro_tamanio = (char *)list_get(parametros, 2);
     //mapeo
-    uint32_t* reg_dir = (uint32_t*) mapear_registro(registro_direccion);
-    uint32_t* reg_tam = (uint32_t*) mapear_registro(registro_tamanio);
+    void* reg_dir = mapear_registro(registro_direccion);
+    void* reg_tam = mapear_registro(registro_tamanio);
     
     //armo el array con las direcs fis. y agrego a los parametros c/ posicion
     tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_direccion);
-    t_list* dir_fisicas = peticion_de_direcciones_fisicas(*reg_tam, reg_dir, tipo_de_dato_registro_direccion);
+    tipo_de_dato tipo_de_dato_registro_bytes = mapear_tipo_de_dato(registro_tamanio);
+    t_list* dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
 
     for (int i = 0; i < list_size(dir_fisicas); i++){
-        agregar_direccion_fisica_a_lista(list_get(dir_fisicas, i));
+        agregar_direccion_fisica_a_lista((uint32_t*) list_get(dir_fisicas, i));
+    }
+    //agrego el valor del tamaño a leer por ultimo
+    t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
+    parametro_io_tamanio->tipo_de_dato = INT;
+    parametro_io_tamanio->valor = reg_tam;
+    list_add(io_detail.parametros, parametro_io_tamanio);
+    //cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = IO_STDOUT_WRITE;
+    io_detail.io_instruccion = *io_instruccion;
+    //cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+    liberar_lista_de_datos_con_punteros(dir_fisicas);
+}
+
+void io_stdin_read_instruction(t_list *parametros){ //honores to: capo master fede (s, no w)
+    //leo parametros
+    //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *registro_direccion = (char *)list_get(parametros, 1);
+    char *registro_tamanio = (char *)list_get(parametros, 2);
+    //mapeo
+    void* reg_dir = mapear_registro(registro_direccion);
+    void* reg_tam = mapear_registro(registro_tamanio);
+    
+    //armo el array con las direcs fis. y agrego a los parametros c/ posicion
+    tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_direccion);
+    tipo_de_dato tipo_de_dato_registro_bytes = mapear_tipo_de_dato(registro_tamanio);
+    t_list* dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
+
+    for (int i = 0; i < list_size(dir_fisicas); i++){
+        agregar_direccion_fisica_a_lista((uint32_t*) list_get(dir_fisicas, i));
     }
     //agrego el valor del tamaño a leer por ultimo
     t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
@@ -391,8 +429,8 @@ void copy_string_instruction (t_list *parametros) {
     uint32_t* registro_di = mapear_registro("DI");
     tipo_de_dato tipo_de_dato_registro_si = mapear_tipo_de_dato("SI");
     tipo_de_dato tipo_de_dato_registro_di = mapear_tipo_de_dato("DI");
-    t_list* dir_fisicas_si = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_si, tipo_de_dato_registro_si);
-    t_list* dir_fisicas_di = peticion_de_direcciones_fisicas(*cantidad_bytes, registro_di, tipo_de_dato_registro_di);
+    t_list* dir_fisicas_si = peticion_de_direcciones_fisicas(cantidad_bytes, UINT32 , registro_si, tipo_de_dato_registro_si);
+    t_list* dir_fisicas_di = peticion_de_direcciones_fisicas(cantidad_bytes, UINT32 , registro_di, tipo_de_dato_registro_di);
     void* valor_obtenido_de_memoria;
     char* leido = string_new();
     
@@ -413,10 +451,10 @@ void copy_string_instruction (t_list *parametros) {
         // Si lo que podemos leer es menor a la cantidad que nos falta por leer leemos todo lo que podemos
         // Si no, leemos lo que nos falta
         if ( cantidad_a_leer < *cantidad_bytes ) {
-            valor_obtenido_de_memoria = leer_de_memoria(direccion_fisica, pid, cantidad_a_leer);
+            valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, cantidad_a_leer);
             cantidad_bytes -= cantidad_a_leer;
         } else {
-            valor_obtenido_de_memoria = leer_de_memoria(direccion_fisica, pid, cantidad_bytes);
+            valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, *cantidad_bytes);
         }
 
         string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria);
@@ -521,11 +559,11 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
     }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ")){
         tipo_instruccion_mapped.nombre_instruccion = IO_STDIN_READ;
-        tipo_instruccion_mapped.execute = io_std_IN_OUT;
+        tipo_instruccion_mapped.execute = io_stdin_read_instruction;
     }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE")){
         tipo_instruccion_mapped.nombre_instruccion = IO_STDOUT_WRITE;
-        tipo_instruccion_mapped.execute = io_std_IN_OUT;
+        tipo_instruccion_mapped.execute = io_stdout_write_instruction;
     }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_CREATE"))
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_CREATE;

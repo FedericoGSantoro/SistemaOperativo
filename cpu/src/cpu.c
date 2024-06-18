@@ -35,6 +35,18 @@ void iniciarConfig() {
     configuracion_cpu = iniciar_config(rutaConfiguracionCpu, logger_error_cpu, (void *)terminarPrograma);
 }
 
+enumAlgoritmo obtenerAlgoritmoTLB(char* algoritmo) {
+    if ( string_equals_ignore_case(algoritmo, "FIFO") ) {
+        return FIFO;
+    } else if ( string_equals_ignore_case(algoritmo, "LRU") ) {
+        return LRU;
+    } else {
+        log_error(logger_error_cpu, "Error al traducir el algoritmo de la TLB: %s", algoritmo);
+        terminarPrograma();
+        abort();
+    }
+}
+
 void leerConfig() {
     if (configuracion_cpu != NULL) {
         IP_MEMORIA = config_get_string_value(configuracion_cpu, "IP_MEMORIA");
@@ -42,7 +54,9 @@ void leerConfig() {
         PUERTO_ESCUCHA_DISPATCH = config_get_string_value(configuracion_cpu, "PUERTO_ESCUCHA_DISPATCH");
         PUERTO_ESCUCHA_INTERRUPT = config_get_string_value(configuracion_cpu, "PUERTO_ESCUCHA_INTERRUPT");
         CANTIDAD_ENTRADAS_TLB = config_get_int_value(configuracion_cpu, "CANTIDAD_ENTRADAS_TLB");
-        ALGORITMO_TLB = config_get_string_value(configuracion_cpu, "ALGORITMO_TLB");
+        char* algoritmo_leido = config_get_string_value(configuracion_cpu, "ALGORITMO_TLB");
+        ALGORITMO_TLB = obtenerAlgoritmoTLB(algoritmo_leido);
+        listaEntradasTLB = list_create();
     } else {
         terminarPrograma();
         abort();
@@ -195,11 +209,7 @@ void recvInterrupcion() {
 
 void agregar_io_detail(t_paquete *paquete) {
     agregar_a_paquete(paquete, &(io_detail.parametros->elements_count), sizeof(int));
-    
-    if (io_detail.parametros == NULL || io_detail.parametros->elements_count == 0) {
-        return;
-    }
-    
+    log_info(logger_aux_cpu, "Cantidad de parametros: %d", io_detail.parametros->elements_count);
     for (int i = 0; i < io_detail.parametros->elements_count; i++) {
         t_params_io parametro_io = *(t_params_io*)list_get(io_detail.parametros, i);
         int size_parametro;
@@ -208,9 +218,17 @@ void agregar_io_detail(t_paquete *paquete) {
             case INT:
                 size_parametro = sizeof(int);
                 valor_parametro_a_enviar = malloc(size_parametro);
-                valor_parametro_a_enviar = (int *)parametro_io.valor;
+                *(int *)valor_parametro_a_enviar = *(int *)parametro_io.valor;
+                log_info(logger_aux_cpu, "Se envia el parametro int %d", *(int *)valor_parametro_a_enviar);
+                break;
+            case UINT32:
+                size_parametro = sizeof(uint32_t);
+                valor_parametro_a_enviar = malloc(size_parametro);
+                *(uint32_t *)valor_parametro_a_enviar = *(uint32_t *)parametro_io.valor;
+                log_info(logger_aux_cpu, "Se envia el parametro uint32 %d", *(uint32_t *)valor_parametro_a_enviar);
                 break;
             default:
+                log_error(logger_error_cpu, "Error tipo de dato enviado");
                 break;
         }
         agregar_a_paquete(paquete, &parametro_io.tipo_de_dato, sizeof(int));
@@ -341,4 +359,5 @@ void terminarPrograma() {
     liberar_conexion(fd_kernel_dispatch);
     liberar_conexion(fd_kernel_interrupt);
     pthread_mutex_destroy(&variableInterrupcion);
+    liberar_lista_de_datos_con_punteros(listaEntradasTLB);
 }

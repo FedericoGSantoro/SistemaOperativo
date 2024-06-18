@@ -103,45 +103,49 @@ void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice
 
     ultimo_indice++;
     uint32_t cantidad_parametros_io_detail = *(uint32_t*)list_get(contexto, ultimo_indice);
+    //pcb->contexto_ejecucion.io_detail.parametros = list_create();
 
-    if (cantidad_parametros_io_detail != 0) {
-        //pcb->contexto_ejecucion.io_detail.parametros = list_create();
+    for (int i = 0; i < cantidad_parametros_io_detail; i++) {
 
-        for (int i = 0; i < cantidad_parametros_io_detail; i++) {
-
-            ultimo_indice++;
-            tipo_de_dato tipo_de_dato_parametro_io = *(tipo_de_dato*) list_get(contexto, ultimo_indice);
-
-            t_params_io* parametro_io_a_guardar;
-            
-            ultimo_indice++;
-            void* valor_parametro_io_recibido = (void*) list_get(contexto, ultimo_indice);
-            void* valor_parametro_a_guardar;
-
-            switch (tipo_de_dato_parametro_io)
-            {
-            case INT:
-                parametro_io_a_guardar = malloc(sizeof(int)*2);
-                valor_parametro_a_guardar = malloc(sizeof(int));
-                valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
-                break;
-
-            default:
-                break;
-            }
-
-            parametro_io_a_guardar->tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
-            //(esto va a servir mas adelante para que kernel pueda usarlo correctamente, ya que puede recibir char* o int)
-            parametro_io_a_guardar->valor = valor_parametro_a_guardar; //almaceno el valor del parametro de la instruccion de io
-
-            list_add_in_index(pcb->contexto_ejecucion.io_detail.parametros, i, parametro_io_a_guardar); //almaceno el parametro en la lista de parametros que usara kernel luego
-        }
         ultimo_indice++;
-        pcb->contexto_ejecucion.io_detail.nombre_io = (char *)list_get(contexto, ultimo_indice); //obtengo el nombre de la IO
+        tipo_de_dato tipo_de_dato_parametro_io = *(tipo_de_dato*) list_get(contexto, ultimo_indice);
+
+        t_params_io* parametro_io_a_guardar;
         
         ultimo_indice++;
-        pcb->contexto_ejecucion.io_detail.io_instruccion = *(t_nombre_instruccion *)list_get(contexto, ultimo_indice); //obtengo el nombre de la instruccion contra IO
+        void* valor_parametro_io_recibido = (void*) list_get(contexto, ultimo_indice);
+        void* valor_parametro_a_guardar;
+
+        switch (tipo_de_dato_parametro_io)
+        {
+        case INT:
+            parametro_io_a_guardar = malloc(sizeof(int)*2);
+            valor_parametro_a_guardar = malloc(sizeof(int));
+            valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
+            break;
+        case UINT32:
+                parametro_io_a_guardar = malloc(sizeof(int)*2);
+                valor_parametro_a_guardar = malloc(sizeof(uint32_t));
+                valor_parametro_a_guardar = (uint32_t *)valor_parametro_io_recibido;
+                log_info(logs_auxiliares, "Se envia el parametro %d", *(uint32_t*)valor_parametro_a_guardar);
+                break;
+        default:
+            log_error(logs_error, "Error tipo de dato enviado");
+            break;
+        }
+
+        parametro_io_a_guardar->tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
+        //(esto va a servir mas adelante para que kernel pueda usarlo correctamente, ya que puede recibir char* o int)
+        parametro_io_a_guardar->valor = valor_parametro_a_guardar; //almaceno el valor del parametro de la instruccion de io
+
+        list_add_in_index(pcb->contexto_ejecucion.io_detail.parametros, i, parametro_io_a_guardar); //almaceno el parametro en la lista de parametros que usara kernel luego
     }
+    ultimo_indice++;
+    
+    pcb->contexto_ejecucion.io_detail.nombre_io = (char *)list_get(contexto, ultimo_indice); //obtengo el nombre de la IO
+        
+    ultimo_indice++;
+    pcb->contexto_ejecucion.io_detail.io_instruccion = *(t_nombre_instruccion *)list_get(contexto, ultimo_indice); //obtengo el nombre de la instruccion contra IO
 }
 
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb) {  
@@ -263,6 +267,7 @@ void bloquearPCBPorRecurso(recursoSistema* recurso, t_pcb* pcb) {
     pthread_mutex_lock(&sem_cola_blocked);
     list_add(cola_blocked, &(pcb->contexto_ejecucion.pid));
     pthread_mutex_unlock(&sem_cola_blocked);
+    log_info(logs_auxiliares, "LLegue aca");
     log_info(logs_obligatorios, "PID: %d - Bloqueado por: %s", pcb->contexto_ejecucion.pid, recurso->nombre);
 }
 
@@ -307,6 +312,7 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                         sem_post(&(recursoEncontrado->semCantidadInstancias));
                         recursoEncontrado->cantidadInstancias++;
                         pthread_mutex_unlock(&(recursoEncontrado->mutexCantidadInstancias));
+                        log_info(logs_auxiliares, "Recurso %s devuelto por el PID %d", recursoEncontrado->nombre, pcb->contexto_ejecucion.pid);
                         mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
                     } else {
                         log_warning(logs_auxiliares, "Recurso %s no encontrado", recursoBuscado);
@@ -326,6 +332,7 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                             sem_wait(&(recursoEncontrado->semCantidadInstancias));
                             recursoEncontrado->cantidadInstancias--;
                             pthread_mutex_unlock(&(recursoEncontrado->mutexCantidadInstancias));
+                            log_info(logs_auxiliares, "Recurso %s asignado a PID %d", recursoEncontrado->nombre, pcb->contexto_ejecucion.pid);
                             mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
                             break;
                         }
@@ -338,6 +345,8 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                         cambiarEstado(EXIT, pcb);
                         sem_post(&semContadorColaExit);
                     }
+                    quitarPcbCola(cola_exec, sem_cola_exec);
+                    sem_post(&semContadorColaExec);
                     break;
                 }
                 
@@ -659,6 +668,7 @@ void inicializarListasInterfaces() {
     pthread_mutex_init(&mutexInterfacesFS, NULL);
 }
 
+// TODO: Manejo eliminar PID
 void atender_recurso(recursoSistema* dataRecurso) {
     t_pcb* pcbDesbloqueado;
     while(1) {
@@ -676,6 +686,7 @@ void atender_recurso(recursoSistema* dataRecurso) {
         pthread_mutex_lock(&dataRecurso->mutexCola);
         pcbDesbloqueado = queue_pop(dataRecurso->cola);
         pthread_mutex_unlock(&dataRecurso->mutexCola);
+        log_info(logs_auxiliares, "Recurso %s asignado a PID %d", dataRecurso->nombre, pcbDesbloqueado->contexto_ejecucion.pid);
 
         pcbDesbloqueado->contexto_ejecucion.motivo_bloqueo = NOTHING;
         pthread_mutex_lock(&sem_cola_blocked);
@@ -976,6 +987,7 @@ void enviarIoDetail(t_pcb* pcbAEjecutar, int fd_interfaz) {
     agregar_a_paquete(paquete, &pcbAEjecutar->contexto_ejecucion.pid, sizeof(uint32_t));
     agregar_a_paquete(paquete, &(pcbAEjecutar->contexto_ejecucion.io_detail.parametros->elements_count), sizeof(int));
     
+    log_info(logs_auxiliares, "Cantidad parametros: %d", pcbAEjecutar->contexto_ejecucion.io_detail.parametros->elements_count);
     if (pcbAEjecutar->contexto_ejecucion.io_detail.parametros == NULL || pcbAEjecutar->contexto_ejecucion.io_detail.parametros->elements_count == 0) {
         return;
     }
@@ -989,8 +1001,16 @@ void enviarIoDetail(t_pcb* pcbAEjecutar, int fd_interfaz) {
                 size_parametro = sizeof(int);
                 valor_parametro_a_enviar = malloc(size_parametro);
                 valor_parametro_a_enviar = (int *)parametro_io.valor;
+                log_info(logs_auxiliares, "Se envia el parametro %d", *(int*)valor_parametro_a_enviar);
+                break;
+            case UINT32:
+                size_parametro = sizeof(uint32_t);
+                valor_parametro_a_enviar = malloc(size_parametro);
+                valor_parametro_a_enviar = (uint32_t *)parametro_io.valor;
+                log_info(logs_auxiliares, "Se envia el parametro %d", *(uint32_t*)valor_parametro_a_enviar);
                 break;
             default:
+                log_error(logs_error, "Error tipo de dato enviado");
                 break;
         }
         agregar_a_paquete(paquete, &parametro_io.tipo_de_dato, sizeof(int));
@@ -1087,6 +1107,9 @@ void atender_cliente(interfazConectada* datosInterfaz) {
             }
             else {
                 pcbAEjecutar->contexto_ejecucion.motivo_bloqueo = NOTHING;
+                list_clean(pcbAEjecutar->contexto_ejecucion.io_detail.parametros);
+                pcbAEjecutar->contexto_ejecucion.io_detail.nombre_io = "";
+                pcbAEjecutar->contexto_ejecucion.io_detail.io_instruccion = NONE;
                 pthread_mutex_lock(&sem_cola_blocked);
                 for(int i = 0; i < list_size(cola_blocked); i++) {
                     uint32_t pidAChequear = *(uint32_t*) list_get(cola_blocked, i);
@@ -1157,6 +1180,7 @@ interfazConectada* crearInterfaz(t_list* nombreYTipoInterfaz, int socket_cliente
     sem_init(&semaforoCantProcesos, 0, 0);
     interfazIO->semaforoCantProcesos = semaforoCantProcesos;
     interfazIO->fd_interfaz = socket_cliente;
+    log_info(logs_auxiliares, "Interfaz de tipo %d y nombre: %s", interfazIO->tipoInterfaz, interfazIO->nombre);
     switch (interfazIO->tipoInterfaz) {
     case GENERICA:
         pthread_mutex_lock(&mutexInterfacesGenericas);

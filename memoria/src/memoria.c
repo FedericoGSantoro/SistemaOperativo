@@ -155,6 +155,7 @@ void devolver_marco(int fd_cliente_cpu) {
     liberar_lista_de_datos_con_punteros(paquete_recibido);
 }
 
+// TODO: Cambiar para leer mas de una dir fisica
 void leer_valor_memoria(int fd_cliente_cpu) {
 
     t_list *paquete_recibido = recibir_paquete(fd_cliente_cpu);            

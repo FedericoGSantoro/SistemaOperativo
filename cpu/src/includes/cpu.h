@@ -10,6 +10,8 @@
 void iniciarLogs();
 // Inicializamos configuracion
 void iniciarConfig();
+// Devuelve el algoritmo de la configuracion
+enumAlgoritmo obtenerAlgoritmoTLB(char* algoritmo);
 // Leemos los valores del archivo de configuracion y los almacenamos en las variables segun el tipo de dato
 void leerConfig();
 
