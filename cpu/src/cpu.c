@@ -209,11 +209,7 @@ void recvInterrupcion() {
 
 void agregar_io_detail(t_paquete *paquete) {
     agregar_a_paquete(paquete, &(io_detail.parametros->elements_count), sizeof(int));
-    
-    if (io_detail.parametros == NULL || io_detail.parametros->elements_count == 0) {
-        return;
-    }
-    
+    log_info(logger_aux_cpu, "Cantidad de parametros: %d", io_detail.parametros->elements_count);
     for (int i = 0; i < io_detail.parametros->elements_count; i++) {
         t_params_io parametro_io = *(t_params_io*)list_get(io_detail.parametros, i);
         int size_parametro;
@@ -222,9 +218,17 @@ void agregar_io_detail(t_paquete *paquete) {
             case INT:
                 size_parametro = sizeof(int);
                 valor_parametro_a_enviar = malloc(size_parametro);
-                valor_parametro_a_enviar = (int *)parametro_io.valor;
+                *(int *)valor_parametro_a_enviar = *(int *)parametro_io.valor;
+                log_info(logger_aux_cpu, "Se envia el parametro int %d", *(int *)valor_parametro_a_enviar);
+                break;
+            case UINT32:
+                size_parametro = sizeof(uint32_t);
+                valor_parametro_a_enviar = malloc(size_parametro);
+                *(uint32_t *)valor_parametro_a_enviar = *(uint32_t *)parametro_io.valor;
+                log_info(logger_aux_cpu, "Se envia el parametro uint32 %d", *(uint32_t *)valor_parametro_a_enviar);
                 break;
             default:
+                log_error(logger_error_cpu, "Error tipo de dato enviado");
                 break;
         }
         agregar_a_paquete(paquete, &parametro_io.tipo_de_dato, sizeof(int));
