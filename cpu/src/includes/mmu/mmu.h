@@ -10,10 +10,12 @@ void resize_en_memoria(int pid, int size_to_resize);
 /*
 Realiza la peticion de las direcciones fisicas a memoria y las retorna como int* (Hacer free posteriormente)
 cantidad_bytes = cantidad de bytes a leer o escribir
+tipo_de_dato_cantidad_bytes = tipo de dato de la variable
 direccion_logica = direccion logica inicial
+tipo_de_dato_direccion_logica = tipo de dato de la variable
 Retorna un lista asi: [direccionFisica1, direccionFisica2, ...]
 */
-t_list* peticion_de_direcciones_fisicas(uint32_t cantidad_bytes, void* direccion_logica, tipo_de_dato tipo_de_dato_direccion_logica);
+t_list* peticion_de_direcciones_fisicas(void* cantidad_bytes, tipo_de_dato tipo_de_dato_cantidad_bytes, void* direccion_logica, tipo_de_dato tipo_de_dato_direccion_logica);
 /*
 Retorna la cantidad de paginas necesarias basandose en la cantidad a leer o escribir y la direccion logica
 cantidad_bytes = cantidad de bytes a leer o escribir

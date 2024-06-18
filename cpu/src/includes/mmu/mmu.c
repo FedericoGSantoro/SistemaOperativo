@@ -28,13 +28,14 @@ int cantidad_paginas_necesarias (uint32_t cantidad_bytes, uint32_t dir_logica) {
     return cantidad_paginas;
 }
 
-t_list* peticion_de_direcciones_fisicas(uint32_t cantidad_bytes, void* direccion_logica, tipo_de_dato tipo_de_dato_direccion_logica) {
+t_list* peticion_de_direcciones_fisicas(void* cantidad_bytes, tipo_de_dato tipo_de_dato_cantidad_bytes, void* direccion_logica, tipo_de_dato tipo_de_dato_direccion_logica) {
     // Creamos una copia del dato para no modificar el dato original
+    uint32_t cant_bytes = get_registro_direccion_casteado(cantidad_bytes, tipo_de_dato_cantidad_bytes);
     uint32_t dir_logica = get_registro_direccion_casteado(direccion_logica, tipo_de_dato_direccion_logica); 
     int num_pagina = numero_pagina(dir_logica);
 
     // Calculamos la cantidad de paginas necesarias
-    int cantidad_paginas = cantidad_paginas_necesarias(cantidad_bytes, dir_logica);
+    int cantidad_paginas = cantidad_paginas_necesarias(cant_bytes, dir_logica);
 
     // Creamos dinamicamente el array de direcciones fisicas
     //int* dir_fisicas = malloc(sizeof(int) * (cantidad_paginas + 1));
@@ -50,7 +51,7 @@ t_list* peticion_de_direcciones_fisicas(uint32_t cantidad_bytes, void* direccion
         *traduccion = traducir_direccion_mmu(dir_logica);
         list_add_in_index(direcciones_fisicas, i, traduccion); 
         // Se cambia la direccion logica para que apunte a la siguiente pagina
-        dir_logica = ( num_pagina + i ) * tam_pagina; 
+        dir_logica = ( num_pagina + i + 1 ) * tam_pagina; 
     }
 
     return direcciones_fisicas;
@@ -61,7 +62,7 @@ uint32_t traducir_direccion_mmu(uint32_t dir_logica)
     int desplazamiento = dir_logica - numero_pagina(dir_logica) * tam_pagina; // esto seria el resto entre la division de DL y tamanio de pagina (cuyo cociente es el numero de pagina)
    
     // TODO: Cambiar para usar TLB:
-    uint32_t num_marco = buscar_marco_en_tlb(numero_pagina(dir_logica));
+    uint32_t num_marco = buscar_marco_en_tlb(dir_logica);
     if(num_marco == -1)
     {
         return -1;
