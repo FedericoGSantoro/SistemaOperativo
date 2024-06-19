@@ -173,18 +173,16 @@ void obtener_valores_para_operaciones_rw(t_list* paquete_recibido, int* cantidad
     *tamanio_a_operar_en_memoria = *(uint32_t*) list_get(paquete_recibido, *indice_valores_paquetes);
 }
 
-int leer_valor_en_espacio(int pid, uint32_t dir_fisica, void* valor_leido_de_espacio, int cantidad_bytes_leidos, uint32_t tamanio_a_leer_en_memoria) {
+void leer_valor_en_espacio(int pid, uint32_t dir_fisica, void* valor_leido_de_espacio, int cantidad_bytes_leidos, uint32_t tamanio_a_leer_en_memoria) {
     
     //semaforo para acceso a espacio compartido
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
 
-    memcpy(valor_leido_de_espacio + cantidad_bytes_leidos, espacio_usuario.espacio_usuario + dir_fisica, tamanio_a_leer_en_memoria);
+    memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, tamanio_a_leer_en_memoria);
     log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
 
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
-    
-    return tamanio_a_leer_en_memoria;
 }
 
 
@@ -197,14 +195,17 @@ void* proceso_lectura_valor_memoria(int* cantidad_direcciones_fisicas_leidas, ui
     int pid;
     int indice_valores_paquetes = 0;
     int cantidad_bytes_leidos = 0;
+    int tamanio_a_leer_en_memoria_to_use;
     obtener_valores_para_operaciones_rw(paquete_recibido, &cantidad_direcciones_fisicas, direcciones_fisicas, &pid, tamanio_a_leer_en_memoria, &indice_valores_paquetes);
     
-    void* valor_leido_de_espacio = malloc(*tamanio_a_leer_en_memoria);
+    tamanio_a_leer_en_memoria_to_use = *tamanio_a_leer_en_memoria;
+    void* valor_leido_de_espacio = malloc(tamanio_a_leer_en_memoria_to_use);
+    uint32_t registro_reconstruido = 0;
     
     if (cantidad_direcciones_fisicas == 1) { //esto quiere decir que solo va a haber una pagina en la operacion afectada
         
         uint32_t dir_fisica = *(uint32_t*) list_get(direcciones_fisicas, 0);
-        leer_valor_en_espacio(pid, dir_fisica, valor_leido_de_espacio, cantidad_bytes_leidos, *tamanio_a_leer_en_memoria);
+        leer_valor_en_espacio(pid, dir_fisica, valor_leido_de_espacio, cantidad_bytes_leidos, tamanio_a_leer_en_memoria_to_use);
     } else {
 
         for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
@@ -213,15 +214,24 @@ void* proceso_lectura_valor_memoria(int* cantidad_direcciones_fisicas_leidas, ui
             uint32_t dir_fisica = *(uint32_t*) list_get(direcciones_fisicas, i);
             uint32_t diferencia_entre_dir_y_tam_pagina = memConfig.tamPagina - dir_fisica;
 
-            if (diferencia_entre_dir_y_tam_pagina >= *tamanio_a_leer_en_memoria) {
-                bytes_a_leer = *tamanio_a_leer_en_memoria;
+            if (diferencia_entre_dir_y_tam_pagina == 0 || diferencia_entre_dir_y_tam_pagina >= tamanio_a_leer_en_memoria_to_use) {
+                bytes_a_leer = tamanio_a_leer_en_memoria_to_use;
             } else {
                 bytes_a_leer = diferencia_entre_dir_y_tam_pagina;
             }
             
-            *tamanio_a_leer_en_memoria -= bytes_a_leer;
+            tamanio_a_leer_en_memoria_to_use -= bytes_a_leer;
 
-            cantidad_bytes_leidos += leer_valor_en_espacio(pid, dir_fisica, valor_leido_de_espacio, cantidad_bytes_leidos, bytes_a_leer);
+            void* valor_leido_de_espacio_partes = malloc(bytes_a_leer);
+            leer_valor_en_espacio(pid, dir_fisica, valor_leido_de_espacio_partes, cantidad_bytes_leidos, bytes_a_leer);
+            
+            if (cantidad_bytes_leidos == 0) {
+                memcpy(valor_leido_de_espacio, valor_leido_de_espacio_partes, bytes_a_leer); //Primer guardado
+            } else {
+                memcpy(valor_leido_de_espacio + cantidad_bytes_leidos, valor_leido_de_espacio_partes, bytes_a_leer);
+            }
+
+            cantidad_bytes_leidos += bytes_a_leer;
         }
     }
 
@@ -262,6 +272,7 @@ int proceso_escritura_valor_memoria(int fd_cliente_cpu) { //TODO: ver de refacto
     t_list* direcciones_fisicas = list_create();
     int pid;
     uint32_t cantidad_bytes_a_escribir;
+    uint32_t cantidad_bytes_escritos = 0;
     int indice_valores_paquetes = 0;
 
     obtener_valores_para_operaciones_rw(valoresPaquete, &cantidad_direcciones_fisicas, direcciones_fisicas, &pid, &cantidad_bytes_a_escribir, &indice_valores_paquetes);
@@ -281,15 +292,16 @@ int proceso_escritura_valor_memoria(int fd_cliente_cpu) { //TODO: ver de refacto
             uint32_t dir_fisica = *(uint32_t*) list_get(direcciones_fisicas, i);
             uint32_t diferencia_entre_dir_y_tam_pagina = memConfig.tamPagina - dir_fisica;
 
-            if (diferencia_entre_dir_y_tam_pagina >= cantidad_bytes_a_escribir) {
+            if (diferencia_entre_dir_y_tam_pagina == 0 || diferencia_entre_dir_y_tam_pagina >= cantidad_bytes_a_escribir) {
                 bytes_a_guardar = cantidad_bytes_a_escribir;
             } else {
                 bytes_a_guardar = diferencia_entre_dir_y_tam_pagina;
             }
             
-            cantidad_bytes_a_escribir -= bytes_a_guardar;
+            escribir_valor_en_espacio(pid, dir_fisica, registro + cantidad_bytes_escritos, bytes_a_guardar);
 
-            escribir_valor_en_espacio(pid, dir_fisica, registro, bytes_a_guardar);
+            cantidad_bytes_a_escribir -= bytes_a_guardar;
+            cantidad_bytes_escritos += bytes_a_guardar;
         }
     }
 
