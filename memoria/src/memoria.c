@@ -254,7 +254,7 @@ void escribir_valor_en_espacio(int pid, uint32_t dir_fisica, void* registro, int
         //semaforo para acceso a espacio compartido --> memoria de usuario
 }
 
-int proceso_escritura_valor_memoria(int fd_cliente_cpu) {
+int proceso_escritura_valor_memoria(int fd_cliente_cpu) { //TODO: ver de refactorizar esto para que quede mas lindo con algo mas funcional (ejemplo, pasar la funcion de leer y escribir en memoria por parametro, ya que el comportamiento es casi el mismo)
 
     t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);
 
