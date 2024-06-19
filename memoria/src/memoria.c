@@ -2,8 +2,8 @@
 
 void crear_proceso(int fd_cliente_kernel);
 void resize_memoria(int fd_cliente_cpu);
-void leer_valor_memoria(int fd_cliente_cpu);
-void proceso_escritura_valor_memoria(int fd_cliente_cpu);
+void* proceso_lectura_valor_memoria(int* cantidad_direcciones_fisicas_leidas, uint32_t* tamanio_a_leer_en_memoria, int fd_cliente_cpu);
+int proceso_escritura_valor_memoria(int fd_cliente_cpu);
 void devolver_marco(int fd_cliente_cpu);
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel);
 char* fetch_instruccion_de_cliente(int fd_cliente);
@@ -92,42 +92,44 @@ void gestionar_conexion(void *puntero_fd_cliente)
             free(tam_pagina_str);
             break;
         case DEVOLVER_MARCO:
-            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
-            alarm(memConfig.retardoRespuesta / 1000);
+            usleep(memConfig.retardoRespuesta*1000);
             devolver_marco(fd_cliente);
             break;
         case LEER_VALOR_MEMORIA:
-            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
-            alarm(memConfig.retardoRespuesta / 1000);
-            leer_valor_memoria(fd_cliente);
+            uint32_t tamanio_a_leer_en_memoria;
+            int cantidad_direcciones_fisicas_leidas;
+            void* valor_leido_de_espacio = proceso_lectura_valor_memoria(&cantidad_direcciones_fisicas_leidas, &tamanio_a_leer_en_memoria, fd_cliente);
+            
+            t_paquete* paquete_a_enviar = crear_paquete(LEER_VALOR_MEMORIA);
+            agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, tamanio_a_leer_en_memoria);
+            usleep(memConfig.retardoRespuesta*1000*cantidad_direcciones_fisicas_leidas);
+            enviar_paquete(paquete_a_enviar, fd_cliente);
             break;
         case ESCRIBIR_VALOR_MEMORIA:
-            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
-            alarm(memConfig.retardoRespuesta / 1000);
-            proceso_escritura_valor_memoria(fd_cliente);
+            int cantidad_direcciones_fisicas_escritas = proceso_escritura_valor_memoria(fd_cliente);
+            usleep(memConfig.retardoRespuesta*1000*cantidad_direcciones_fisicas_escritas);
+            //LE AVISO A CPU
+            enviar_codigo_op(ESCRIBIR_VALOR_MEMORIA, fd_cliente);
             break;
         case RESIZE_EN_MEMORIA:
-            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
-            alarm(memConfig.retardoRespuesta / 1000);
             resize_memoria(fd_cliente);
+            usleep(memConfig.retardoRespuesta*1000);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
             break;
         case CREAR_PCB: //EL PAQUETE A RECIBIR DE KERNEL DEBE SER 1°PID 2°Path
-            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
             crear_proceso(fd_cliente);
+            usleep(memConfig.retardoRespuesta*1000);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
             break;
         case ELIMINAR_PCB: 
-            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
             eliminar_estructuras_asociadas_al_proceso(fd_cliente);
+            usleep(memConfig.retardoRespuesta*1000);
             enviar_codigo_op(OK_OPERACION, fd_cliente);
             break;
         // Caso FETCH_INSTRUCCION para cuando la CPU pida la siguiente instruccion a ejecutar
         case FETCH_INSTRUCCION: // la cpu envia el pid y el pc para obtener la instruccion deseada
-            signal(SIGALRM, manejar_retardo); //agrego manejo del retardo de instruc. de cpu
-            alarm(memConfig.retardoRespuesta / 1000);
             char* instruccion = fetch_instruccion_de_cliente(fd_cliente);
-            sem_wait(&sem_retardo);
+            usleep(memConfig.retardoRespuesta*1000);
             return_instruccion(instruccion, fd_cliente);
             break;
         default:
@@ -155,30 +157,79 @@ void devolver_marco(int fd_cliente_cpu) {
     liberar_lista_de_datos_con_punteros(paquete_recibido);
 }
 
-// TODO: Cambiar para leer mas de una dir fisica
-void leer_valor_memoria(int fd_cliente_cpu) {
+void obtener_valores_para_operaciones_rw(t_list* paquete_recibido, int* cantidad_direcciones_fisicas, t_list* direcciones_fisicas, int* pid, uint32_t* tamanio_a_operar_en_memoria, int* indice_valores_paquetes) {
+    
+    *cantidad_direcciones_fisicas = *(int*) list_get(paquete_recibido, *indice_valores_paquetes); //esto es lo mismo que decir, cuantas paginas necesite!
 
-    t_list *paquete_recibido = recibir_paquete(fd_cliente_cpu);            
-    uint32_t dir_fisica = *(uint32_t*) list_get(paquete_recibido, 0);
-    uint32_t tamanio_a_leer_en_memoria = *(uint32_t*) list_get(paquete_recibido, 1);
-    int pid = *(int*) list_get(paquete_recibido, 2);
+    for (int i = 0; i < *cantidad_direcciones_fisicas; i++) {
+        *indice_valores_paquetes += 1;
+        uint32_t* dir_fisica = (uint32_t*) list_get(paquete_recibido, *indice_valores_paquetes);
+        list_add_in_index(direcciones_fisicas, i, dir_fisica);
+    }
 
-    t_paquete* paquete_a_enviar = crear_paquete(LEER_VALOR_MEMORIA);
+    *indice_valores_paquetes += 1;
+    *pid = *(int*) list_get(paquete_recibido, *indice_valores_paquetes);
+    *indice_valores_paquetes += 1;
+    *tamanio_a_operar_en_memoria = *(uint32_t*) list_get(paquete_recibido, *indice_valores_paquetes);
+}
+
+int leer_valor_en_espacio(int pid, uint32_t dir_fisica, void* valor_leido_de_espacio, int cantidad_bytes_leidos, uint32_t tamanio_a_leer_en_memoria) {
     
     //semaforo para acceso a espacio compartido
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
 
-    void* valor_leido_de_espacio = malloc(tamanio_a_leer_en_memoria);
-    memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, tamanio_a_leer_en_memoria);
-    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, tamanio_a_leer_en_memoria);
-    enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
+    memcpy(valor_leido_de_espacio + cantidad_bytes_leidos, espacio_usuario.espacio_usuario + dir_fisica, tamanio_a_leer_en_memoria);
     log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
 
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
+    
+    return tamanio_a_leer_en_memoria;
+}
+
+
+void* proceso_lectura_valor_memoria(int* cantidad_direcciones_fisicas_leidas, uint32_t* tamanio_a_leer_en_memoria, int fd_cliente_cpu) {
+
+    t_list *paquete_recibido = recibir_paquete(fd_cliente_cpu);            
+
+    int cantidad_direcciones_fisicas;
+    t_list* direcciones_fisicas = list_create();
+    int pid;
+    int indice_valores_paquetes = 0;
+    int cantidad_bytes_leidos = 0;
+    obtener_valores_para_operaciones_rw(paquete_recibido, &cantidad_direcciones_fisicas, direcciones_fisicas, &pid, tamanio_a_leer_en_memoria, &indice_valores_paquetes);
+    
+    void* valor_leido_de_espacio = malloc(*tamanio_a_leer_en_memoria);
+    
+    if (cantidad_direcciones_fisicas == 1) { //esto quiere decir que solo va a haber una pagina en la operacion afectada
+        
+        uint32_t dir_fisica = *(uint32_t*) list_get(direcciones_fisicas, 0);
+        leer_valor_en_espacio(pid, dir_fisica, valor_leido_de_espacio, cantidad_bytes_leidos, *tamanio_a_leer_en_memoria);
+    } else {
+
+        for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
+
+            uint32_t bytes_a_leer;
+            uint32_t dir_fisica = *(uint32_t*) list_get(direcciones_fisicas, i);
+            uint32_t diferencia_entre_dir_y_tam_pagina = memConfig.tamPagina - dir_fisica;
+
+            if (diferencia_entre_dir_y_tam_pagina >= *tamanio_a_leer_en_memoria) {
+                bytes_a_leer = *tamanio_a_leer_en_memoria;
+            } else {
+                bytes_a_leer = diferencia_entre_dir_y_tam_pagina;
+            }
+            
+            *tamanio_a_leer_en_memoria -= bytes_a_leer;
+
+            cantidad_bytes_leidos += leer_valor_en_espacio(pid, dir_fisica, valor_leido_de_espacio, cantidad_bytes_leidos, bytes_a_leer);
+        }
+    }
 
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(paquete_recibido);
+    liberar_lista_de_datos_planos(direcciones_fisicas);
+
+    return valor_leido_de_espacio;
 }
 
 void resize_memoria(int fd_cliente_cpu) {
@@ -203,25 +254,18 @@ void escribir_valor_en_espacio(int pid, uint32_t dir_fisica, void* registro, int
         //semaforo para acceso a espacio compartido --> memoria de usuario
 }
 
-void proceso_escritura_valor_memoria(int fd_cliente_cpu) {
+int proceso_escritura_valor_memoria(int fd_cliente_cpu) { //TODO: ver de refactorizar esto para que quede mas lindo con algo mas funcional (ejemplo, pasar la funcion de leer y escribir en memoria por parametro, ya que el comportamiento es casi el mismo)
 
     t_list *valoresPaquete = recibir_paquete(fd_cliente_cpu);
 
+    int cantidad_direcciones_fisicas;
+    t_list* direcciones_fisicas = list_create();
+    int pid;
+    uint32_t cantidad_bytes_a_escribir;
     int indice_valores_paquetes = 0;
 
-    int cantidad_direcciones_fisicas = *(int*) list_get(valoresPaquete, indice_valores_paquetes); //esto es lo mismo que decir, cuantas paginas necesite!
-    t_list* direcciones_fisicas = list_create();
-
-    for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
-        indice_valores_paquetes += 1;
-        uint32_t* dir_fisica = (uint32_t*) list_get(valoresPaquete, indice_valores_paquetes);
-        list_add_in_index(direcciones_fisicas, i, dir_fisica);
-    }
-
-    indice_valores_paquetes += 1;
-    int pid = *(int*) list_get(valoresPaquete, indice_valores_paquetes);
-    indice_valores_paquetes += 1;
-    uint32_t cantidad_bytes_a_escribir = *(uint32_t*) list_get(valoresPaquete, indice_valores_paquetes);
+    obtener_valores_para_operaciones_rw(valoresPaquete, &cantidad_direcciones_fisicas, direcciones_fisicas, &pid, &cantidad_bytes_a_escribir, &indice_valores_paquetes);
+    
     indice_valores_paquetes += 1;
     void* registro = list_get(valoresPaquete, indice_valores_paquetes);
     
@@ -249,12 +293,11 @@ void proceso_escritura_valor_memoria(int fd_cliente_cpu) {
         }
     }
 
-    //LE AVISO A CPU
-    enviar_codigo_op(ESCRIBIR_VALOR_MEMORIA, fd_cliente_cpu);
-
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(valoresPaquete);
     liberar_lista_de_datos_planos(direcciones_fisicas);
+
+    return cantidad_direcciones_fisicas;
 }
 
 void crear_proceso(int fd_cliente_kernel) {

@@ -72,15 +72,21 @@ uint32_t traducir_direccion_mmu(uint32_t dir_logica)
     return dir_fisica;
 }
 
-void* leer_de_memoria(int dir_fisica, int pid, uint32_t tamanio_a_leer_en_memoria)
+void* leer_de_memoria(t_list* direcciones_fisicas, int pid, uint32_t tamanio_a_leer_en_memoria)
 {
     t_paquete *paquete = crear_paquete(LEER_VALOR_MEMORIA);
 
-    agregar_a_paquete(paquete, &dir_fisica, sizeof(int));
+    int cantidad_direcciones_fisicas = list_size(direcciones_fisicas);
+    agregar_a_paquete(paquete, &cantidad_direcciones_fisicas, sizeof(int)); //agrego cuantas direcciones fisicas hay
 
-    agregar_a_paquete(paquete, &tamanio_a_leer_en_memoria, sizeof(uint32_t));
+    for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
+        //uint32_t direccion_fisica = *(uint32_t*)list_get(direcciones_fisicas, i);
+        agregar_a_paquete(paquete, (uint32_t*)list_get(direcciones_fisicas, i), sizeof(uint32_t));
+    }
 
     agregar_a_paquete(paquete, &pid, sizeof(int));
+
+    agregar_a_paquete(paquete, &tamanio_a_leer_en_memoria, sizeof(uint32_t));
 
     enviar_paquete(paquete, fd_memoria);
 
