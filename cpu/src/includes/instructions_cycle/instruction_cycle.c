@@ -244,13 +244,6 @@ void mov_in_instruction(t_list *parametros)
     char *registro_direccion = (char *)list_get(parametros, 1);
     void *registro_direccion_mapeado = mapear_registro(registro_direccion);
     tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_datos);
-    uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
-    
-    if (dir_fisica == -1)
-    {
-        // TODO: Revisar que hacer en caso de error
-        return;
-    }
 
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
     uint32_t tamanio_a_leer_en_memoria;
@@ -265,21 +258,27 @@ void mov_in_instruction(t_list *parametros)
         tamanio_a_leer_en_memoria = string_length(registro_datos) + 1;
         break;
     }
+
+    t_list* devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&tamanio_a_leer_en_memoria, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); //estas direcciones SIEMPRE debe haber almenos una
     
-    void* valor_obtenido_de_memoria = leer_de_memoria(dir_fisica, pid, tamanio_a_leer_en_memoria);
+    void* valor_obtenido_de_memoria = leer_de_memoria(devolucion_direcciones_fisicas, pid, tamanio_a_leer_en_memoria);
 
     switch (tipo_de_dato_datos) {
         case UINT8:
             uint8_t *valor_obtenido_mapeado1 = (uint8_t *)valor_obtenido_de_memoria;
             uint8_t *registro_datos_casteado1 = (uint8_t *)registro_datos_mapeado;
             *registro_datos_casteado1 = *valor_obtenido_mapeado1;
-            log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_casteado1);
+            for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
+                log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), *registro_datos_casteado1);
+            }
         break;
         case UINT32:
             uint32_t *valor_obtenido_mapeado = (uint32_t *)valor_obtenido_de_memoria;
             uint32_t *registro_datos_casteado = (uint32_t *)registro_datos_mapeado;
             *registro_datos_casteado = *valor_obtenido_mapeado;
-            log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, dir_fisica, *registro_datos_casteado);
+            for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
+                log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), *registro_datos_casteado1);
+            }
         break;
     }
 }
@@ -451,10 +450,10 @@ void copy_string_instruction (t_list *parametros) {
         // Si lo que podemos leer es menor a la cantidad que nos falta por leer leemos todo lo que podemos
         // Si no, leemos lo que nos falta
         if ( cantidad_a_leer < *cantidad_bytes ) {
-            valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, cantidad_a_leer);
+            //valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, cantidad_a_leer);TODO: Refactor envio de listas
             cantidad_bytes -= cantidad_a_leer;
         } else {
-            valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, *cantidad_bytes);
+            //valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, *cantidad_bytes); TODO: Refactor envio de listas
         }
 
         string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria);
