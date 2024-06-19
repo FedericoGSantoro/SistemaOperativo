@@ -170,7 +170,7 @@ void leer_valor_memoria(int fd_cliente_cpu) {
 
     void* valor_leido_de_espacio = malloc(tamanio_a_leer_en_memoria);
     memcpy(valor_leido_de_espacio, espacio_usuario.espacio_usuario + dir_fisica, tamanio_a_leer_en_memoria);
-    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, sizeof(tamanio_a_leer_en_memoria));
+    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, tamanio_a_leer_en_memoria);
     enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
     log_info(loggerOblig, "PID: %d - Accion: LEER - Direccion fisica: %d", pid, dir_fisica);
 
@@ -197,7 +197,7 @@ void escribir_valor_en_espacio(int pid, uint32_t dir_fisica, void* registro, int
     
         //semaforo para acceso a espacio compartido --> memoria de usuario
         pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
-        memcpy((void*)(((char*)espacio_usuario.espacio_usuario + dir_fisica)), registro, sizeof(cantidad_bytes_a_escribir));
+        memcpy((void*)(((char*)espacio_usuario.espacio_usuario + dir_fisica)), registro, cantidad_bytes_a_escribir);
         log_info(loggerOblig, "PID: %d - Accion: ESCRIBIR - Direccion fisica: %d", pid, dir_fisica);
         pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
         //semaforo para acceso a espacio compartido --> memoria de usuario
