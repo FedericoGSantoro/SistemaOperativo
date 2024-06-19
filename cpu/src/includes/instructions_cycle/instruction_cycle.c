@@ -277,7 +277,7 @@ void mov_in_instruction(t_list *parametros)
             uint32_t *registro_datos_casteado = (uint32_t *)registro_datos_mapeado;
             *registro_datos_casteado = *valor_obtenido_mapeado;
             for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
-                log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), *registro_datos_casteado1);
+                log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), *registro_datos_casteado);
             }
         break;
     }
