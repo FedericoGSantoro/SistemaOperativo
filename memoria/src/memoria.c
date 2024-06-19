@@ -173,7 +173,7 @@ void obtener_valores_para_operaciones_rw(t_list* paquete_recibido, int* cantidad
     *tamanio_a_operar_en_memoria = *(uint32_t*) list_get(paquete_recibido, *indice_valores_paquetes);
 }
 
-int leer_valor_en_espacio(int pid, uint32_t dir_fisica, void* valor_leido_de_espacio, int cantidad_bytes_leidos, uint32_t tamanio_a_leer_en_memoria) {
+void leer_valor_en_espacio(int pid, uint32_t dir_fisica, void* valor_leido_de_espacio, int cantidad_bytes_leidos, uint32_t tamanio_a_leer_en_memoria) {
     
     //semaforo para acceso a espacio compartido
     pthread_mutex_lock(&espacio_usuario.mx_espacio_usuario);
@@ -183,8 +183,6 @@ int leer_valor_en_espacio(int pid, uint32_t dir_fisica, void* valor_leido_de_esp
 
     pthread_mutex_unlock(&espacio_usuario.mx_espacio_usuario);
     //semaforo para acceso a espacio compartido
-    
-    return tamanio_a_leer_en_memoria;
 }
 
 
