@@ -72,7 +72,22 @@ uint32_t traducir_direccion_mmu(uint32_t dir_logica)
     return dir_fisica;
 }
 
-void* leer_de_memoria(t_list* direcciones_fisicas, int pid, uint32_t tamanio_a_leer_en_memoria)
+t_list* obtener_valores() {
+    
+    t_list* paquete_recibido = recibir_paquete(fd_memoria);
+    t_list* valores = list_create();
+
+    for (int i = 0; i < list_size(paquete_recibido); i++) {
+        void* bytes_guardados = list_get(paquete_recibido, i);
+        list_add_in_index(valores, i, bytes_guardados);
+    }
+
+    list_destroy(paquete_recibido);
+
+    return valores;
+}
+
+t_list* leer_de_memoria(t_list* direcciones_fisicas, int pid, uint32_t tamanio_a_leer_en_memoria)
 {
     t_paquete *paquete = crear_paquete(LEER_VALOR_MEMORIA);
 
@@ -90,22 +105,20 @@ void* leer_de_memoria(t_list* direcciones_fisicas, int pid, uint32_t tamanio_a_l
 
     enviar_paquete(paquete, fd_memoria);
 
-    // TODO: Eliminar paquete
     op_codigo cod_op = recibir_operacion(fd_memoria);
     while (cod_op != LEER_VALOR_MEMORIA)
     {
         cod_op = recibir_operacion(fd_memoria);
     }
 
-    t_list *paquete_recibido = recibir_paquete(fd_memoria);
-    void* valor_leido = list_get(paquete_recibido, 0);
+    t_list* valores_leidos = obtener_valores();
 
-    list_destroy(paquete_recibido);
+    log_info(logger_aux_cpu, "SE LEYO EN MEMORIA");
 
-    return valor_leido;
+    return valores_leidos;
 }
 
-void escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro, uint32_t cantidad_bytes)
+t_list* escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro, uint32_t cantidad_bytes)
 {
     t_paquete *paquete = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
 
@@ -113,7 +126,6 @@ void escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro, u
     agregar_a_paquete(paquete, &cantidad_direcciones_fisicas, sizeof(int)); //agrego cuantas direcciones fisicas hay
 
     for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
-        //uint32_t direccion_fisica = *(uint32_t*)list_get(direcciones_fisicas, i);
         agregar_a_paquete(paquete, (uint32_t*)list_get(direcciones_fisicas, i), sizeof(uint32_t));
     }
 
@@ -131,7 +143,11 @@ void escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro, u
         cod_op = recibir_operacion(fd_memoria);
     }
 
+    t_list* valores_escritos = obtener_valores();
+
     log_info(logger_aux_cpu, "SE ESCRIBIO EN MEMORIA");
+
+    return valores_escritos;
 }
 
 void resize_en_memoria(int pid, int size_to_resize) {

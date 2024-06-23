@@ -4,8 +4,8 @@
 #include "../tlb/tlb.h"
 
 uint32_t traducir_direccion_mmu(uint32_t dir_logica);
-void* leer_de_memoria(t_list* devolucion_direcciones_fisicas, int pid, uint32_t tamanio_a_leer_en_memoria);
-void escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro, uint32_t cantidad_bytes);
+t_list* leer_de_memoria(t_list* devolucion_direcciones_fisicas, int pid, uint32_t tamanio_a_leer_en_memoria);
+t_list* escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro, uint32_t cantidad_bytes);
 void resize_en_memoria(int pid, int size_to_resize);
 /*
 Realiza la peticion de las direcciones fisicas a memoria y las retorna como int* (Hacer free posteriormente)
