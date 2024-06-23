@@ -261,24 +261,23 @@ void mov_in_instruction(t_list *parametros)
 
     t_list* devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&tamanio_a_leer_en_memoria, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); //estas direcciones SIEMPRE debe haber almenos una
     
-    void* valor_obtenido_de_memoria = leer_de_memoria(devolucion_direcciones_fisicas, pid, tamanio_a_leer_en_memoria);
+    t_list* valores_leidos = leer_de_memoria(devolucion_direcciones_fisicas, pid, tamanio_a_leer_en_memoria);
+
+    for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
+        uint32_t valor_escrito_parseado = *(uint32_t*) list_get(valores_leidos, i);
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), valor_escrito_parseado);
+    }
 
     switch (tipo_de_dato_datos) {
         case UINT8:
-            uint8_t *valor_obtenido_mapeado1 = (uint8_t *)valor_obtenido_de_memoria;
+            uint8_t *valor_obtenido_mapeado1 = (uint8_t *)(list_get(valores_leidos, list_size(valores_leidos)-1));
             uint8_t *registro_datos_casteado1 = (uint8_t *)registro_datos_mapeado;
             *registro_datos_casteado1 = *valor_obtenido_mapeado1;
-            for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
-                log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), *registro_datos_casteado1);
-            }
         break;
         case UINT32:
-            uint32_t *valor_obtenido_mapeado = (uint32_t *)valor_obtenido_de_memoria;
+            uint32_t *valor_obtenido_mapeado = (uint32_t *)(list_get(valores_leidos, list_size(valores_leidos)-1));
             uint32_t *registro_datos_casteado = (uint32_t *)registro_datos_mapeado;
             *registro_datos_casteado = *valor_obtenido_mapeado;
-            for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
-                log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), *registro_datos_casteado);
-            }
         break;
     }
 }
@@ -315,11 +314,11 @@ void mov_out_instruction(t_list *parametros)
 
     t_list* devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&cantidad_bytes, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); //estas direcciones SIEMPRE debe haber almenos una
     
-    escribir_en_memoria(devolucion_direcciones_fisicas, pid, registro_datos_mapeado, cantidad_bytes);
+    t_list* valores_escritos = escribir_en_memoria(devolucion_direcciones_fisicas, pid, registro_datos_mapeado, cantidad_bytes);
 
-    for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
-
-        log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), valor);
+    for (int i = 0; i < list_size(valores_escritos); i++) {
+        uint32_t valor_escrito_parseado = *(uint32_t*) list_get(valores_escritos, i);
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), valor_escrito_parseado);
     }
 
     liberar_lista_de_datos_con_punteros(devolucion_direcciones_fisicas);
