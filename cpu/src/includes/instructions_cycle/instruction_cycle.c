@@ -280,6 +280,8 @@ void mov_in_instruction(t_list *parametros)
             *registro_datos_casteado = *valor_obtenido_mapeado;
         break;
     }
+
+    list_destroy(valores_leidos);
 }
 
 void mov_out_instruction(t_list *parametros)
@@ -322,6 +324,8 @@ void mov_out_instruction(t_list *parametros)
     }
 
     liberar_lista_de_datos_con_punteros(devolucion_direcciones_fisicas);
+
+    list_destroy(valores_escritos);
 }
 
 void resize_instruction(t_list *parametros)

@@ -242,6 +242,7 @@ t_paquete* proceso_lectura_valor_memoria(int* cantidad_direcciones_fisicas_leida
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(paquete_recibido);
     liberar_lista_de_datos_planos(direcciones_fisicas);
+    agregar_a_paquete(paquete_a_enviar, valor_leido_de_espacio, (*tamanio_a_leer_en_memoria_ptr));
 
     return paquete_a_enviar;
 }

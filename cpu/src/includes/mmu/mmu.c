@@ -72,12 +72,12 @@ uint32_t traducir_direccion_mmu(uint32_t dir_logica)
     return dir_fisica;
 }
 
-t_list* obtener_valores(t_list* direcciones_fisicas, int cantidad_direcciones_fisicas) {
+t_list* obtener_valores() {
     
     t_list* paquete_recibido = recibir_paquete(fd_memoria);
     t_list* valores = list_create();
 
-    for (int i = 0; i < cantidad_direcciones_fisicas; i++) {
+    for (int i = 0; i < list_size(paquete_recibido); i++) {
         void* bytes_guardados = list_get(paquete_recibido, i);
         list_add_in_index(valores, i, bytes_guardados);
     }
@@ -111,7 +111,7 @@ t_list* leer_de_memoria(t_list* direcciones_fisicas, int pid, uint32_t tamanio_a
         cod_op = recibir_operacion(fd_memoria);
     }
 
-    t_list* valores_leidos = obtener_valores(direcciones_fisicas, cantidad_direcciones_fisicas);
+    t_list* valores_leidos = obtener_valores();
 
     log_info(logger_aux_cpu, "SE LEYO EN MEMORIA");
 
@@ -143,7 +143,7 @@ t_list* escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro
         cod_op = recibir_operacion(fd_memoria);
     }
 
-    t_list* valores_escritos = obtener_valores(direcciones_fisicas, cantidad_direcciones_fisicas);
+    t_list* valores_escritos = obtener_valores();
 
     log_info(logger_aux_cpu, "SE ESCRIBIO EN MEMORIA");
 
