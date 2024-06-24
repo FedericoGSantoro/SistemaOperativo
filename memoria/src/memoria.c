@@ -2,7 +2,15 @@
 
 void crear_proceso(int fd_cliente_kernel);
 void resize_memoria(int fd_cliente_cpu);
+/**
+ * este metodo procesa las lecturas a generar en memoria. retorna un paquete para enviar con un listado, por direccion fisica, con los 
+ * distintos resultados parciales leidos. Al final de la lista, se devuelve un valor mas que es el valor final buscado.
+**/
 t_paquete* proceso_lectura_valor_memoria(int* cantidad_direcciones_fisicas_leidas, uint32_t* tamanio_a_leer_en_memoria, int fd_cliente_cpu);
+/**
+ * este metodo procesa las escrituras a generar en memoria. retorna un paquete para enviar con un listado, por direccion fisica, con los 
+ * distintos resultados parciales escritos.
+**/
 t_paquete* proceso_escritura_valor_memoria(int fd_cliente_cpu, int* cantidad_direcciones_fisicas);
 void devolver_marco(int fd_cliente_cpu);
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel);
