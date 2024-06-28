@@ -4,6 +4,7 @@
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/hilos/hilos.h"
+#include "../../utils/src/castingfunctions/castfunctions.h"
 
 extern t_log* logger_obligatorio_cpu;
 extern t_log* logger_aux_cpu;

@@ -2,6 +2,7 @@
 #define MMU_H_
 
 #include "../tlb/tlb.h"
+#include "../tlb/tlb.h"
 
 uint32_t traducir_direccion_mmu(uint32_t dir_logica);
 t_list* leer_de_memoria(t_list* devolucion_direcciones_fisicas, int pid, uint32_t tamanio_a_leer_en_memoria);
