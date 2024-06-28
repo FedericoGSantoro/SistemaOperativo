@@ -300,7 +300,6 @@ t_paquete* proceso_escritura_valor_memoria(int fd_cliente_cpu, int* cantidad_dir
         
         uint32_t dir_fisica = *(uint32_t*) list_get(direcciones_fisicas, 0);
         escribir_valor_en_espacio(pid, dir_fisica, registro, cantidad_bytes_a_escribir);
-        agregar_a_paquete(paquete_a_enviar, &cantidad_bytes_a_escribir, sizeof(uint32_t));
         agregar_a_paquete(paquete_a_enviar, registro, cantidad_bytes_a_escribir);
     } else {
 

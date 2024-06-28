@@ -1,14 +1,5 @@
 #include "mmu.h"
 
-uint32_t get_registro_direccion_casteado (void *registro_direccion_mapeado, tipo_de_dato tipo_de_dato_registro_direccion) {
-    
-    if (tipo_de_dato_registro_direccion == UINT8) {
-        uint8_t registro_direccion_valor = *(uint8_t*) (registro_direccion_mapeado);
-        return registro_direccion_valor;
-    } else {
-        return *(uint32_t*) (registro_direccion_mapeado);
-    }
-}
 uint32_t cantidad_bytes_que_se_pueden_leer(uint32_t dir) {
     uint32_t offset = dir % tam_pagina;
     return tam_pagina - offset;
@@ -30,8 +21,8 @@ int cantidad_paginas_necesarias (uint32_t cantidad_bytes, uint32_t dir_logica) {
 
 t_list* peticion_de_direcciones_fisicas(void* cantidad_bytes, tipo_de_dato tipo_de_dato_cantidad_bytes, void* direccion_logica, tipo_de_dato tipo_de_dato_direccion_logica) {
     // Creamos una copia del dato para no modificar el dato original
-    uint32_t cant_bytes = get_registro_direccion_casteado(cantidad_bytes, tipo_de_dato_cantidad_bytes);
-    uint32_t dir_logica = get_registro_direccion_casteado(direccion_logica, tipo_de_dato_direccion_logica); 
+    uint32_t cant_bytes = get_registro_numerico_casteado_32b(cantidad_bytes, tipo_de_dato_cantidad_bytes);
+    uint32_t dir_logica = get_registro_numerico_casteado_32b(direccion_logica, tipo_de_dato_direccion_logica); 
     int num_pagina = numero_pagina(dir_logica);
 
     // Calculamos la cantidad de paginas necesarias
@@ -133,7 +124,7 @@ t_list* escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro
 
     agregar_a_paquete(paquete, &cantidad_bytes, sizeof(uint32_t));
 
-    agregar_a_paquete(paquete, registro, sizeof(cantidad_bytes));
+    agregar_a_paquete(paquete, registro, cantidad_bytes);
 
     enviar_paquete(paquete, fd_memoria);
     

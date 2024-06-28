@@ -68,21 +68,24 @@ void sum_instruction(t_list *parametros)
     tipo_de_dato tipo_de_dato_destino = mapear_tipo_de_dato(destino);
     tipo_de_dato tipo_de_dato_origen = mapear_tipo_de_dato(origen);
 
-    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8) {
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8)
+    {
         uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
         uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
         *registro_destino_casteado += *registro_origen_casteado;
         return;
     }
 
-    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8) {
+    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8)
+    {
         uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
         uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
         *registro_destino_casteado += *registro_origen_casteado;
         return;
     }
 
-    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32) {
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32)
+    {
         uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
         uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
         *registro_destino_casteado += *registro_origen_casteado;
@@ -106,21 +109,24 @@ void sub_instruction(t_list *parametros)
     tipo_de_dato tipo_de_dato_destino = mapear_tipo_de_dato(destino);
     tipo_de_dato tipo_de_dato_origen = mapear_tipo_de_dato(origen);
 
-    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8) {
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8)
+    {
         uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
         uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
         *registro_destino_casteado -= *registro_origen_casteado;
         return;
     }
 
-    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8) {
+    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8)
+    {
         uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
         uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
         *registro_destino_casteado -= *registro_origen_casteado;
         return;
     }
 
-    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32) {
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32)
+    {
         uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
         uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
         *registro_destino_casteado -= *registro_origen_casteado;
@@ -144,21 +150,24 @@ void set_instruction(t_list *parametros)
     tipo_de_dato tipo_de_dato_destino = mapear_tipo_de_dato(destino);
     tipo_de_dato tipo_de_dato_origen = mapear_tipo_de_dato(origen);
 
-    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8) {
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT8)
+    {
         uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
         uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
         *registro_destino_casteado = *registro_origen_casteado;
         return;
     }
 
-    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8) {
+    if (tipo_de_dato_destino == UINT32 && tipo_de_dato_origen == UINT8)
+    {
         uint32_t *registro_destino_casteado = (uint32_t *)registro_destino;
         uint8_t *registro_origen_casteado = (uint8_t *)registro_origen;
         *registro_destino_casteado = *registro_origen_casteado;
         return;
     }
 
-    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32) {
+    if (tipo_de_dato_destino == UINT8 && tipo_de_dato_origen == UINT32)
+    {
         uint8_t *registro_destino_casteado = (uint8_t *)registro_destino;
         uint32_t *registro_origen_casteado = (uint32_t *)registro_origen;
         *registro_destino_casteado = *registro_origen_casteado;
@@ -177,19 +186,22 @@ void jnz_instruction(t_list *parametros)
     char *instruccion_a_moverse = (char *)list_get(parametros, 1);
 
     void *registro_mapeado = mapear_registro(registro);
-    uint32_t instruccion_a_moverse_mapeada = *(uint32_t*)mapear_registro(instruccion_a_moverse);
+    uint32_t instruccion_a_moverse_mapeada = *(uint32_t *)mapear_registro(instruccion_a_moverse);
     tipo_de_dato tipo_de_dato_registro = mapear_tipo_de_dato(registro);
     uint32_t registro_casteado;
 
-    if (tipo_de_dato_registro == UINT8) {
-        uint8_t registro_valor = *(uint8_t*) (registro_mapeado);
+    if (tipo_de_dato_registro == UINT8)
+    {
+        uint8_t registro_valor = *(uint8_t *)(registro_mapeado);
         registro_casteado = registro_valor;
-    } else {
-        registro_casteado = *(uint32_t*) (registro_mapeado);
-
+    }
+    else
+    {
+        registro_casteado = *(uint32_t *)(registro_mapeado);
     }
 
-    if (registro_casteado == 0) {
+    if (registro_casteado == 0)
+    {
         return;
     }
 
@@ -222,15 +234,19 @@ void io_gen_sleep_instruction(t_list *parametros)
     free(io_instruccion);
 }
 
-uint32_t get_direccion_fisica (void *registro_direccion_mapeado, tipo_de_dato tipo_de_dato_registro_direccion) {
-    
+uint32_t get_direccion_fisica(void *registro_direccion_mapeado, tipo_de_dato tipo_de_dato_registro_direccion)
+{
+
     uint32_t registro_direccion_casteado;
 
-    if (tipo_de_dato_registro_direccion == UINT8) {
-        uint8_t registro_direccion_valor = *(uint8_t*) (registro_direccion_mapeado);
+    if (tipo_de_dato_registro_direccion == UINT8)
+    {
+        uint8_t registro_direccion_valor = *(uint8_t *)(registro_direccion_mapeado);
         registro_direccion_casteado = registro_direccion_valor;
-    } else {
-        registro_direccion_casteado = *(uint32_t*) (registro_direccion_mapeado);
+    }
+    else
+    {
+        registro_direccion_casteado = *(uint32_t *)(registro_direccion_mapeado);
     }
 
     return traducir_direccion_mmu(registro_direccion_casteado);
@@ -247,37 +263,40 @@ void mov_in_instruction(t_list *parametros)
 
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
     uint32_t tamanio_a_leer_en_memoria;
-    switch (tipo_de_dato_datos){
-        case UINT32:
+    switch (tipo_de_dato_datos)
+    {
+    case UINT32:
         tamanio_a_leer_en_memoria = sizeof(uint32_t);
         break;
-        case UINT8:
+    case UINT8:
         tamanio_a_leer_en_memoria = sizeof(uint8_t);
         break;
-        case STRING:
+    case STRING:
         tamanio_a_leer_en_memoria = string_length(registro_datos) + 1;
         break;
     }
 
-    t_list* devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&tamanio_a_leer_en_memoria, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); //estas direcciones SIEMPRE debe haber almenos una
-    
-    t_list* valores_leidos = leer_de_memoria(devolucion_direcciones_fisicas, pid, tamanio_a_leer_en_memoria);
+    t_list *devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&tamanio_a_leer_en_memoria, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); // estas direcciones SIEMPRE debe haber almenos una
 
-    for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++) {
-        uint32_t valor_escrito_parseado = *(uint32_t*) list_get(valores_leidos, i);
-        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), valor_escrito_parseado);
+    t_list *valores_leidos = leer_de_memoria(devolucion_direcciones_fisicas, pid, tamanio_a_leer_en_memoria);
+
+    for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++)
+    {
+        uint32_t valor_escrito_parseado = *(uint32_t *)list_get(valores_leidos, i);
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t *)list_get(devolucion_direcciones_fisicas, i), valor_escrito_parseado);
     }
 
-    switch (tipo_de_dato_datos) {
-        case UINT8:
-            uint8_t *valor_obtenido_mapeado1 = (uint8_t *)(list_get(valores_leidos, list_size(valores_leidos)-1));
-            uint8_t *registro_datos_casteado1 = (uint8_t *)registro_datos_mapeado;
-            *registro_datos_casteado1 = *valor_obtenido_mapeado1;
+    switch (tipo_de_dato_datos)
+    {
+    case UINT8:
+        uint8_t *valor_obtenido_mapeado1 = (uint8_t *)(list_get(valores_leidos, list_size(valores_leidos) - 1));
+        uint8_t *registro_datos_casteado1 = (uint8_t *)registro_datos_mapeado;
+        *registro_datos_casteado1 = *valor_obtenido_mapeado1;
         break;
-        case UINT32:
-            uint32_t *valor_obtenido_mapeado = (uint32_t *)(list_get(valores_leidos, list_size(valores_leidos)-1));
-            uint32_t *registro_datos_casteado = (uint32_t *)registro_datos_mapeado;
-            *registro_datos_casteado = *valor_obtenido_mapeado;
+    case UINT32:
+        uint32_t *valor_obtenido_mapeado = (uint32_t *)(list_get(valores_leidos, list_size(valores_leidos) - 1));
+        uint32_t *registro_datos_casteado = (uint32_t *)registro_datos_mapeado;
+        *registro_datos_casteado = *valor_obtenido_mapeado;
         break;
     }
 
@@ -292,35 +311,31 @@ void mov_out_instruction(t_list *parametros)
     char *registro_direccion = (char *)list_get(parametros, 0);
     void *registro_direccion_mapeado = mapear_registro(registro_direccion);
     tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_datos);
-    //uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
-    
+    // uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
+
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
     uint32_t cantidad_bytes;
-    char* valor;
-    switch (tipo_de_dato_datos){
-        case UINT32:
+    switch (tipo_de_dato_datos)
+    {
+    case UINT32:
         cantidad_bytes = sizeof(uint32_t);
-        uint32_t registro_datos_a_parsear1 = *(uint32_t*) registro_datos_mapeado;
-        valor = int_to_string(registro_datos_a_parsear1);
         break;
-        case UINT8:
+    case UINT8:
         cantidad_bytes = sizeof(uint8_t);
-        uint8_t registro_datos_a_parsear2 = *(uint8_t*) registro_datos_mapeado;
-        valor = int_to_string(registro_datos_a_parsear2);
         break;
-        case STRING:
+    case STRING:
         cantidad_bytes = string_length(registro_datos) + 1;
-        valor = (char*) registro_datos_mapeado;
         break;
     }
 
-    t_list* devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&cantidad_bytes, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); //estas direcciones SIEMPRE debe haber almenos una
-    
-    t_list* valores_escritos = escribir_en_memoria(devolucion_direcciones_fisicas, pid, registro_datos_mapeado, cantidad_bytes);
+    t_list *devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&cantidad_bytes, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); // estas direcciones SIEMPRE debe haber almenos una
 
-    for (int i = 0; i < list_size(valores_escritos); i++) {
-        uint32_t valor_escrito_parseado = *(uint32_t*) list_get(valores_escritos, i);
-        log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, *(uint32_t*) list_get(devolucion_direcciones_fisicas, i), valor_escrito_parseado);
+    t_list *valores_escritos = escribir_en_memoria(devolucion_direcciones_fisicas, pid, registro_datos_mapeado, cantidad_bytes);
+
+    for (int i = 0; i < list_size(valores_escritos); i++)
+    {
+        uint32_t valor_escrito_parseado = *(uint32_t *)list_get(valores_escritos, i);
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, *(uint32_t *)list_get(devolucion_direcciones_fisicas, i), valor_escrito_parseado);
     }
 
     liberar_lista_de_datos_con_punteros(devolucion_direcciones_fisicas);
@@ -336,52 +351,62 @@ void resize_instruction(t_list *parametros)
     resize_en_memoria(pid, size_to_resize);
     op_codigo codigoOperacion = recibir_operacion(fd_memoria);
     // TODO: Recibir operacion y fijarse si es Out Of Memory o OK
-    if (codigoOperacion == OUT_OF_MEMORY){
+    if (codigoOperacion == OUT_OF_MEMORY)
+    {
         manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
         log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
         return;
-    } //no considero necesario un chequeo de OK_OPERACION pq si
+    } // no considero necesario un chequeo de OK_OPERACION pq si
     log_info(logger_aux_cpu, "PID: %d - Acción: RESIZE - cod op: %d", pid, codigoOperacion);
 }
 
-void agregar_direccion_fisica_a_lista(uint32_t* dir_fis){
-    t_params_io *parametro_io = malloc(sizeof(int) * 2);
+void agregar_direccion_fisica_a_lista(uint32_t *dir_fis)
+{
+    t_params_io *parametro_io = malloc(sizeof(int) + sizeof(uint32_t));
     parametro_io->tipo_de_dato = UINT32;
     parametro_io->valor = malloc(sizeof(uint32_t));
-    *(uint32_t*)parametro_io->valor = *dir_fis;
-    log_info(logger_aux_cpu, "Direccion fisica cargandose: %d", *(uint32_t*) parametro_io->valor);
+    *(uint32_t *)parametro_io->valor = *dir_fis;
+    log_info(logger_aux_cpu, "Direccion fisica cargandose: %d", *(uint32_t *)parametro_io->valor);
     list_add(io_detail.parametros, parametro_io);
-    //no se si hace falta un free() uwu
-} 
+    // no se si hace falta un free() uwu
+}
 
-void io_stdout_write_instruction(t_list *parametros){ //honores to: capo master fede (s, no w)
-    //leo parametros
-    //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
+void io_stdout_write_instruction(t_list *parametros)
+{ // honores to: capo master fede (s, no w)
+    // leo parametros
+    // recibe:(Interfaz, Registro Dirección, Registro Tamaño)
     char *nombre_io = (char *)list_get(parametros, 0);
     char *registro_direccion = (char *)list_get(parametros, 1);
     char *registro_tamanio = (char *)list_get(parametros, 2);
-    //mapeo
-    void* reg_dir = mapear_registro(registro_direccion);
-    void* reg_tam = mapear_registro(registro_tamanio);
-    
-    //armo el array con las direcs fis. y agrego a los parametros c/ posicion
+    // mapeo
+    void *reg_dir = mapear_registro(registro_direccion);
+    void *reg_tam = mapear_registro(registro_tamanio);
+
+    tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_tamanio);
+    uint32_t reg_tam_casteado = get_registro_numerico_casteado_32b(reg_tam, tipo_de_dato_datos);
+
+    // armo el array con las direcs fis. y agrego a los parametros c/ posicion
     tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_direccion);
     tipo_de_dato tipo_de_dato_registro_bytes = mapear_tipo_de_dato(registro_tamanio);
-    t_list* dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
+    t_list *dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
 
-    for (int i = 0; i < list_size(dir_fisicas); i++){
-        agregar_direccion_fisica_a_lista((uint32_t*) list_get(dir_fisicas, i));
+    int indice_parametros = 0;
+    for (indice_parametros = 0; indice_parametros < list_size(dir_fisicas); indice_parametros++)
+    {
+        agregar_direccion_fisica_a_lista((uint32_t *)list_get(dir_fisicas, indice_parametros));
     }
-    //agrego el valor del tamaño a leer por ultimo
-    t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
+    
+    // agrego el valor del tamaño a leer por ultimo
+    t_params_io *parametro_io_tamanio = malloc(sizeof(int) + sizeof(uint32_t));
     parametro_io_tamanio->tipo_de_dato = INT;
-    parametro_io_tamanio->valor = reg_tam;
-    list_add(io_detail.parametros, parametro_io_tamanio);
-    //cargo nombre instruccion
+    parametro_io_tamanio->valor = malloc(sizeof(uint32_t));
+    *(uint32_t *)parametro_io_tamanio->valor = reg_tam_casteado;
+    list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
+    // cargo nombre instruccion
     t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
     *io_instruccion = IO_STDOUT_WRITE;
     io_detail.io_instruccion = *io_instruccion;
-    //cargo nombre io
+    // cargo nombre io
     io_detail.nombre_io = nombre_io;
 
     manejarInterrupciones(LLAMADA_SISTEMA);
@@ -389,55 +414,61 @@ void io_stdout_write_instruction(t_list *parametros){ //honores to: capo master 
     liberar_lista_de_datos_con_punteros(dir_fisicas);
 }
 
-void io_stdin_read_instruction(t_list *parametros){ //honores to: capo master fede (s, no w)
-    //leo parametros
-    //recibe:(Interfaz, Registro Dirección, Registro Tamaño)
+void io_stdin_read_instruction(t_list *parametros)
+{ // honores to: capo master fede (s, no w)
+    // leo parametros
+    // recibe:(Interfaz, Registro Dirección, Registro Tamaño)
     char *nombre_io = (char *)list_get(parametros, 0);
     char *registro_direccion = (char *)list_get(parametros, 1);
     char *registro_tamanio = (char *)list_get(parametros, 2);
-    //mapeo
-    void* reg_dir = mapear_registro(registro_direccion);
-    void* reg_tam = mapear_registro(registro_tamanio);
-    
-    //armo el array con las direcs fis. y agrego a los parametros c/ posicion
+    // mapeo
+    void *reg_dir = mapear_registro(registro_direccion);
+    void *reg_tam = mapear_registro(registro_tamanio);
+
+    // armo el array con las direcs fis. y agrego a los parametros c/ posicion
     tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_direccion);
     tipo_de_dato tipo_de_dato_registro_bytes = mapear_tipo_de_dato(registro_tamanio);
-    t_list* dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
+    t_list *dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
 
-    for (int i = 0; i < list_size(dir_fisicas); i++){
-        agregar_direccion_fisica_a_lista((uint32_t*) list_get(dir_fisicas, i));
+    int indice_parametros;
+    for (indice_parametros = 0; indice_parametros < list_size(dir_fisicas); indice_parametros++)
+    {
+        agregar_direccion_fisica_a_lista((uint32_t *)list_get(dir_fisicas, indice_parametros));
     }
-    //agrego el valor del tamaño a leer por ultimo
+    // agrego el valor del tamaño a leer por ultimo
     t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
     parametro_io_tamanio->tipo_de_dato = INT;
-    parametro_io_tamanio->valor = reg_tam;
-    list_add(io_detail.parametros, parametro_io_tamanio);
-    //cargo nombre instruccion
+    parametro_io_tamanio->valor = malloc(sizeof(int));
+    *(int *)parametro_io_tamanio->valor = *(int *) reg_tam;
+    list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
+    // cargo nombre instruccion
     t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
     *io_instruccion = IO_STDIN_READ;
     io_detail.io_instruccion = *io_instruccion;
-    //cargo nombre io
+    // cargo nombre io
     io_detail.nombre_io = nombre_io;
 
     manejarInterrupciones(LLAMADA_SISTEMA);
     free(io_instruccion);
     liberar_lista_de_datos_con_punteros(dir_fisicas);
 }
-    
-void copy_string_instruction (t_list *parametros) {
-    char* parametro_numerico = (char *)list_get(parametros, 0);
-    uint32_t* cantidad_bytes = mapear_registro(parametro_numerico);
-    uint32_t* registro_si = mapear_registro("SI");
-    uint32_t* registro_di = mapear_registro("DI");
+
+void copy_string_instruction(t_list *parametros)
+{
+    char *parametro_numerico = (char *)list_get(parametros, 0);
+    uint32_t *cantidad_bytes = mapear_registro(parametro_numerico);
+    uint32_t *registro_si = mapear_registro("SI");
+    uint32_t *registro_di = mapear_registro("DI");
     tipo_de_dato tipo_de_dato_registro_si = mapear_tipo_de_dato("SI");
     tipo_de_dato tipo_de_dato_registro_di = mapear_tipo_de_dato("DI");
-    t_list* dir_fisicas_si = peticion_de_direcciones_fisicas(cantidad_bytes, UINT32 , registro_si, tipo_de_dato_registro_si);
-    t_list* dir_fisicas_di = peticion_de_direcciones_fisicas(cantidad_bytes, UINT32 , registro_di, tipo_de_dato_registro_di);
-    void* valor_obtenido_de_memoria;
-    char* leido = string_new();
-    
+    t_list *dir_fisicas_si = peticion_de_direcciones_fisicas(cantidad_bytes, UINT32, registro_si, tipo_de_dato_registro_si);
+    t_list *dir_fisicas_di = peticion_de_direcciones_fisicas(cantidad_bytes, UINT32, registro_di, tipo_de_dato_registro_di);
+    void *valor_obtenido_de_memoria;
+    char *leido = string_new();
+
     // Obtenemos las direcciones fisicas de SI y DI
-    if ( list_size(dir_fisicas_di) == 0 || list_size(dir_fisicas_si) == 0 ) {
+    if (list_size(dir_fisicas_di) == 0 || list_size(dir_fisicas_si) == 0)
+    {
         log_error(logger_aux_cpu, "Error al traducir direcciones físicas de SI o DI");
         liberar_lista_de_datos_con_punteros(dir_fisicas_di);
         liberar_lista_de_datos_con_punteros(dir_fisicas_si);
@@ -445,27 +476,12 @@ void copy_string_instruction (t_list *parametros) {
     }
 
     // Leemos de memoria desde las direcciones físicas apuntadas por SI
-    for (int i = 0; i < list_size(dir_fisicas_si); i++) {
-        // Obtenemos la direccion fisica
-        uint32_t* direccion_fisica = (uint32_t*)list_get(dir_fisicas_si, i);
-        // Calculamos los bytes que podemos leer de esa direccion fisica
-        uint32_t cantidad_a_leer = cantidad_bytes_que_se_pueden_leer(*direccion_fisica);
-        // Si lo que podemos leer es menor a la cantidad que nos falta por leer leemos todo lo que podemos
-        // Si no, leemos lo que nos falta
-        if ( cantidad_a_leer < *cantidad_bytes ) {
-            //valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, cantidad_a_leer);TODO: Refactor envio de listas
-            cantidad_bytes -= cantidad_a_leer;
-        } else {
-            //valor_obtenido_de_memoria = leer_de_memoria(*direccion_fisica, pid, *cantidad_bytes); TODO: Refactor envio de listas
-        }
+    t_list *valores_leidos = leer_de_memoria(dir_fisicas_si, pid, *cantidad_bytes + 1);
 
-        string_append_with_format(&leido, "%s", (char*) valor_obtenido_de_memoria);
-    }
+    leido = list_get(valores_leidos, list_size(valores_leidos) - 1); //En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
 
-    // Obtenemos de nuevo la cantidad total a escribir
-    cantidad_bytes = mapear_registro(parametro_numerico);
-    //Escribimos el contenido leído en las direcciones físicas apuntadas por DI
-    escribir_en_memoria(dir_fisicas_di, pid, leido, *cantidad_bytes);
+    // Escribimos el contenido leído en las direcciones físicas apuntadas por DI
+    escribir_en_memoria(dir_fisicas_di, pid, leido, *cantidad_bytes + 1);
 
     // Liberar la memoria asignada
     free(leido);
@@ -473,7 +489,8 @@ void copy_string_instruction (t_list *parametros) {
     liberar_lista_de_datos_con_punteros(dir_fisicas_si);
 }
 
-void wait_instruction(t_list *parametros) {
+void wait_instruction(t_list *parametros)
+{
     // Recibimos el recurso
     char *recurso = (char *)list_get(parametros, 0);
 
@@ -488,7 +505,8 @@ void wait_instruction(t_list *parametros) {
     free(io_instruccion);
 }
 
-void signal_instruction(t_list *parametros) {
+void signal_instruction(t_list *parametros)
+{
     // Recibimos el recurso
     char *recurso = (char *)list_get(parametros, 0);
 
@@ -550,7 +568,8 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = JNZ;
         tipo_instruccion_mapped.execute = jnz_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "COPY_STRING")) {
+    else if (string_equals_ignore_case(nombre_instruccion, "COPY_STRING"))
+    {
         tipo_instruccion_mapped.nombre_instruccion = COPY_STRING;
         tipo_instruccion_mapped.execute = copy_string_instruction;
     }
@@ -559,11 +578,13 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_GEN_SLEEP;
         tipo_instruccion_mapped.execute = io_gen_sleep_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ")){
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDIN_READ"))
+    {
         tipo_instruccion_mapped.nombre_instruccion = IO_STDIN_READ;
         tipo_instruccion_mapped.execute = io_stdin_read_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE")){
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_STDOUT_WRITE"))
+    {
         tipo_instruccion_mapped.nombre_instruccion = IO_STDOUT_WRITE;
         tipo_instruccion_mapped.execute = io_stdout_write_instruction;
     }
@@ -577,11 +598,13 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_WRITE;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_READ"))
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_READ;
-    else if (string_equals_ignore_case(nombre_instruccion, "WAIT")) {
+    else if (string_equals_ignore_case(nombre_instruccion, "WAIT"))
+    {
         tipo_instruccion_mapped.nombre_instruccion = WAIT;
         tipo_instruccion_mapped.execute = wait_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "SIGNAL")) {
+    else if (string_equals_ignore_case(nombre_instruccion, "SIGNAL"))
+    {
         tipo_instruccion_mapped.nombre_instruccion = SIGNAL;
         tipo_instruccion_mapped.execute = signal_instruction;
     }

@@ -61,9 +61,10 @@ int main(int argc, char* argv[]) {
                 for (int i = 0; i < cantidadParametros; i++){
                     agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
                 }
-                agregar_a_paquete(paqueteMemoria, &pid, sizeof(uint32_t));
-                agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(int));
-                agregar_a_paquete(paqueteMemoria, valorLeido, strlen(valorLeido) + 1);
+                tamanio++;
+                agregar_a_paquete(paqueteMemoria, &pid, sizeof(int));
+                agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(uint32_t));
+                agregar_a_paquete(paqueteMemoria, valorLeido, tamanio);
                 enviar_paquete(paqueteMemoria, fd_memoria);
                 eliminar_paquete(paqueteMemoria);
                 //Ver como recibo valor de memoria
@@ -97,14 +98,15 @@ int main(int argc, char* argv[]) {
                     direccionesMemoria[i] = *(int*) list_get(parametrosRecibidos, i);
                 }
                 int tamanio = *(int*) list_get(parametrosRecibidos, cantidadParametros);
-
+                tamanio++;
                 t_paquete* paqueteMemoria = crear_paquete(LEER_VALOR_MEMORIA);
                 //agregar_a_paquete(paqueteMemoria, &(cantidadParametros-1), sizeof(int));
+                agregar_a_paquete(paqueteMemoria, &cantidadParametros, sizeof(int));
                 for (int i = 0; i < cantidadParametros; i++){
                     agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
                 }
-                agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(int));
-                agregar_a_paquete(paqueteMemoria, &pid, sizeof(uint32_t));
+                agregar_a_paquete(paqueteMemoria, &pid, sizeof(int));
+                agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(uint32_t));
                 enviar_paquete(paqueteMemoria, fd_memoria);
                 eliminar_paquete(paqueteMemoria);
                 //Ver como recibo valor de memoria
@@ -112,10 +114,7 @@ int main(int argc, char* argv[]) {
                 switch (op){
                 case LEER_VALOR_MEMORIA:
                     t_list* paqueteRecibido = recibir_paquete(fd_memoria);
-                    char* valorAMostrar = string_new();
-                    for (int i = 0; i < list_size(paqueteRecibido); i++){
-                        string_append_with_format(&valorAMostrar, "%s", (char*)list_get(paqueteRecibido,i));
-                    }
+                    char* valorAMostrar = list_get(paqueteRecibido, list_size(paqueteRecibido) - 1); //En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
                     log_info(logger_auxiliar, "%s", valorAMostrar);
                     free(valorAMostrar);
                     enviar_codigo_op(OK_OPERACION, fd_kernel);

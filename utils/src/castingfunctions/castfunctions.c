@@ -32,3 +32,13 @@ bool is_number(char *str) {
 
     return 1;
 }
+
+uint32_t get_registro_numerico_casteado_32b (void *registro_numerico_mapeado, tipo_de_dato tipo_de_dato_registro_numerico) {
+    
+    if (tipo_de_dato_registro_numerico == UINT8) {
+        uint8_t registro_direccion_valor = *(uint8_t*) (registro_numerico_mapeado);
+        return registro_direccion_valor;
+    } else {
+        return *(uint32_t*) (registro_numerico_mapeado);
+    }
+}
