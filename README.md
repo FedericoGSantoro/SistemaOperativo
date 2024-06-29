@@ -3,7 +3,7 @@
 Esta es una plantilla de proyecto diseñada para generar un TP de Sistemas
 Operativos de la UTN FRBA.
 
-## Dependencias
+## Dependencias.
 
 Para poder compilar y ejecutar el proyecto, es necesario tener instalada la
 biblioteca [so-commons-library] de la cátedra:
