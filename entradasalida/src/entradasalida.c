@@ -69,16 +69,18 @@ int main(int argc, char* argv[]) {
                 eliminar_paquete(paqueteMemoria);
                 //Ver como recibo valor de memoria
                 op_codigo op = recibir_operacion(fd_memoria);
-                switch (op){
+                /*switch (op){
                 case ESCRIBIR_VALOR_MEMORIA:
                     log_info(logger_auxiliar, "Se escribio el valor '%s' en memoria", valorLeido);
                     enviar_codigo_op(OK_OPERACION, fd_kernel);
                     break;
                 default:
                     log_error(logger_error, "Fallo escritura de Memoria con el valor: %s", valorLeido);
-                    enviar_codigo_op(ERROR_OPERACION, fd_kernel);
+                    //enviar_codigo_op(ERROR_OPERACION, fd_kernel);
                     break;
                 }
+                */
+                enviar_codigo_op(OK_OPERACION, fd_kernel);
                 free(valorLeido);
             }else{
                 log_error(logger_error, "No se recibio lo necesario para escribir en memoria");
@@ -111,6 +113,10 @@ int main(int argc, char* argv[]) {
                 eliminar_paquete(paqueteMemoria);
                 //Ver como recibo valor de memoria
                 op_codigo op = recibir_operacion(fd_memoria);
+                while (op != LEER_VALOR_MEMORIA)
+                {
+                    op = recibir_operacion(fd_memoria);
+                }
                 switch (op){
                 case LEER_VALOR_MEMORIA:
                     t_list* paqueteRecibido = recibir_paquete(fd_memoria);
@@ -171,6 +177,7 @@ int main(int argc, char* argv[]) {
             break;
         }
         list_destroy(paquete);
+        list_clean(parametrosRecibidos);
     }
     terminarPrograma();
     return 0;
@@ -373,6 +380,7 @@ void inicializarConexionKernel()
 void inicializarConexionMemoria()
 {
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logger_error);
+    enviarMsjMemoria();
     //crearHiloDetach(&hilo_memoria, (void*)enviarMsjMemoria, NULL, "Memoria", logger_auxiliar, logger_error);
 
 }
