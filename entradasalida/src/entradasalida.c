@@ -142,6 +142,12 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envio la instrucción IO_FS_CREATE a la interfaz no FS: %s", nombre);
                 break;
             }
+            cantidadParametros = list_size(parametrosRecibidos);
+            if (0 < cantidadParametros){
+                char* nombre_archivo_a_crear = (char*) list_get(parametrosRecibidos, 0);
+                io_fs_create(nombre_archivo_a_crear);
+            }
+            enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
 
         case IO_FS_DELETE:
@@ -210,6 +216,9 @@ void recibirIoDetail(t_list* listaPaquete, int ultimo_indice) {
                 valor_parametro_a_guardar = malloc(sizeof(uint32_t));
                 valor_parametro_a_guardar = (uint32_t *)valor_parametro_io_recibido;
                 //log_info(logger_auxiliar, "Se envia el parametro %d", *(uint32_t*)valor_parametro_a_guardar);
+                break;
+            case STRING:
+                valor_parametro_a_guardar = (char *)valor_parametro_io_recibido;
                 break;
             default:
                 log_error(logger_error, "Error tipo de dato recibido");
@@ -292,6 +301,11 @@ void inicializar(){
     inicializarConfig();
 
     inicializarConexiones();
+
+    if (TIPO_INTERFAZ == FS) {
+        levantarArchivoDeBloques();
+        levantarArchivoDeBitmap();
+    }
 
     parametrosRecibidos = list_create();
 }
@@ -385,6 +399,116 @@ void inicializarConexionMemoria()
 
 }
 
+void levantarArchivoDeBloques() {
+
+    char* path_bloques_de_datos = string_new();
+    string_append(&path_bloques_de_datos, PATH_BASE_DIALFS);
+    string_append(&path_bloques_de_datos, "/bloques.dat");
+    fd_bloque_de_datos;
+
+    if (access(path_bloques_de_datos, F_OK) == -1) { //validar si no existe el archivo
+        fd_bloque_de_datos = open(path_bloques_de_datos, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        if (fd_bloque_de_datos == -1) {
+            perror("Error al abrir bloques.dat");
+            exit(EXIT_FAILURE);
+        }
+        if (ftruncate(fd_bloque_de_datos, BLOCK_COUNT) == -1) {
+            perror("Error al truncar bloques.dat");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        fd_bloque_de_datos = open(path_bloques_de_datos, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    }
+
+    bloques_datos_addr = mmap(NULL, BLOCK_COUNT, PROT_READ | PROT_WRITE, MAP_SHARED, fd_bloque_de_datos, 0);
+    
+    if (bloques_datos_addr == MAP_FAILED) {
+        perror("Error al mapear bloques.dat");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void levantarArchivoDeBitmap() {
+
+    char* path_bitmap = string_new();
+    string_append(&path_bitmap, PATH_BASE_DIALFS);
+    string_append(&path_bitmap, "/bitmap.dat");
+    fd_bitmap;
+    if (access(path_bitmap, F_OK) == -1) { //validar si no existe el archivo
+        fd_bitmap = open(path_bitmap, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        if (fd_bitmap == -1) {
+            perror("Error al abrir bitmap.dat");
+            exit(EXIT_FAILURE);
+        }
+        if (ftruncate(fd_bitmap, BLOCK_COUNT) == -1) {
+            perror("Error al truncar bitmap.dat");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        fd_bitmap = open(path_bitmap, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    }
+
+    bitmap_addr = mmap(NULL, BLOCK_COUNT, PROT_READ | PROT_WRITE, MAP_SHARED, fd_bitmap, 0);
+    
+    if (bitmap_addr == MAP_FAILED) {
+        perror("Error al mapear bitmap.dat");
+        exit(EXIT_FAILURE);
+    }
+
+    // Crear el bitmap utilizando la estructura t_bitarray
+    bitmap_mapeado = bitarray_create_with_mode((char *)bitmap_addr, BLOCK_COUNT, LSB_FIRST);
+}
+
+void mapear_metadata(t_metadata_archivo metadata, char* nombre_archivo_a_crear) {
+
+    char* path_metadata = string_new();
+    string_append(&path_metadata, PATH_BASE_DIALFS);
+    string_append(&path_metadata, "/");
+    string_append(&path_metadata, nombre_archivo_a_crear);
+    int fd_metadata = open(path_metadata, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    
+    if (write(fd_metadata, &metadata, sizeof(t_metadata_archivo)) == -1) {
+        perror("Error al escribir en archivo de metadata");
+        exit(EXIT_FAILURE);
+    }
+    close(fd_metadata);
+}
+
+// Función para sincronizar los cambios en el archivo mapeado
+void sync_file(void *addr, size_t length) {
+    if (msync(addr, length, MS_SYNC) == -1) {
+        perror("msync");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void io_fs_create(char *nombre_archivo_a_crear) {
+
+    t_metadata_archivo metadata;
+
+    // Encontrar un bloque libre en el bitmap
+    uint32_t bloque_libre = 0;
+    while (bitarray_test_bit(bitmap_mapeado, bloque_libre) && bloque_libre < BLOCK_COUNT) {
+        bloque_libre++;
+    }
+
+    // Si no hay bloques libres
+    if (bloque_libre >= BLOCK_COUNT) {
+        fprintf(stderr, "Error: No hay bloques libres disponibles.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Marcar el bloque como ocupado en el bitmap
+    bitarray_set_bit(bitmap_mapeado, bloque_libre);
+    sync_file(bitmap_addr, BLOCK_COUNT);
+
+    // Escribir metadata del archivo en el archivo de metadata
+    metadata.bloque_inicial = bloque_libre;
+    metadata.tamanio_archivo = 0; // Empieza con tamaño 0 bytes
+    //mapear metadata
+    mapear_metadata(metadata, nombre_archivo_a_crear);
+}
+
 char* enumToString(t_nombre_instruccion nombreDeInstruccion){
     switch(nombreDeInstruccion){
         case IO_GEN_SLEEP:
@@ -416,6 +540,11 @@ void enviarMsjKernel(){
     enviar_mensaje("Hola, soy I/O!", fd_kernel);
 }
 
+void cerrar_archivos() {
+    close(fd_bitmap);
+    close(fd_bloque_de_datos);
+}
+
 void terminarPrograma() {
     log_destroy(logger_obligatorio);
     log_destroy(logger_auxiliar);
@@ -423,4 +552,5 @@ void terminarPrograma() {
     config_destroy(configuracion);
     liberar_conexion(fd_memoria);
     liberar_conexion(fd_kernel);
+    cerrar_archivos();
 }

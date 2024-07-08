@@ -227,6 +227,12 @@ void agregar_io_detail(t_paquete *paquete) {
                 *(uint32_t *)valor_parametro_a_enviar = *(uint32_t *)parametro_io.valor;
                 log_info(logger_aux_cpu, "Se envia el parametro uint32 %d", *(uint32_t *)valor_parametro_a_enviar);
                 break;
+            case STRING:
+                size_parametro = string_length(parametro_io.valor) + 1;
+                valor_parametro_a_enviar = malloc(size_parametro);
+                valor_parametro_a_enviar = (char *)parametro_io.valor;
+                log_info(logger_aux_cpu, "Se envia el parametro string %s", (char *) valor_parametro_a_enviar);
+                break;
             default:
                 log_error(logger_error_cpu, "Error tipo de dato enviado");
                 break;
