@@ -6,7 +6,16 @@
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <commons/string.h>
+#include <commons/bitarray.h>
 #include <readline/readline.h>
 
 /*---------DEFINES---------*/
@@ -33,8 +42,20 @@ char* PATH_BASE_DIALFS;
 int BLOCK_SIZE;
 int BLOCK_COUNT;
 int RETRASO_COMPACTACION;
+FILE *archivo_bloques_dat;
+FILE *archivo_bitmap;
+void* bloques_datos_addr;
+t_bitarray* bitmap_mapeado;
+void* bitmap_addr;
+int fd_bitmap;
+int fd_bloque_de_datos;
 
 /*---------ESTRUCTURAS PARA INFORMACION---------*/
+
+typedef struct {
+    uint32_t bloque_inicial; //Bloque donde empieza el archivo
+    uint32_t tamanio_archivo; //Tamaño del archivo en bytes
+} t_metadata_archivo;
 
 // Estructuras para informacion
 t_log* logger_obligatorio;
@@ -90,7 +111,10 @@ void inicializarConexionMemoria();
 void leerConfig();
 void enviarMsjMemoria();
 void enviarMsjKernel();
-
+void levantarArchivoDeBloques();
+void levantarArchivoDeBitmap();
+void levantar_archivo_metadata(char* nombre_archivo_a_crear);
+void io_fs_create(char *nombre_archivo_a_crear);
 // Liberaramos espacio de memoria
 void terminarPrograma();
 

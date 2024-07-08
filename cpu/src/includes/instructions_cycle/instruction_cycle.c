@@ -371,6 +371,28 @@ void agregar_direccion_fisica_a_lista(uint32_t *dir_fis)
     // no se si hace falta un free() uwu
 }
 
+void io_fs_create_instruction(t_list* parametros) {
+    // recibe:(Interfaz, Nombre archivo)
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *nombre_archivo = (char *)list_get(parametros, 1);
+    
+    // cargo parametro de IO con nombre de archivo
+    t_params_io *parametro_io_fs_create = malloc(string_length(nombre_archivo) + 1);
+    parametro_io_fs_create->tipo_de_dato = STRING;
+    parametro_io_fs_create->valor = nombre_archivo;
+    list_add_in_index(io_detail.parametros, 0, parametro_io_fs_create);
+    
+    // cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = IO_FS_CREATE;
+    io_detail.io_instruccion = *io_instruccion;
+    // cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+}
+
 void io_stdout_write_instruction(t_list *parametros)
 { // honores to: capo master fede (s, no w)
     // leo parametros
@@ -588,8 +610,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_STDOUT_WRITE;
         tipo_instruccion_mapped.execute = io_stdout_write_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_CREATE"))
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_CREATE")){
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_CREATE;
+        tipo_instruccion_mapped.execute = io_fs_create_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_DELETE"))
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_DELETE;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_TRUNCATE"))

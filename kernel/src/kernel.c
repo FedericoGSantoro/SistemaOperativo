@@ -129,6 +129,11 @@ void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice
                 valor_parametro_a_guardar = (uint32_t *)valor_parametro_io_recibido;
                 log_info(logs_auxiliares, "Se envia el parametro %d", *(uint32_t*)valor_parametro_a_guardar);
                 break;
+        case STRING:
+            valor_parametro_a_guardar = (char *)valor_parametro_io_recibido;
+            parametro_io_a_guardar = malloc(sizeof(int) + string_length(valor_parametro_a_guardar) + 1);
+            log_info(logs_auxiliares, "Se envia el parametro string %s", (char *)valor_parametro_a_guardar);
+            break;
         default:
             log_error(logs_error, "Error tipo de dato enviado");
             break;
@@ -1008,6 +1013,12 @@ void enviarIoDetail(t_pcb* pcbAEjecutar, int fd_interfaz) {
                 valor_parametro_a_enviar = malloc(size_parametro);
                 valor_parametro_a_enviar = (uint32_t *)parametro_io.valor;
                 log_info(logs_auxiliares, "Se envia el parametro %d", *(uint32_t*)valor_parametro_a_enviar);
+                break;
+            case STRING:
+                size_parametro = string_length(parametro_io.valor) + 1;
+                valor_parametro_a_enviar = malloc(size_parametro);
+                valor_parametro_a_enviar = (char *)parametro_io.valor;
+                log_info(logs_auxiliares, "Se envia el parametro string %s", (char *) valor_parametro_a_enviar);
                 break;
             default:
                 log_error(logs_error, "Error tipo de dato enviado");
