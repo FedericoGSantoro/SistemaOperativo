@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
 
         case IO_FS_TRUNCATE:
             if(TIPO_INTERFAZ != FS){
-                log_error(logger_error, "Se envio la instrucción IO_FS_CREATE a la interfaz no FS: %s", nombre);
+                log_error(logger_error, "Se envio la instrucción IO_FS_TRUNCATE a la interfaz no FS: %s", nombre);
                 break;
             }
             cantidadParametros = list_size(parametrosRecibidos);
