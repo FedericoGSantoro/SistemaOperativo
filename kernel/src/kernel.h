@@ -119,7 +119,6 @@ comando_consola comando;
 bool planificacionEjecutandose = true;
 bool planificacionNoEjecutandosePorFinalizarProceso = false;
 char* pathArchivo;
-int numeroConsola = 1;
 uint32_t pcbADesalojar;
 uint32_t pidAEliminar;
 t_list* pidsAFinalizar;
@@ -255,7 +254,7 @@ comando_consola transformarAOperacion(char* operacionLeida);
 // Obtiene el tipo de interfaz
 char* obtenerTipoInterfaz(typeInterface tipoInterfaz);
 // Comprueba si el pcb esta en la lista de pids a eliminar
-bool comprobarSiSeDebeEliminar(t_pcb* pcbAComprobar);
+t_pcb* comprobarSiSeDebeEliminar(uint32_t* pcbAComprobar);
 // Atiende al cliente
 void atender_cliente(interfazConectada* argumentoVoid);
 // Itera el paquete y lo muestra por pantalla
