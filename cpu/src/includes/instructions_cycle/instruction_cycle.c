@@ -351,8 +351,9 @@ void resize_instruction(t_list *parametros)
     resize_en_memoria(pid, size_to_resize);
     op_codigo codigoOperacion = recibir_operacion(fd_memoria);
     // TODO: Recibir operacion y fijarse si es Out Of Memory o OK
-    if (codigoOperacion == OUT_OF_MEMORY)
-    {
+    if (codigoOperacion == NO_MEMORY)
+    {   
+        motivoFinalizacion = OUT_OF_MEMORY;
         manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
         log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
         return;
@@ -545,6 +546,7 @@ void signal_instruction(t_list *parametros)
 
 void exit_instruction(t_list *parametros)
 {
+    motivoFinalizacion = SUCCESS;
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
 }
 
