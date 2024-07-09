@@ -17,6 +17,7 @@
 #include <commons/string.h>
 #include <commons/bitarray.h>
 #include <readline/readline.h>
+#include <math.h>
 
 /*---------DEFINES---------*/
 
@@ -49,6 +50,7 @@ t_bitarray* bitmap_mapeado;
 void* bitmap_addr;
 int fd_bitmap;
 int fd_bloque_de_datos;
+t_dictionary* map_archivos_metadata;
 
 /*---------ESTRUCTURAS PARA INFORMACION---------*/
 
@@ -115,6 +117,7 @@ void levantarArchivoDeBloques();
 void levantarArchivoDeBitmap();
 void levantar_archivo_metadata(char* nombre_archivo_a_crear);
 void io_fs_create(char *nombre_archivo_a_crear);
+void io_fs_truncate(char *nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo);
 // Liberaramos espacio de memoria
 void terminarPrograma();
 
