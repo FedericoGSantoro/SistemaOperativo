@@ -118,7 +118,6 @@ int pid_siguiente = 1;
 comando_consola comando;
 bool planificacionEjecutandose = true;
 bool planificacionNoEjecutandosePorFinalizarProceso = false;
-char* pathArchivo;
 uint32_t pcbADesalojar;
 uint32_t pidAEliminar;
 t_list* pidsAFinalizar;
