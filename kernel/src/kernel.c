@@ -252,13 +252,12 @@ void mensaje_cpu_interrupt() {
 
 void setTemporizadorQuantum (int Q) {
     struct itimerval timer;
-    float segundos = (float) Q / 1000;
-    log_info(logs_auxiliares, "Q: %f", segundos);
-    timer.it_value.tv_sec = segundos;
-    timer.it_value.tv_usec = 0;
+    timer.it_value.tv_sec = Q / 1000;
+    timer.it_value.tv_usec = (Q % 1000) * 1000;
     timer.it_interval.tv_sec = 0;
     timer.it_interval.tv_usec = 0;
     setitimer(ITIMER_REAL, &timer, NULL);
+    log_info(logs_auxiliares, "Temporizador inicializado en %d", Q);
 }
 
 void bloquearPCBPorRecurso(recursoSistema* recurso, t_pcb* pcb) {
@@ -274,18 +273,23 @@ void bloquearPCBPorRecurso(recursoSistema* recurso, t_pcb* pcb) {
 
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
+    struct itimerval remaining_time;
+    int quantumRestanteMilisegundos;
     switch (codigoOperacion) {
     case CONTEXTO_EJECUCION:
         paquete = crear_paquete(CONTEXTO_EJECUCION);
         empaquetar_contexto_ejecucion(paquete, pcb);
         enviar_paquete(paquete, fd_cpu_dispatch);
-        if ( ALGORITMO_PLANIFICACION == VRR || ALGORITMO_PLANIFICACION == RR ) {
+        if ( ALGORITMO_PLANIFICACION != FIFO ) {
             signal(SIGALRM, mensaje_cpu_interrupt);
             setTemporizadorQuantum(pcb->quantum_faltante);
         }
         pcbADesalojar = pcb->contexto_ejecucion.pid;
         eliminar_paquete(paquete);
         op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
+        if ( ALGORITMO_PLANIFICACION != FIFO ) {
+            setitimer(ITIMER_REAL, NULL, &remaining_time);
+        }
         if ( codigoOperacion == OK_OPERACION ) {
             // Creo que funciona a chequear
             t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
@@ -293,13 +297,12 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
             if ( !queue_is_empty(cola_exec) ) {
                 pthread_mutex_unlock(&sem_cola_exec);
                 if ( ALGORITMO_PLANIFICACION == VRR ) {
-                    struct itimerval remaining_time;
-                    setitimer(ITIMER_REAL, NULL, &remaining_time);
-                    log_info(logs_auxiliares, "temporizador en %ld", remaining_time.it_value.tv_sec);
-                    if ( remaining_time.it_value.tv_sec == 0 ) {
+                    quantumRestanteMilisegundos = (remaining_time.it_value.tv_sec * 1000) + (remaining_time.it_value.tv_usec / 1000);
+                    log_info(logs_auxiliares, "PID: %d - Tiempo sobrante: %d", pcb->contexto_ejecucion.pid, quantumRestanteMilisegundos);
+                    if ( quantumRestanteMilisegundos == 0 ) {
                         pcb->quantum_faltante = QUANTUM;
                     } else {
-                        pcb->quantum_faltante = remaining_time.it_value.tv_sec;
+                        pcb->quantum_faltante = quantumRestanteMilisegundos;
                     }
                 }
                 cargar_contexto_recibido(contextoNuevo, pcb);
@@ -576,7 +579,7 @@ void eliminar_pcb(t_pcb* pcb) {
     free(pcb);
 }
 
-void crear_pcb() {
+void crear_pcb(char* pathArchivo) {
     t_pcb* pcb = malloc(sizeof(t_pcb));
     pcb->contexto_ejecucion.pid = pid_siguiente;
     pid_siguiente++;
@@ -836,7 +839,6 @@ void atender_consola_interactiva() {
 char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo) {
     pthread_mutex_lock(&semaforo);
     char* pids = string_new();
-    log_info(logs_auxiliares, "LLegue");
     for( int i = 0; i < list_size(cola->elements); i++ ) {
         t_pcb* pcb = list_get(cola->elements, i);
         if ( i < list_size(cola->elements) -1 ) {
@@ -951,13 +953,11 @@ void ejecutar_comando_consola(char** arrayComando) {
     comando = transformarAOperacion(arrayComando[0]);
     switch (comando) {
     case EJECUTAR_SCRIPT:
-        char* pathScript = arrayComando[1];
-        ejecutar_script(pathScript);
-        log_info(logs_auxiliares, "Script de ' %s ' ejecutado", pathScript);
+        ejecutar_script(arrayComando[1]);
+        log_info(logs_auxiliares, "Script de ' %s ' ejecutado", arrayComando[1]);
         break;
     case INICIAR_PROCESO:
-        pathArchivo = arrayComando[1];
-        crear_pcb();
+        crear_pcb(arrayComando[1]);
         break;
     case FINALIZAR_PROCESO:
         pidAEliminar = atoi(arrayComando[1]);
