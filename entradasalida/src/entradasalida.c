@@ -155,6 +155,13 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_FS_DELETE a la interfaz no FS: %s", nombre);
                 break;
             }
+            cantidadParametros = list_size(parametrosRecibidos);
+            if (0 < cantidadParametros){
+                char* nombre_archivo_a_borrar = (char*) list_get(parametrosRecibidos, 0);
+                log_info(logger_obligatorio, "PID: %d - Eliminar Archivo: %s", pid, nombre_archivo_a_borrar); //lo hago local para aclarar el nombre.
+                io_fs_delete(nombre_archivo_a_borrar);
+            }
+            enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
 
         case IO_FS_READ:
@@ -507,6 +514,28 @@ void io_fs_create(char *nombre_archivo_a_crear) {
     metadata.tamanio_archivo = 0; // Empieza con tamaño 0 bytes
     //mapear metadata
     mapear_metadata(metadata, nombre_archivo_a_crear);
+}
+
+void io_fs_delete(char* nombre_archivo_a_borrar) {
+    log_info(logger_auxiliar, "Inicio función FS_delete");
+    //Abrir archivo de metadata y leer primer bloque + tamaño en bytes
+    t_metadata_archivo metadata_archivo_a_borrar = leer_metadata_archivo(nombre_archivo_a_borrar);
+    //aca se podría abstraer en un calcular_desplazamiento_de_bloques(archivo) o algo así
+    float calculo_bloques_a_borrar = ((float) metadata_archivo_a_borrar.tamanio_archivo / (float) BLOCK_SIZE);
+    uint32_t bloques_a_borrar = ceil(calculo_bloques_a_borrar); //incluyendo al inicial
+    uint32_t primer_bloque = metadata_archivo_a_borrar.bloque_inicial;
+
+    //limpiar en el bitmap los bloques correspondientes
+    liberar_bloques(primer_bloque + bloques_a_borrar - 1, primer_bloque + bloques_a_borrar - 1); 
+    // el -1 para evitar borrar de mas y eliminar "desde hasta" (si entendi bien)
+
+    //cerrar y eliminar el archivo de metadata (remove)
+    if (remove(nombre_archivo_a_borrar) == 0) {
+        log_info(logger_auxiliar, "El archivo \"%s\" fue eliminado correctamente.\n", nombre_archivo_a_borrar);
+    } else {
+        log_error(logger_error, "Error al intentar eliminar el archivo \"%s\".\n", nombre_archivo_a_borrar);
+    }
+    //abrir bloques.dat y limpiar los correspondientes (no hace falta segun issue3987)
 }
 
 char* enumToString(t_nombre_instruccion nombreDeInstruccion){

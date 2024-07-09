@@ -115,6 +115,7 @@ void levantarArchivoDeBloques();
 void levantarArchivoDeBitmap();
 void levantar_archivo_metadata(char* nombre_archivo_a_crear);
 void io_fs_create(char *nombre_archivo_a_crear);
+void io_fs_delete(char* nombre_archivo_a_borrar);
 // Liberaramos espacio de memoria
 void terminarPrograma();
 
