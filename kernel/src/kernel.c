@@ -191,10 +191,11 @@ void comprobarContextoNuevo(t_pcb* pcb) {
     sem_post(&semContadorColaExec);
     switch (pcb->contexto_ejecucion.motivo_bloqueo) { 
     case INTERRUPCION_RELOJ:
+        log_info(logs_obligatorios, "PID: %d - Desalojado por fin de Quantum", pcb->contexto_ejecucion.pid);
         agregarPcbCola(cola_ready, sem_cola_ready, pcb);
         cambiarEstado(READY, pcb);
+        log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
         sem_post(&semContadorColaReady);
-        log_info(logs_obligatorios, "PID: %d - Desalojado por fin de Quantum", pcb->contexto_ejecucion.pid);
         break;
     case LLAMADA_SISTEMA:
         agregarPcbCola(cola_blocked_aux, sem_cola_blocked_aux, pcb);
@@ -245,7 +246,7 @@ void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
 
 void mensaje_cpu_interrupt() {
     t_paquete* paquete = crear_paquete(INTERRUPCION);
-    agregar_a_paquete(paquete, &pcbADesalojar, sizeof(uint32_t));
+    agregar_a_paquete(paquete, &(pcbADesalojar->contexto_ejecucion.pid), sizeof(uint32_t));
     enviar_paquete(paquete, fd_cpu_interrupt);
     eliminar_paquete(paquete);
 }
@@ -271,24 +272,40 @@ void bloquearPCBPorRecurso(recursoSistema* recurso, t_pcb* pcb) {
     log_info(logs_obligatorios, "PID: %d - Bloqueado por: %s", pcb->contexto_ejecucion.pid, recurso->nombre);
 }
 
+void corto_plazo_exec() {
+    int tiempoMicroSegundos = pcbADesalojar->quantum_faltante * 1000;
+    log_info(logs_auxiliares, "Temporizador inicializado en %ld", pcbADesalojar->quantum_faltante);
+    usleep(tiempoMicroSegundos);
+    mensaje_cpu_interrupt();
+}
+
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
-    struct itimerval remaining_time;
-    int quantumRestanteMilisegundos;
+    //struct itimerval remaining_time;
+    uint64_t tiempoTranscurridoMilisegundos;
+    t_temporal* tiempoQuantum;
+    pthread_t cortoPlazoExec;
+    pcbADesalojar = pcb;
     switch (codigoOperacion) {
     case CONTEXTO_EJECUCION:
         paquete = crear_paquete(CONTEXTO_EJECUCION);
         empaquetar_contexto_ejecucion(paquete, pcb);
         enviar_paquete(paquete, fd_cpu_dispatch);
-        if ( ALGORITMO_PLANIFICACION != FIFO ) {
-            signal(SIGALRM, mensaje_cpu_interrupt);
-            setTemporizadorQuantum(pcb->quantum_faltante);
-        }
-        pcbADesalojar = pcb->contexto_ejecucion.pid;
         eliminar_paquete(paquete);
+        if ( ALGORITMO_PLANIFICACION != FIFO ) {
+            //Hilo para controlar el tiempo este
+            tiempoQuantum = temporal_create();
+            crearHiloDetach(&cortoPlazoExec, (void*) corto_plazo_exec, NULL, "Planificacion corto plazo EXEC", logs_auxiliares, logs_error);
+            // signal(SIGALRM, mensaje_cpu_interrupt);
+            // setTemporizadorQuantum(pcb->quantum_faltante);
+        }
         op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
         if ( ALGORITMO_PLANIFICACION != FIFO ) {
-            setitimer(ITIMER_REAL, NULL, &remaining_time);
+            pthread_cancel(cortoPlazoExec);
+            temporal_stop(tiempoQuantum);
+            tiempoTranscurridoMilisegundos = temporal_gettime(tiempoQuantum);
+            log_info(logs_auxiliares, "Tiempo a ejecutar: %ld - Tiempo ejecutado: %ld", pcb->quantum_faltante, tiempoTranscurridoMilisegundos);
+            temporal_destroy(tiempoQuantum);
         }
         if ( codigoOperacion == OK_OPERACION ) {
             // Creo que funciona a chequear
@@ -297,13 +314,12 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
             if ( !queue_is_empty(cola_exec) ) {
                 pthread_mutex_unlock(&sem_cola_exec);
                 if ( ALGORITMO_PLANIFICACION == VRR ) {
-                    quantumRestanteMilisegundos = (remaining_time.it_value.tv_sec * 1000) + (remaining_time.it_value.tv_usec / 1000);
-                    log_info(logs_auxiliares, "PID: %d - Tiempo sobrante: %d", pcb->contexto_ejecucion.pid, quantumRestanteMilisegundos);
-                    if ( quantumRestanteMilisegundos == 0 ) {
-                        pcb->quantum_faltante = QUANTUM;
+                    if ( tiempoTranscurridoMilisegundos < pcb->quantum_faltante ) {
+                        pcb->quantum_faltante -= tiempoTranscurridoMilisegundos;
                     } else {
-                        pcb->quantum_faltante = quantumRestanteMilisegundos;
+                        pcb->quantum_faltante = QUANTUM;
                     }
+                    log_info(logs_auxiliares, "PID: %d - Tiempo sobrante asignado: %ld", pcb->contexto_ejecucion.pid, pcb->quantum_faltante);
                 }
                 cargar_contexto_recibido(contextoNuevo, pcb);
                 list_destroy(contextoNuevo);
@@ -396,11 +412,11 @@ char* enumEstadoAString(process_state estado) {
     }
 }
 
-char* obtenerPidsColaReadyYReadyAux() {
-    char* pidsReady = string_new();
-    string_append_with_format(&pidsReady, "%s - %s", obtenerPids(cola_ready, sem_cola_ready), obtenerPids(cola_ready_aux, sem_cola_ready_aux));
-    return pidsReady;
-}
+// char* obtenerPidsColaReadyYReadyAux() {
+//     char* pidsReady = string_new();
+//     string_append_with_format(&pidsReady, "%s - %s", obtenerPids(cola_ready, sem_cola_ready), obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+//     return pidsReady;
+// }
 
 
 void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
@@ -413,7 +429,7 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     switch (estadoNuevo) {
     case READY:
         pcb->contexto_ejecucion.state = READY;
-        log_info(logs_obligatorios, "Cola Ready %s: [%s]", config_get_string_value(config, "ALGORITMO_PLANIFICACION"), obtenerPidsColaReadyYReadyAux());
+        // log_info(logs_obligatorios, "Cola Ready %s: [%s]", config_get_string_value(config, "ALGORITMO_PLANIFICACION"), obtenerPidsColaReadyYReadyAux());
         break;
     case EXEC:
         pcb->contexto_ejecucion.state = EXEC;
@@ -499,6 +515,7 @@ void largo_plazo_new() {
             t_pcb* pcb = quitarPcbCola(cola_new, sem_cola_new);
             mensaje_memoria(CREAR_PCB, pcb);
             agregarPcbCola(cola_ready, sem_cola_ready, pcb);
+            log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
             sem_post(&semContadorColaReady);
             cambiarEstado(READY, pcb);
         }
@@ -758,8 +775,12 @@ void atender_recurso(recursoSistema* dataRecurso) {
         pthread_mutex_unlock(&sem_cola_blocked);
         if ( ALGORITMO_PLANIFICACION == VRR && pcbDesbloqueado->quantum_faltante != QUANTUM ) {
             agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbDesbloqueado);
+            log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+
         } else {
             agregarPcbCola(cola_ready, sem_cola_ready, pcbDesbloqueado);
+            log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+
         }
         cambiarEstado(READY, pcbDesbloqueado);
         sem_post(&semContadorColaReady);
@@ -993,6 +1014,9 @@ void ejecutar_comando_consola(char** arrayComando) {
     case PROCESO_ESTADO:
         log_info(logs_obligatorios, "Cola NEW: [%s]", obtenerPids(cola_new, sem_cola_new));
         log_info(logs_obligatorios, "Cola READY: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+        if ( ALGORITMO_PLANIFICACION == VRR ) {
+            log_info(logs_obligatorios, "Cola READY Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+        }
         log_info(logs_obligatorios, "Cola EXEC: [%s]", obtenerPids(cola_exec, sem_cola_exec));
         log_info(logs_obligatorios, "Cola BLOCKED: [%s]", obtenerPidsBloqueados());
         log_info(logs_obligatorios, "Cola EXIT: [%s]", obtenerPids(cola_exit, sem_cola_exit));
@@ -1185,8 +1209,10 @@ void atender_cliente(interfazConectada* datosInterfaz) {
                 pthread_mutex_unlock(&sem_cola_blocked);
                 if ( ALGORITMO_PLANIFICACION == VRR && pcbAEjecutar->quantum_faltante != QUANTUM ) {
                     agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbAEjecutar);
+                    log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
                 } else {
                     agregarPcbCola(cola_ready, sem_cola_ready, pcbAEjecutar);
+                    log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
                 }
                 cambiarEstado(READY, pcbAEjecutar);
                 sem_post(&semContadorColaReady);

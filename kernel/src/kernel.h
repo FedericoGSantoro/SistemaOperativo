@@ -11,6 +11,7 @@
 #include <readline/history.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/dictionary.h>
+#include <commons/temporal.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -118,12 +119,11 @@ int pid_siguiente = 1;
 comando_consola comando;
 bool planificacionEjecutandose = true;
 bool planificacionNoEjecutandosePorFinalizarProceso = false;
-uint32_t pcbADesalojar;
+t_pcb* pcbADesalojar;
 uint32_t pidAEliminar;
 t_list* pidsAFinalizar;
 char* interfazAEliminar;
 uint32_t PidAEnviarExit;
-
 
 /*---------COLAS---------*/
 
