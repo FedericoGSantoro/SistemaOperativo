@@ -616,7 +616,7 @@ void mostrar_bloques_libres() {
         string_append_with_format(&bloques_libres_con_formato, "%d-", bitarray_test_bit(bitmap_mapeado, i));
     }
 
-    log_info(logger_auxiliar, "bloques libres con formato: %s", bloques_libres_con_formato);
+    log_info(logger_auxiliar, "cantidad bloques libres: %d con formato: %s", cantidad_de_espacios_libres, bloques_libres_con_formato);
 }
 
 void clear_bitmap() {
@@ -807,6 +807,17 @@ void cerrar_archivos() {
     close(fd_bloque_de_datos);
 }
 
+void liberar_archivo_map_metadata(void* map_metadata_element) {
+    free(map_metadata_element);
+}
+
+void finalizar_fs() {
+    bitarray_destroy(bitmap_mapeado);
+    free(bloques_datos_addr);
+    free(bitmap_addr);
+    dictionary_destroy_and_destroy_elements(map_archivos_metadata, liberar_archivo_map_metadata);
+}
+
 void terminarPrograma() {
     log_destroy(logger_obligatorio);
     log_destroy(logger_auxiliar);
@@ -815,4 +826,5 @@ void terminarPrograma() {
     liberar_conexion(fd_memoria);
     liberar_conexion(fd_kernel);
     cerrar_archivos();
+    finalizar_fs();
 }
