@@ -1,5 +1,7 @@
 #include "entradasalida.h"
 
+void mostrar_bloques_libres();
+
 int main(int argc, char* argv[]) {
     //Inicializa todo
     if(argc != 3){
@@ -181,6 +183,7 @@ int main(int argc, char* argv[]) {
                 char* nombre_archivo_a_truncar = (char*) list_get(parametrosRecibidos, 0);
                 uint32_t nuevo_tamanio_archivo = *(uint32_t*) list_get(parametrosRecibidos, 1);
                 io_fs_truncate(nombre_archivo_a_truncar, nuevo_tamanio_archivo);
+                mostrar_bloques_libres();
             }
             enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
@@ -533,8 +536,9 @@ void io_fs_create(char *nombre_archivo_a_crear) {
 }
 
 void liberar_bloques(uint32_t actual_nro_bloque_final_archivo, uint32_t tamanio_a_truncar_en_bloques) {
-    for (int i = actual_nro_bloque_final_archivo; i > tamanio_a_truncar_en_bloques; i --) {
-        bitarray_clean_bit(bitmap_mapeado, i);
+    for (int i = 1; i <= tamanio_a_truncar_en_bloques; i++) {
+        bitarray_clean_bit(bitmap_mapeado, actual_nro_bloque_final_archivo);
+        actual_nro_bloque_final_archivo--;
     }
 }
 
@@ -558,7 +562,8 @@ uint32_t obtener_cantidad_de_bloques_libres_al_final_de_archivo(uint32_t actual_
     uint32_t cantidad_bloques_libres = 0;
 
     actual_nro_bloque_final_archivo++;
-    while (actual_nro_bloque_final_archivo < bitarray_get_max_bit(bitmap_mapeado) && !bitarray_test_bit(bitmap_mapeado, actual_nro_bloque_final_archivo) && actual_nro_bloque_final_archivo < BLOCK_COUNT) {
+    while (actual_nro_bloque_final_archivo < BLOCK_COUNT && !bitarray_test_bit(bitmap_mapeado, actual_nro_bloque_final_archivo))
+    {
         cantidad_bloques_libres++;
         actual_nro_bloque_final_archivo++;
     }
@@ -567,17 +572,17 @@ uint32_t obtener_cantidad_de_bloques_libres_al_final_de_archivo(uint32_t actual_
 }
 
 uint32_t ocupar_bloques(uint32_t nro_bloque_inicio, uint32_t cantidad_bloques) {
-    for (int i = nro_bloque_inicio; i < cantidad_bloques; i++) {
+    for (int i = nro_bloque_inicio; i < nro_bloque_inicio + cantidad_bloques; i++) {
         bitarray_set_bit(bitmap_mapeado, i);
     }
 }
 
-uint32_t buscar_espacio_libre_contiguo_en_disco(uint32_t tamanio_a_truncar_en_bloques) {
+int buscar_espacio_libre_contiguo_en_disco(uint32_t tamanio_a_truncar_en_bloques) {
     
     uint32_t nro_bloque_a_evaluar = 0;
     uint32_t cantidad_bloques_libres = 0;
 
-    for (int i = 0; i < bitarray_get_max_bit(bitmap_mapeado) && cantidad_bloques_libres == tamanio_a_truncar_en_bloques; i++){
+    for (int i = 0; i < BLOCK_COUNT && cantidad_bloques_libres < tamanio_a_truncar_en_bloques; i++){
         if (bitarray_test_bit(bitmap_mapeado, i)) {
             nro_bloque_a_evaluar = i;
             cantidad_bloques_libres = 0;
@@ -586,14 +591,14 @@ uint32_t buscar_espacio_libre_contiguo_en_disco(uint32_t tamanio_a_truncar_en_bl
         }
     }
 
-    return cantidad_bloques_libres == tamanio_a_truncar_en_bloques ? nro_bloque_a_evaluar : -1;
+    return cantidad_bloques_libres == tamanio_a_truncar_en_bloques ? nro_bloque_a_evaluar + 1 : -1;
 }
 
-uint32_t espacios_libres() {
+uint32_t bloques_libres() {
     
     uint32_t cantidad_bloques_libres = 0;
     
-    for (int i = 0; i < bitarray_get_max_bit(bitmap_mapeado); i++){
+    for (int i = 0; i < BLOCK_COUNT; i++){
         if (!bitarray_test_bit(bitmap_mapeado, i)) {
             cantidad_bloques_libres++;
         }
@@ -602,8 +607,20 @@ uint32_t espacios_libres() {
     return cantidad_bloques_libres;
 }
 
+void mostrar_bloques_libres() {
+
+    uint32_t cantidad_de_espacios_libres = bloques_libres();
+    char* bloques_libres_con_formato = string_new();
+
+    for (int i = 0; i < BLOCK_COUNT; i++) {
+        string_append_with_format(&bloques_libres_con_formato, "%d-", bitarray_test_bit(bitmap_mapeado, i));
+    }
+
+    log_info(logger_auxiliar, "bloques libres con formato: %s", bloques_libres_con_formato);
+}
+
 void clear_bitmap() {
-    for (int i = 0; i < bitarray_get_max_bit(bitmap_mapeado); i++) {
+    for (int i = 0; i < BLOCK_COUNT; i++) {
         bitarray_clean_bit(bitmap_mapeado, i);
     }
 }
@@ -615,15 +632,22 @@ void fill_bitmap(uint32_t cantidad_a_fillear) {
 }
 
 
-void compactar() {
+//compacta todo el FS y devuelve la nueva metadata actualizada
+t_metadata_archivo compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_actual_en_bloques_de_archivo_a_truncar, uint32_t tamanio_diferencia_a_truncar_en_bloques, uint32_t actual_nro_bloque_final_archivo, uint32_t tamanio_a_truncar_en_bloques, uint32_t nuevo_tamanio_archivo_bytes) {
     
     void* bloques_de_archivos_nuevo = malloc(BLOCK_COUNT * BLOCK_SIZE);
 
     t_list* nombre_archivos_metadata = dictionary_keys(map_archivos_metadata);
     int pointer_memory_bloque_de_datos = 0;
+    int aux_pointer_memory_bloque_de_datos = 0;
+    list_remove_element(nombre_archivos_metadata, nombre_archivo_a_truncar);
 
     for (int i = 0; i < list_size(nombre_archivos_metadata); i++) {
         char* nombre_metadata_archivo = list_get(nombre_archivos_metadata, i);
+        if (string_equals_ignore_case(nombre_metadata_archivo, nombre_archivo_a_truncar)) {
+            continue;
+        }
+
         t_metadata_archivo metadata_archivo = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_metadata_archivo);
         
         float resultado_tamanio_actual =  ((float) metadata_archivo.tamanio_archivo / (float) BLOCK_SIZE);
@@ -633,22 +657,36 @@ void compactar() {
 
         uint32_t nuevo_bloque_inicial = pointer_memory_bloque_de_datos;
         for (int j = metadata_archivo.bloque_inicial; j < limite; j++) {
-            memcpy(bloques_de_archivos_nuevo + (pointer_memory_bloque_de_datos * BLOCK_SIZE), bloques_datos_addr, BLOCK_SIZE);
+            memcpy(bloques_de_archivos_nuevo + (pointer_memory_bloque_de_datos * BLOCK_SIZE), bloques_datos_addr + (j * BLOCK_SIZE), BLOCK_SIZE);
             pointer_memory_bloque_de_datos++;
         }
 
         metadata_archivo.bloque_inicial = nuevo_bloque_inicial;
     }
 
-    bloques_datos_addr = bloques_de_archivos_nuevo;
-
     //reseteamos todo el bitmap a 0 para luego volver a setearlo correspondiente a los bloques de datos que hayamos ocupado
     clear_bitmap();
-    fill_bitmap(pointer_memory_bloque_de_datos);
+    fill_bitmap(pointer_memory_bloque_de_datos + tamanio_a_truncar_en_bloques);
+
+    //cargamos en el nuevo de bloque de datos el archivo a truncar
+    t_metadata_archivo metadata_archivo_a_truncar = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_truncar);
+
+    aux_pointer_memory_bloque_de_datos = pointer_memory_bloque_de_datos;
+    for (int i = metadata_archivo_a_truncar.bloque_inicial; i < actual_nro_bloque_final_archivo; i++) {
+        memcpy(bloques_de_archivos_nuevo + (aux_pointer_memory_bloque_de_datos * BLOCK_SIZE), bloques_datos_addr + (i * BLOCK_SIZE), BLOCK_SIZE);
+        aux_pointer_memory_bloque_de_datos++;
+    }
+
+    metadata_archivo_a_truncar.bloque_inicial = pointer_memory_bloque_de_datos;
+    metadata_archivo_a_truncar.tamanio_archivo = nuevo_tamanio_archivo_bytes;
+
+    memcpy(bloques_datos_addr, bloques_de_archivos_nuevo, BLOCK_COUNT * BLOCK_SIZE);
 
     //escribimos en disco las modificaciones
     sync_file(bitmap_addr, BLOCK_COUNT);
     sync_file(bloques_datos_addr, BLOCK_COUNT * BLOCK_SIZE);
+
+    return metadata_archivo_a_truncar;
 }
 
 void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo) {
@@ -658,28 +696,39 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
     float resultado_tamanio_actual_en_bloques_de_archivo_a_truncar =  ((float) metadata_archivo_a_truncar.tamanio_archivo / (float) BLOCK_SIZE);
     uint32_t tamanio_actual_en_bloques_de_archivo_a_truncar = ceil(resultado_tamanio_actual_en_bloques_de_archivo_a_truncar);
 
+    if (tamanio_actual_en_bloques_de_archivo_a_truncar == 0) {
+        tamanio_actual_en_bloques_de_archivo_a_truncar = 1;
+    }
+
     uint32_t actual_nro_bloque_inicial_archivo = metadata_archivo_a_truncar.bloque_inicial;
     uint32_t actual_nro_bloque_final_archivo = actual_nro_bloque_inicial_archivo + tamanio_actual_en_bloques_de_archivo_a_truncar - 1;
 
-    //Primer chequeo: Debe crecer o achicarse el archivo
 
+    //Descartamos si el tamanio a truncar es igual al tamanio del archivo actual
+    if (nuevo_tamanio_archivo == metadata_archivo_a_truncar.tamanio_archivo) {
+        log_info(logger_auxiliar, "El tamanio a truncar del archivo: %s es igual al que ya tenia: %d", nombre_archivo_a_truncar, nuevo_tamanio_archivo);
+        return;
+    }
+
+    //Primer chequeo: Debe crecer o achicarse el archivo
     if (nuevo_tamanio_archivo < metadata_archivo_a_truncar.tamanio_archivo) {
         achicar_archivo(nombre_archivo_a_truncar, nuevo_tamanio_archivo, metadata_archivo_a_truncar, actual_nro_bloque_final_archivo);
         return;
     }
 
     if (nuevo_tamanio_archivo > metadata_archivo_a_truncar.tamanio_archivo) {
-        uint32_t tamanio_a_truncar_en_bytes = metadata_archivo_a_truncar.tamanio_archivo - nuevo_tamanio_archivo;
+        uint32_t tamanio_a_truncar_en_bytes = nuevo_tamanio_archivo - metadata_archivo_a_truncar.tamanio_archivo;
         float resultado_tamanio_a_truncar_en_bytes = ((float)tamanio_a_truncar_en_bytes / (float)BLOCK_SIZE);
         uint32_t tamanio_a_truncar_en_bloques = ceil(resultado_tamanio_a_truncar_en_bytes);
 
         uint32_t bloques_libres_al_final = obtener_cantidad_de_bloques_libres_al_final_de_archivo(actual_nro_bloque_final_archivo);
         
-        //validamos si hay suficientes bloques libres una vez finalizado el archivo
+        //validamos si hay suficientes bloques libres una vez finalizado el archivo. 
+        //si solo ocupa un bloque el nuevo tamaño, usamos ese directo, sin importar si mas adelante hay o no libres
 
-        if (bloques_libres_al_final >= tamanio_a_truncar_en_bloques) {
+        if (tamanio_a_truncar_en_bloques == 1 || bloques_libres_al_final >= tamanio_a_truncar_en_bloques) {
             ocupar_bloques(actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques);
-            metadata_archivo_a_truncar.tamanio_archivo = tamanio_a_truncar_en_bytes;
+            metadata_archivo_a_truncar.tamanio_archivo = nuevo_tamanio_archivo;
             //escribir metadata
             escribir_metadata(metadata_archivo_a_truncar, nombre_archivo_a_truncar);
             sync_file(bitmap_addr, BLOCK_COUNT);
@@ -689,8 +738,13 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
         //si no hay suficientes bloques libres al final del archivo...
         if (bloques_libres_al_final < tamanio_a_truncar_en_bloques) {
             //Primero, antes de compactar, hacemos una busqueda a ver si no entra en algun lugar del disco el archivo completo (si encontramos, no es necesario compactar)
-            uint32_t bloque_inicio_de_espacio_encontrado = buscar_espacio_libre_contiguo_en_disco(tamanio_a_truncar_en_bloques);
-        
+            int bloque_inicio_de_espacio_encontrado = buscar_espacio_libre_contiguo_en_disco(tamanio_a_truncar_en_bloques);
+            
+            uint32_t tamanio_a_truncar_en_bytes = nuevo_tamanio_archivo;
+            float resultado_tamanio_a_truncar_en_bytes = ((float)tamanio_a_truncar_en_bytes / (float)BLOCK_SIZE);
+            //El tamanio no debe ser la diferencia, tiene que ser el total de bloques
+            uint32_t tamanio_a_truncar_en_bloques = ceil(resultado_tamanio_a_truncar_en_bytes);
+            
             if (bloque_inicio_de_espacio_encontrado != -1) {
                 //Se encontro un espacio contiguo libre suficiente en el disco
                 liberar_bloques(actual_nro_bloque_inicial_archivo, tamanio_actual_en_bloques_de_archivo_a_truncar);
@@ -702,14 +756,12 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
                 return;
             }
 
-            if (espacios_libres() >= tamanio_a_truncar_en_bloques) {
-                //Quedan espacios libres, pero estan dispersos, no contiguos, por lo tanto debemos compactar
-                compactar();
-                uint32_t primer_bloque_libre = buscar_primer_bloque_libre();
-                metadata_archivo_a_truncar.bloque_inicial = primer_bloque_libre;
-				metadata_archivo_a_truncar.tamanio_archivo = nuevo_tamanio_archivo;
+            uint32_t tamanio_diferencia_a_truncar_en_bloques = tamanio_a_truncar_en_bloques - tamanio_actual_en_bloques_de_archivo_a_truncar;
 
-                escribir_metadata(metadata_archivo_a_truncar, nombre_archivo_a_truncar);
+            if (bloques_libres() >= tamanio_diferencia_a_truncar_en_bloques) {
+                //Quedan espacios libres, pero estan dispersos, no contiguos, por lo tanto debemos compactar
+                t_metadata_archivo metadata_archivo_a_truncar_actualizada = compactar(nombre_archivo_a_truncar, tamanio_actual_en_bloques_de_archivo_a_truncar, tamanio_diferencia_a_truncar_en_bloques, actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques, nuevo_tamanio_archivo);
+                escribir_metadata(metadata_archivo_a_truncar_actualizada, nombre_archivo_a_truncar);
                 return;
             }
 

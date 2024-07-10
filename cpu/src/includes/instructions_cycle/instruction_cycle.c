@@ -377,7 +377,7 @@ void io_fs_create_instruction(t_list* parametros) {
     char *nombre_archivo = (char *)list_get(parametros, 1);
     
     // cargo parametro de IO con nombre de archivo
-    t_params_io *parametro_io_fs_create = malloc(string_length(nombre_archivo) + 1);
+    t_params_io *parametro_io_fs_create = malloc(sizeof(int) + string_length(nombre_archivo) + 1);
     parametro_io_fs_create->tipo_de_dato = STRING;
     parametro_io_fs_create->valor = nombre_archivo;
     list_add_in_index(io_detail.parametros, 0, parametro_io_fs_create);
@@ -385,6 +385,41 @@ void io_fs_create_instruction(t_list* parametros) {
     // cargo nombre instruccion
     t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
     *io_instruccion = IO_FS_CREATE;
+    io_detail.io_instruccion = *io_instruccion;
+    // cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+}
+
+void io_fs_truncate_instruction(t_list *parametros) {
+    // recibe:(Interfaz, Nombre archivo, Tamanio a truncar)
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *nombre_archivo = (char *)list_get(parametros, 1);
+    char *registro_tamanio = (char *)list_get(parametros, 2);
+    
+    void *reg_tam = mapear_registro(registro_tamanio);
+
+    tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_tamanio);
+    uint32_t reg_tam_casteado = get_registro_numerico_casteado_32b(reg_tam, tipo_de_dato_datos);
+
+    // cargo parametro de IO con nombre de archivo
+    t_params_io *parametro_io_1_fs_truncate = malloc(sizeof(int) + string_length(nombre_archivo) + 1);
+    parametro_io_1_fs_truncate->tipo_de_dato = STRING;
+    parametro_io_1_fs_truncate->valor = nombre_archivo;
+    list_add_in_index(io_detail.parametros, 0, parametro_io_1_fs_truncate);
+    
+    // cargo parametro de IO con tamanio a truncar
+    t_params_io *parametro_io_2_fs_truncate = malloc(string_length(nombre_archivo) + 1);
+    parametro_io_2_fs_truncate->tipo_de_dato = UINT32;
+    parametro_io_2_fs_truncate->valor = malloc(sizeof(uint32_t));
+    *(uint32_t *)parametro_io_2_fs_truncate->valor = reg_tam_casteado;
+    list_add_in_index(io_detail.parametros, 1, parametro_io_2_fs_truncate);
+
+    // cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = IO_FS_TRUNCATE;
     io_detail.io_instruccion = *io_instruccion;
     // cargo nombre io
     io_detail.nombre_io = nombre_io;
@@ -616,8 +651,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
     }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_DELETE"))
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_DELETE;
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_TRUNCATE"))
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_TRUNCATE")) {
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_TRUNCATE;
+        tipo_instruccion_mapped.execute = io_fs_truncate_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_WRITE"))
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_WRITE;
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_READ"))
