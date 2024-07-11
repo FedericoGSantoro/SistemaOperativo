@@ -118,6 +118,7 @@ void levantarArchivoDeBitmap();
 void levantar_archivo_metadata(char* nombre_archivo_a_crear);
 void io_fs_create(char *nombre_archivo_a_crear);
 void io_fs_truncate(char *nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo);
+void io_fs_write(int cantidadParametros, t_list* parametrosRecibidos, uint32_t pid);
 // Liberaramos espacio de memoria
 void terminarPrograma();
 

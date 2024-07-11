@@ -2,6 +2,48 @@
 
 void mostrar_bloques_libres();
 
+//devuelve el paquete recibido desde memoria
+t_list * leer_valor_de_memoria(int fd_memoria, uint32_t cantidadDirecciones, t_list* paquete_con_direcciones, uint32_t pid, uint32_t* tamanio) {
+    
+    uint32_t direccionesMemoria[cantidadDirecciones];
+    int indice_direcciones_memoria = 0;
+
+    t_paquete *paqueteMemoria = crear_paquete(LEER_VALOR_MEMORIA);
+    // agregar_a_paquete(paqueteMemoria, &(cantidadParametros-1), sizeof(int));
+    agregar_a_paquete(paqueteMemoria, &cantidadDirecciones, sizeof(int));
+
+    for (int i = 1; i <= cantidadDirecciones; i++)
+    {
+        direccionesMemoria[indice_direcciones_memoria] = *(uint32_t *)list_get(paquete_con_direcciones, i);
+        agregar_a_paquete(paqueteMemoria, &direccionesMemoria[indice_direcciones_memoria], sizeof(uint32_t));
+        indice_direcciones_memoria++;
+    }
+
+    agregar_a_paquete(paqueteMemoria, &pid, sizeof(int));
+    agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(uint32_t));
+    enviar_paquete(paqueteMemoria, fd_memoria);
+    eliminar_paquete(paqueteMemoria);
+    // Ver como recibo valor de memoria
+    op_codigo op = recibir_operacion(fd_memoria);
+    while (op != LEER_VALOR_MEMORIA)
+    {
+        op = recibir_operacion(fd_memoria);
+    }
+
+    switch (op)
+    {
+    case LEER_VALOR_MEMORIA:
+        t_list *paqueteRecibido = recibir_paquete(fd_memoria);
+        return paqueteRecibido;
+        break;
+    default:
+        log_error(logger_error, "Fallo lectura de Memoria");
+        enviar_codigo_op(ERROR_OPERACION, fd_kernel);
+        return NULL;
+        break;
+    }
+}
+
 int main(int argc, char* argv[]) {
     //Inicializa todo
     if(argc != 3){
@@ -46,11 +88,21 @@ int main(int argc, char* argv[]) {
             }
             cantidadParametros = list_size(parametrosRecibidos) - 1;
             if(0 < cantidadParametros ){
-                uint32_t direccionesMemoria[cantidadParametros];
-                for(int i=0; i < cantidadParametros; i++){
-                    direccionesMemoria[i] = *(int*) list_get(parametrosRecibidos, i);
+                uint32_t cantidadDirecciones = *(uint32_t *) list_get(parametrosRecibidos, 0);
+                uint32_t direccionesMemoria[cantidadDirecciones];
+                int indice_direcciones_memoria = 0;
+
+                t_paquete *paqueteMemoria = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
+                agregar_a_paquete(paqueteMemoria, &cantidadDirecciones, sizeof(int));
+                for (int i = 1; i <= cantidadDirecciones; i++)
+                {
+                    direccionesMemoria[indice_direcciones_memoria] = *(uint32_t *)list_get(parametrosRecibidos, i);
+                    agregar_a_paquete(paqueteMemoria, &direccionesMemoria[indice_direcciones_memoria], sizeof(uint32_t));
+                    indice_direcciones_memoria++;
                 }
-                int tamanio = *(int*) list_get(parametrosRecibidos, cantidadParametros);
+                
+                uint32_t tamanio = *(uint32_t*) list_get(parametrosRecibidos, cantidadParametros);
+                
                 char* valorLeido = readline("Ingrese cadena > ");
                 if (valorLeido != NULL) {
                     // Si la longitud de la cadena excede 'cantidad', trunca la cadena
@@ -58,11 +110,7 @@ int main(int argc, char* argv[]) {
                         (valorLeido)[tamanio] = '\0';
                     }
                 }
-                t_paquete* paqueteMemoria = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
-                agregar_a_paquete(paqueteMemoria, &cantidadParametros, sizeof(int));
-                for (int i = 0; i < cantidadParametros; i++){
-                    agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
-                }
+                
                 tamanio++;
                 agregar_a_paquete(paqueteMemoria, &pid, sizeof(int));
                 agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(uint32_t));
@@ -97,42 +145,17 @@ int main(int argc, char* argv[]) {
             }
             cantidadParametros = list_size(parametrosRecibidos) - 1;
             if(0 < cantidadParametros ){
-                int direccionesMemoria[cantidadParametros];
-                for(int i=0; i < cantidadParametros; i++){
-                    direccionesMemoria[i] = *(int*) list_get(parametrosRecibidos, i);
-                }
-                int tamanio = *(int*) list_get(parametrosRecibidos, cantidadParametros);
+                uint32_t cantidad_direcciones = *(uint32_t *)list_get(parametrosRecibidos, 0);
+                
+                uint32_t tamanio = *(uint32_t *)list_get(parametrosRecibidos, cantidadParametros);
                 tamanio++;
-                t_paquete* paqueteMemoria = crear_paquete(LEER_VALOR_MEMORIA);
-                //agregar_a_paquete(paqueteMemoria, &(cantidadParametros-1), sizeof(int));
-                agregar_a_paquete(paqueteMemoria, &cantidadParametros, sizeof(int));
-                for (int i = 0; i < cantidadParametros; i++){
-                    agregar_a_paquete(paqueteMemoria, &direccionesMemoria[i], sizeof(int));
-                }
-                agregar_a_paquete(paqueteMemoria, &pid, sizeof(int));
-                agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(uint32_t));
-                enviar_paquete(paqueteMemoria, fd_memoria);
-                eliminar_paquete(paqueteMemoria);
-                //Ver como recibo valor de memoria
-                op_codigo op = recibir_operacion(fd_memoria);
-                while (op != LEER_VALOR_MEMORIA)
-                {
-                    op = recibir_operacion(fd_memoria);
-                }
-                switch (op){
-                case LEER_VALOR_MEMORIA:
-                    t_list* paqueteRecibido = recibir_paquete(fd_memoria);
-                    char* valorAMostrar = list_get(paqueteRecibido, list_size(paqueteRecibido) - 1); //En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
-                    log_info(logger_auxiliar, "%s", valorAMostrar);
-                    free(valorAMostrar);
-                    enviar_codigo_op(OK_OPERACION, fd_kernel);
-                    list_destroy(paqueteRecibido);
-                    break;
-                default:
-                    log_error(logger_error, "Fallo lectura de Memoria");
-                    enviar_codigo_op(ERROR_OPERACION, fd_kernel);
-                    break;
-                }
+
+                t_list* lecturas_memoria = leer_valor_de_memoria(fd_memoria, cantidad_direcciones, parametrosRecibidos, pid, tamanio);
+                char *valorAMostrar = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
+                log_info(logger_auxiliar, "%s", valorAMostrar);
+                free(valorAMostrar);
+                enviar_codigo_op(OK_OPERACION, fd_kernel);
+                list_destroy(lecturas_memoria);
             }else{
                 log_error(logger_error, "No se recibio lo necesario para leer de memoria");
                 enviar_codigo_op(ERROR_OPERACION, fd_kernel);
@@ -171,6 +194,12 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_FS_WRITE a la interfaz no FS: %s", nombre);
                 break;
             }
+            cantidadParametros = list_size(parametrosRecibidos);
+            if (0 < cantidadParametros){
+                io_fs_write(cantidadParametros, parametrosRecibidos, pid);
+                mostrar_bloques_libres();
+            }
+            enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
 
         case IO_FS_TRUNCATE:
@@ -687,6 +716,24 @@ t_metadata_archivo compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_ac
     sync_file(bloques_datos_addr, BLOCK_COUNT * BLOCK_SIZE);
 
     return metadata_archivo_a_truncar;
+}
+
+void io_fs_write(int cantidadParametros, t_list* parametrosRecibidos, uint32_t pid) {
+
+    uint32_t cantidad_direcciones = *(uint32_t *)list_get(parametrosRecibidos, 0);
+
+    uint32_t tamanio_a_escribir = *(uint32_t *)list_get(parametrosRecibidos, cantidadParametros - 3);
+    uint32_t registro_puntero_archivo = *(uint32_t *)list_get(parametrosRecibidos, cantidadParametros - 2);
+    
+    char* nombre_archivo = (char *)list_get(parametrosRecibidos, cantidadParametros - 1);
+
+    t_list *lecturas_memoria = leer_valor_de_memoria(fd_memoria, cantidad_direcciones, parametrosRecibidos, pid, tamanio_a_escribir);
+
+    char* valor_leido = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
+    
+    t_metadata_archivo metadata = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo);
+    memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_leido, string_length(valor_leido));
+    sync_file(bloques_datos_addr, tamanio_a_escribir);
 }
 
 void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo) {
