@@ -227,19 +227,10 @@ void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb) {
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registros_cpu.di), sizeof(uint32_t));
 }
 
-// void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb) {
-//     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.stack_pointer), sizeof(uint64_t));
-//     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.heap_pointer), sizeof(uint64_t));
-//     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.data_pointer), sizeof(uint64_t));
-//     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.punteros_memoria.code_pointer), sizeof(uint64_t));
-// }
-
 void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb) {
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
     agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.registro_estados), sizeof(uint64_t));
     empaquetar_registros_cpu(paquete, pcb);
-    // empaquetar_punteros_memoria(paquete, pcb);
-    // agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.state), sizeof(int));
     blocked_reason motivo_vacio = NOTHING;
     agregar_a_paquete(paquete, &motivo_vacio, sizeof(int));
 }
@@ -249,16 +240,6 @@ void mensaje_cpu_interrupt() {
     agregar_a_paquete(paquete, &(pcbADesalojar->contexto_ejecucion.pid), sizeof(uint32_t));
     enviar_paquete(paquete, fd_cpu_interrupt);
     eliminar_paquete(paquete);
-}
-
-void setTemporizadorQuantum (int Q) {
-    struct itimerval timer;
-    timer.it_value.tv_sec = Q / 1000;
-    timer.it_value.tv_usec = (Q % 1000) * 1000;
-    timer.it_interval.tv_sec = 0;
-    timer.it_interval.tv_usec = 0;
-    setitimer(ITIMER_REAL, &timer, NULL);
-    log_info(logs_auxiliares, "Temporizador inicializado en %d", Q);
 }
 
 void bloquearPCBPorRecurso(recursoSistema* recurso, t_pcb* pcb) {
@@ -293,11 +274,8 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
         enviar_paquete(paquete, fd_cpu_dispatch);
         eliminar_paquete(paquete);
         if ( ALGORITMO_PLANIFICACION != FIFO ) {
-            //Hilo para controlar el tiempo este
             tiempoQuantum = temporal_create();
             crearHiloDetach(&cortoPlazoExec, (void*) corto_plazo_exec, NULL, "Planificacion corto plazo EXEC", logs_auxiliares, logs_error);
-            // signal(SIGALRM, mensaje_cpu_interrupt);
-            // setTemporizadorQuantum(pcb->quantum_faltante);
         }
         op_codigo codigoOperacion = recibir_operacion(fd_cpu_dispatch);
         if ( ALGORITMO_PLANIFICACION != FIFO ) {
@@ -308,7 +286,6 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
             temporal_destroy(tiempoQuantum);
         }
         if ( codigoOperacion == OK_OPERACION ) {
-            // Creo que funciona a chequear
             t_list* contextoNuevo = recibir_paquete(fd_cpu_dispatch);
             pthread_mutex_lock(&sem_cola_exec);
             if ( !queue_is_empty(cola_exec) ) {
@@ -332,9 +309,10 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                         pthread_mutex_lock(&(recursoEncontrado->mutexCantidadInstancias));
                         sem_post(&(recursoEncontrado->semCantidadInstancias));
                         recursoEncontrado->cantidadInstancias++;
-                        list_remove_element(pcb->recursosAsignados, recursoEncontrado->nombre);
                         pthread_mutex_unlock(&(recursoEncontrado->mutexCantidadInstancias));
+                        list_remove_element(pcb->recursosAsignados, recursoEncontrado->nombre);
                         log_info(logs_auxiliares, "Recurso %s devuelto por el PID %d", recursoEncontrado->nombre, pcb->contexto_ejecucion.pid);
+                        //CHEQUEAR SI SIGUE HACIENDO FALTA 
                         pcb->contexto_ejecucion.io_detail.io_instruccion = NONE;
                         pcb->contexto_ejecucion.io_detail.nombre_io = "";
                         mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
@@ -347,7 +325,6 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                     }
                     break;
                 } else if ( pcb->contexto_ejecucion.io_detail.io_instruccion == WAIT ) {
-                    log_info(logs_auxiliares, "Holiwis");
                     recursoSistema* recursoEncontrado = NULL;
                     recursoBuscado = pcb->contexto_ejecucion.io_detail.nombre_io;
                     recursoEncontrado = list_find(listaRecursosSistema, buscarRecurso);
@@ -412,13 +389,6 @@ char* enumEstadoAString(process_state estado) {
     }
 }
 
-// char* obtenerPidsColaReadyYReadyAux() {
-//     char* pidsReady = string_new();
-//     string_append_with_format(&pidsReady, "%s - %s", obtenerPids(cola_ready, sem_cola_ready), obtenerPids(cola_ready_aux, sem_cola_ready_aux));
-//     return pidsReady;
-// }
-
-
 void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     process_state estadoViejo = pcb->contexto_ejecucion.state;
     log_info(logs_obligatorios, "PID: %d - Estado Anterior: %s - Estado Actual: %s",
@@ -429,7 +399,6 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     switch (estadoNuevo) {
     case READY:
         pcb->contexto_ejecucion.state = READY;
-        // log_info(logs_obligatorios, "Cola Ready %s: [%s]", config_get_string_value(config, "ALGORITMO_PLANIFICACION"), obtenerPidsColaReadyYReadyAux());
         break;
     case EXEC:
         pcb->contexto_ejecucion.state = EXEC;
@@ -443,7 +412,6 @@ void cambiarEstado(process_state estadoNuevo, t_pcb* pcb) {
     default:
         break;
     }
-    
 }
 
 void corto_plazo_ready() {
