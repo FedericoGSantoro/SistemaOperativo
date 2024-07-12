@@ -2,8 +2,27 @@
 
 void mostrar_bloques_libres();
 
+void escribir_valor_en_memoria(t_list* parametrosRecibidos, uint32_t cantidadDirecciones, uint32_t pid, uint32_t tamanio, char* valorLeido, int fd_memoria) {
+
+    int indice_direcciones_memoria = 0;
+    uint32_t direccionesMemoria[cantidadDirecciones];
+    t_paquete *paqueteMemoria = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
+    agregar_a_paquete(paqueteMemoria, &cantidadDirecciones, sizeof(int));
+    for (int i = 1; i <= cantidadDirecciones; i++)
+    {
+        direccionesMemoria[indice_direcciones_memoria] = *(uint32_t *)list_get(parametrosRecibidos, i);
+        agregar_a_paquete(paqueteMemoria, &direccionesMemoria[indice_direcciones_memoria], sizeof(uint32_t));
+        indice_direcciones_memoria++;
+    }
+    agregar_a_paquete(paqueteMemoria, &pid, sizeof(int));
+    agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(uint32_t));
+    agregar_a_paquete(paqueteMemoria, valorLeido, tamanio);
+    enviar_paquete(paqueteMemoria, fd_memoria);
+    eliminar_paquete(paqueteMemoria);
+}
+
 //devuelve el paquete recibido desde memoria
-t_list * leer_valor_de_memoria(int fd_memoria, uint32_t cantidadDirecciones, t_list* paquete_con_direcciones, uint32_t pid, uint32_t* tamanio) {
+t_list * leer_valor_de_memoria(int fd_memoria, uint32_t cantidadDirecciones, t_list* paquete_con_direcciones, uint32_t pid, uint32_t tamanio) {
     
     uint32_t direccionesMemoria[cantidadDirecciones];
     int indice_direcciones_memoria = 0;
@@ -89,17 +108,6 @@ int main(int argc, char* argv[]) {
             cantidadParametros = list_size(parametrosRecibidos) - 1;
             if(0 < cantidadParametros ){
                 uint32_t cantidadDirecciones = *(uint32_t *) list_get(parametrosRecibidos, 0);
-                uint32_t direccionesMemoria[cantidadDirecciones];
-                int indice_direcciones_memoria = 0;
-
-                t_paquete *paqueteMemoria = crear_paquete(ESCRIBIR_VALOR_MEMORIA);
-                agregar_a_paquete(paqueteMemoria, &cantidadDirecciones, sizeof(int));
-                for (int i = 1; i <= cantidadDirecciones; i++)
-                {
-                    direccionesMemoria[indice_direcciones_memoria] = *(uint32_t *)list_get(parametrosRecibidos, i);
-                    agregar_a_paquete(paqueteMemoria, &direccionesMemoria[indice_direcciones_memoria], sizeof(uint32_t));
-                    indice_direcciones_memoria++;
-                }
                 
                 uint32_t tamanio = *(uint32_t*) list_get(parametrosRecibidos, cantidadParametros);
                 
@@ -109,14 +117,11 @@ int main(int argc, char* argv[]) {
                     if (strlen(valorLeido) > tamanio) {
                         (valorLeido)[tamanio] = '\0';
                     }
-                }
-                
+                }                
                 tamanio++;
-                agregar_a_paquete(paqueteMemoria, &pid, sizeof(int));
-                agregar_a_paquete(paqueteMemoria, &tamanio, sizeof(uint32_t));
-                agregar_a_paquete(paqueteMemoria, valorLeido, tamanio);
-                enviar_paquete(paqueteMemoria, fd_memoria);
-                eliminar_paquete(paqueteMemoria);
+
+                escribir_valor_en_memoria(parametrosRecibidos, cantidadDirecciones, pid, tamanio, valorLeido, fd_memoria);
+
                 //Ver como recibo valor de memoria
                 op_codigo op = recibir_operacion(fd_memoria);
                 /*switch (op){
@@ -187,6 +192,12 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_FS_READ a la interfaz no FS: %s", nombre);
                 break;
             }
+            cantidadParametros = list_size(parametrosRecibidos);
+            if (0 < cantidadParametros){
+                io_fs_read(cantidadParametros, parametrosRecibidos, pid);
+                mostrar_bloques_libres();
+            }
+            enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
 
         case IO_FS_WRITE:
@@ -445,6 +456,7 @@ void sync_file(void *addr, size_t length) {
         perror("msync");
         exit(EXIT_FAILURE);
     }
+    bloques_datos_addr = mmap(NULL, BLOCK_COUNT * BLOCK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_bloque_de_datos, 0);
 }
 
 void levantarArchivoDeBloques() {
@@ -507,27 +519,29 @@ void levantarArchivoDeBitmap() {
     bitmap_mapeado = bitarray_create_with_mode((char *)bitmap_addr, BLOCK_COUNT, LSB_FIRST);
 }
 
-void escribir_metadata(t_metadata_archivo metadata, char* nombre_archivo) {
+void escribir_metadata(t_metadata_archivo* metadata, char* nombre_archivo) {
 
     char* path_metadata = string_new();
     string_append(&path_metadata, PATH_BASE_DIALFS);
     string_append(&path_metadata, "/");
     string_append(&path_metadata, nombre_archivo);
-    int fd_metadata = open(path_metadata, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    
-    if (write(fd_metadata, &metadata, sizeof(t_metadata_archivo)) == -1) {
-        perror("Error al escribir en archivo de metadata");
-        exit(EXIT_FAILURE);
-    }
 
-    t_metadata_archivo* metadata_a_guardar_en_mapa = malloc(sizeof(t_metadata_archivo));
-    *metadata_a_guardar_en_mapa = metadata;
-    dictionary_put(map_archivos_metadata, nombre_archivo, metadata_a_guardar_en_mapa);
-    close(fd_metadata);
+    int fd_metadata;
+
+    FILE *archivo;
+    // Abrir el archivo en modo escritura binaria ("wb")
+    archivo = fopen(path_metadata, "wb");
+    // Escribir la estructura en el archivo
+    fwrite(metadata, sizeof(t_metadata_archivo), 1, archivo);
+    t_metadata_archivo metadata_a_leer;
+    // Escribir la estructura en el archivo
+    fread(&metadata_a_leer, sizeof(t_metadata_archivo), 1, archivo);
+    dictionary_put(map_archivos_metadata, nombre_archivo, metadata);
+    fclose(archivo);
 }
 
-t_metadata_archivo leer_metadata_archivo(char* nombre_archivo_a_leer) {
-    return *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_leer);
+t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
+    return (t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_leer);
 }
 
 uint32_t buscar_primer_bloque_libre() {
@@ -542,7 +556,7 @@ uint32_t buscar_primer_bloque_libre() {
 
 void io_fs_create(char *nombre_archivo_a_crear) {
 
-    t_metadata_archivo metadata;
+    t_metadata_archivo* metadata = malloc(sizeof(t_metadata_archivo));
 
     // Encontrar un bloque libre en el bitmap
     uint32_t bloque_libre = buscar_primer_bloque_libre();
@@ -558,8 +572,8 @@ void io_fs_create(char *nombre_archivo_a_crear) {
     sync_file(bitmap_addr, BLOCK_COUNT);
 
     // Escribir metadata del archivo en el archivo de metadata
-    metadata.bloque_inicial = bloque_libre;
-    metadata.tamanio_archivo = 0; // Empieza con tamaño 0 bytes
+    metadata->bloque_inicial = bloque_libre;
+    metadata->tamanio_archivo = 0; // Empieza con tamaño 0 bytes
     //escribir metadata
     escribir_metadata(metadata, nombre_archivo_a_crear);
 }
@@ -571,15 +585,15 @@ void liberar_bloques(uint32_t actual_nro_bloque_final_archivo, uint32_t tamanio_
     }
 }
 
-void achicar_archivo(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo, t_metadata_archivo metadata_archivo_a_truncar, uint32_t actual_nro_bloque_final_archivo) {
+void achicar_archivo(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo, t_metadata_archivo* metadata_archivo_a_truncar, uint32_t actual_nro_bloque_final_archivo) {
 
-    uint32_t tamanio_a_truncar_en_bytes = metadata_archivo_a_truncar.tamanio_archivo - nuevo_tamanio_archivo;
+    uint32_t tamanio_a_truncar_en_bytes = metadata_archivo_a_truncar->tamanio_archivo - nuevo_tamanio_archivo;
     float resultado_tamanio_a_truncar_en_bytes = ((float)tamanio_a_truncar_en_bytes / (float)BLOCK_SIZE);
     uint32_t tamanio_a_truncar_en_bloques = ceil(resultado_tamanio_a_truncar_en_bytes);
 
     // Liberar los bloques que exceden al archivo
     liberar_bloques(actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques);
-    metadata_archivo_a_truncar.tamanio_archivo = nuevo_tamanio_archivo;
+    metadata_archivo_a_truncar->tamanio_archivo = nuevo_tamanio_archivo;
 
     //escribir metadata
     escribir_metadata(metadata_archivo_a_truncar, nombre_archivo_a_truncar);
@@ -600,7 +614,7 @@ uint32_t obtener_cantidad_de_bloques_libres_al_final_de_archivo(uint32_t actual_
     return cantidad_bloques_libres;
 }
 
-uint32_t ocupar_bloques(uint32_t nro_bloque_inicio, uint32_t cantidad_bloques) {
+void ocupar_bloques(uint32_t nro_bloque_inicio, uint32_t cantidad_bloques) {
     for (int i = nro_bloque_inicio; i < nro_bloque_inicio + cantidad_bloques; i++) {
         bitarray_set_bit(bitmap_mapeado, i);
     }
@@ -662,7 +676,7 @@ void fill_bitmap(uint32_t cantidad_a_fillear) {
 
 
 //compacta todo el FS y devuelve la nueva metadata actualizada
-t_metadata_archivo compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_actual_en_bloques_de_archivo_a_truncar, uint32_t tamanio_diferencia_a_truncar_en_bloques, uint32_t actual_nro_bloque_final_archivo, uint32_t tamanio_a_truncar_en_bloques, uint32_t nuevo_tamanio_archivo_bytes) {
+t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_actual_en_bloques_de_archivo_a_truncar, uint32_t tamanio_diferencia_a_truncar_en_bloques, uint32_t actual_nro_bloque_final_archivo, uint32_t tamanio_a_truncar_en_bloques, uint32_t nuevo_tamanio_archivo_bytes) {
     
     void* bloques_de_archivos_nuevo = malloc(BLOCK_COUNT * BLOCK_SIZE);
 
@@ -698,16 +712,16 @@ t_metadata_archivo compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_ac
     fill_bitmap(pointer_memory_bloque_de_datos + tamanio_a_truncar_en_bloques);
 
     //cargamos en el nuevo de bloque de datos el archivo a truncar
-    t_metadata_archivo metadata_archivo_a_truncar = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_truncar);
+    t_metadata_archivo* metadata_archivo_a_truncar = (t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_truncar);
 
     aux_pointer_memory_bloque_de_datos = pointer_memory_bloque_de_datos;
-    for (int i = metadata_archivo_a_truncar.bloque_inicial; i < actual_nro_bloque_final_archivo; i++) {
+    for (int i = metadata_archivo_a_truncar->bloque_inicial; i < actual_nro_bloque_final_archivo; i++) {
         memcpy(bloques_de_archivos_nuevo + (aux_pointer_memory_bloque_de_datos * BLOCK_SIZE), bloques_datos_addr + (i * BLOCK_SIZE), BLOCK_SIZE);
         aux_pointer_memory_bloque_de_datos++;
     }
 
-    metadata_archivo_a_truncar.bloque_inicial = pointer_memory_bloque_de_datos;
-    metadata_archivo_a_truncar.tamanio_archivo = nuevo_tamanio_archivo_bytes;
+    metadata_archivo_a_truncar->bloque_inicial = pointer_memory_bloque_de_datos;
+    metadata_archivo_a_truncar->tamanio_archivo = nuevo_tamanio_archivo_bytes;
 
     memcpy(bloques_datos_addr, bloques_de_archivos_nuevo, BLOCK_COUNT * BLOCK_SIZE);
 
@@ -718,10 +732,24 @@ t_metadata_archivo compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_ac
     return metadata_archivo_a_truncar;
 }
 
+void io_fs_read(int cantidadParametros, t_list* parametrosRecibidos, uint32_t pid) {
+    
+    uint32_t cantidad_direcciones = *(uint32_t *)list_get(parametrosRecibidos, 0);
+    uint32_t tamanio_a_escribir = *(uint32_t *)list_get(parametrosRecibidos, cantidadParametros - 3);
+    uint32_t registro_puntero_archivo = *(uint32_t *)list_get(parametrosRecibidos, cantidadParametros - 2);
+
+    char* nombre_archivo = (char *)list_get(parametrosRecibidos, cantidadParametros - 1);
+
+    void* valor_leido = malloc(tamanio_a_escribir);
+    t_metadata_archivo metadata = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo);
+    memcpy(valor_leido, bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, tamanio_a_escribir);
+
+    escribir_valor_en_memoria(parametrosRecibidos, cantidad_direcciones, pid, tamanio_a_escribir, valor_leido, fd_memoria);
+}
+
 void io_fs_write(int cantidadParametros, t_list* parametrosRecibidos, uint32_t pid) {
 
     uint32_t cantidad_direcciones = *(uint32_t *)list_get(parametrosRecibidos, 0);
-
     uint32_t tamanio_a_escribir = *(uint32_t *)list_get(parametrosRecibidos, cantidadParametros - 3);
     uint32_t registro_puntero_archivo = *(uint32_t *)list_get(parametrosRecibidos, cantidadParametros - 2);
     
@@ -731,40 +759,45 @@ void io_fs_write(int cantidadParametros, t_list* parametrosRecibidos, uint32_t p
 
     char* valor_leido = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
     
+    void* valor_leido2 = malloc(tamanio_a_escribir);
+    void* valor_escrito = malloc(string_length(valor_leido));
+    memcpy(valor_escrito, valor_leido, string_length(valor_leido));
+
     t_metadata_archivo metadata = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo);
-    memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_leido, string_length(valor_leido));
-    sync_file(bloques_datos_addr, tamanio_a_escribir);
+    memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_escrito, string_length(valor_leido));
+    memcpy(valor_leido2, bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, tamanio_a_escribir);
+    sync_file(bloques_datos_addr, BLOCK_COUNT * BLOCK_SIZE);
 }
 
 void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo) {
     
-    t_metadata_archivo metadata_archivo_a_truncar = leer_metadata_archivo(nombre_archivo_a_truncar);
+    t_metadata_archivo* metadata_archivo_a_truncar = leer_metadata_archivo(nombre_archivo_a_truncar);
 
-    float resultado_tamanio_actual_en_bloques_de_archivo_a_truncar =  ((float) metadata_archivo_a_truncar.tamanio_archivo / (float) BLOCK_SIZE);
+    float resultado_tamanio_actual_en_bloques_de_archivo_a_truncar =  ((float) metadata_archivo_a_truncar->tamanio_archivo / (float) BLOCK_SIZE);
     uint32_t tamanio_actual_en_bloques_de_archivo_a_truncar = ceil(resultado_tamanio_actual_en_bloques_de_archivo_a_truncar);
 
     if (tamanio_actual_en_bloques_de_archivo_a_truncar == 0) {
         tamanio_actual_en_bloques_de_archivo_a_truncar = 1;
     }
 
-    uint32_t actual_nro_bloque_inicial_archivo = metadata_archivo_a_truncar.bloque_inicial;
+    uint32_t actual_nro_bloque_inicial_archivo = metadata_archivo_a_truncar->bloque_inicial;
     uint32_t actual_nro_bloque_final_archivo = actual_nro_bloque_inicial_archivo + tamanio_actual_en_bloques_de_archivo_a_truncar - 1;
 
 
     //Descartamos si el tamanio a truncar es igual al tamanio del archivo actual
-    if (nuevo_tamanio_archivo == metadata_archivo_a_truncar.tamanio_archivo) {
+    if (nuevo_tamanio_archivo == metadata_archivo_a_truncar->tamanio_archivo) {
         log_info(logger_auxiliar, "El tamanio a truncar del archivo: %s es igual al que ya tenia: %d", nombre_archivo_a_truncar, nuevo_tamanio_archivo);
         return;
     }
 
     //Primer chequeo: Debe crecer o achicarse el archivo
-    if (nuevo_tamanio_archivo < metadata_archivo_a_truncar.tamanio_archivo) {
+    if (nuevo_tamanio_archivo < metadata_archivo_a_truncar->tamanio_archivo) {
         achicar_archivo(nombre_archivo_a_truncar, nuevo_tamanio_archivo, metadata_archivo_a_truncar, actual_nro_bloque_final_archivo);
         return;
     }
 
-    if (nuevo_tamanio_archivo > metadata_archivo_a_truncar.tamanio_archivo) {
-        uint32_t tamanio_a_truncar_en_bytes = nuevo_tamanio_archivo - metadata_archivo_a_truncar.tamanio_archivo;
+    if (nuevo_tamanio_archivo > metadata_archivo_a_truncar->tamanio_archivo) {
+        uint32_t tamanio_a_truncar_en_bytes = nuevo_tamanio_archivo - metadata_archivo_a_truncar->tamanio_archivo;
         float resultado_tamanio_a_truncar_en_bytes = ((float)tamanio_a_truncar_en_bytes / (float)BLOCK_SIZE);
         uint32_t tamanio_a_truncar_en_bloques = ceil(resultado_tamanio_a_truncar_en_bytes);
 
@@ -775,7 +808,7 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
 
         if (tamanio_a_truncar_en_bloques == 1 || bloques_libres_al_final >= tamanio_a_truncar_en_bloques) {
             ocupar_bloques(actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques);
-            metadata_archivo_a_truncar.tamanio_archivo = nuevo_tamanio_archivo;
+            metadata_archivo_a_truncar->tamanio_archivo = nuevo_tamanio_archivo;
             //escribir metadata
             escribir_metadata(metadata_archivo_a_truncar, nombre_archivo_a_truncar);
             sync_file(bitmap_addr, BLOCK_COUNT);
@@ -795,8 +828,8 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
             if (bloque_inicio_de_espacio_encontrado != -1) {
                 //Se encontro un espacio contiguo libre suficiente en el disco
                 liberar_bloques(actual_nro_bloque_inicial_archivo, tamanio_actual_en_bloques_de_archivo_a_truncar);
-                metadata_archivo_a_truncar.bloque_inicial = bloque_inicio_de_espacio_encontrado;
-                metadata_archivo_a_truncar.tamanio_archivo = nuevo_tamanio_archivo;
+                metadata_archivo_a_truncar->bloque_inicial = bloque_inicio_de_espacio_encontrado;
+                metadata_archivo_a_truncar->tamanio_archivo = nuevo_tamanio_archivo;
                 ocupar_bloques(bloque_inicio_de_espacio_encontrado, tamanio_a_truncar_en_bloques);
                 escribir_metadata(metadata_archivo_a_truncar, nombre_archivo_a_truncar);
                 sync_file(bitmap_addr, BLOCK_COUNT);
@@ -807,7 +840,7 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
 
             if (bloques_libres() >= tamanio_diferencia_a_truncar_en_bloques) {
                 //Quedan espacios libres, pero estan dispersos, no contiguos, por lo tanto debemos compactar
-                t_metadata_archivo metadata_archivo_a_truncar_actualizada = compactar(nombre_archivo_a_truncar, tamanio_actual_en_bloques_de_archivo_a_truncar, tamanio_diferencia_a_truncar_en_bloques, actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques, nuevo_tamanio_archivo);
+                t_metadata_archivo* metadata_archivo_a_truncar_actualizada = compactar(nombre_archivo_a_truncar, tamanio_actual_en_bloques_de_archivo_a_truncar, tamanio_diferencia_a_truncar_en_bloques, actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques, nuevo_tamanio_archivo);
                 escribir_metadata(metadata_archivo_a_truncar_actualizada, nombre_archivo_a_truncar);
                 return;
             }

@@ -448,7 +448,7 @@ t_list* agregar_parametros_dir_fisicas_para_io(int* indice_parametros, void* reg
     parametro_io_tamanio->tipo_de_dato = INT;
     parametro_io_tamanio->valor = malloc(sizeof(int));
     *(int*)parametro_io_tamanio->valor = list_size(dir_fisicas);
-    list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
+    list_add_in_index(io_detail.parametros, indice_parametros_value, parametro_io_tamanio);
 
     for (int indice_dir_fisicas = 0; indice_dir_fisicas < list_size(dir_fisicas); indice_dir_fisicas++)
     {
@@ -460,8 +460,8 @@ t_list* agregar_parametros_dir_fisicas_para_io(int* indice_parametros, void* reg
     return dir_fisicas;
 }
 
-void io_fs_write_instruction(t_list* parametros) {
-    
+void agregar_params_y_ejecutar_interaccion_a_memoria_para_fs(t_list* parametros, t_nombre_instruccion nombre_instruccion) {
+
     // recibe:(Interfaz, Nombre archivo, Registro Direccion, Registro Tamanio, Registro Puntero Archivo)
     char *nombre_io = (char *)list_get(parametros, 0);
     char *nombre_archivo = (char *)list_get(parametros, 1);
@@ -506,7 +506,7 @@ void io_fs_write_instruction(t_list* parametros) {
     list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_fs_create);
     // cargo nombre instruccion
     t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
-    *io_instruccion = IO_FS_WRITE;
+    *io_instruccion = nombre_instruccion;
     io_detail.io_instruccion = *io_instruccion;
     // cargo nombre io
     io_detail.nombre_io = nombre_io;
@@ -514,6 +514,16 @@ void io_fs_write_instruction(t_list* parametros) {
     manejarInterrupciones(LLAMADA_SISTEMA);
     free(io_instruccion);
     liberar_lista_de_datos_con_punteros(dir_fisicas);
+}
+
+void io_fs_read_instruction(t_list* parametros) {
+
+    agregar_params_y_ejecutar_interaccion_a_memoria_para_fs(parametros, IO_FS_READ);
+}
+
+void io_fs_write_instruction(t_list* parametros) {
+
+    agregar_params_y_ejecutar_interaccion_a_memoria_para_fs(parametros, IO_FS_WRITE);
 }
 
 void io_stdout_write_instruction(t_list *parametros)
@@ -736,8 +746,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_WRITE;
         tipo_instruccion_mapped.execute = io_fs_write_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_READ"))
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_READ")){
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_READ;
+        tipo_instruccion_mapped.execute = io_fs_read_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "WAIT"))
     {
         tipo_instruccion_mapped.nombre_instruccion = WAIT;
