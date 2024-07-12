@@ -250,7 +250,8 @@ void eliminar_io_detail() {
     }
     
     for (int i = 0; i < io_detail.parametros->elements_count; i++) {
-        void* parametro_a_eliminar = list_get(io_detail.parametros, i);
+        t_params_io* parametro_a_eliminar = list_get(io_detail.parametros, i);
+        free(parametro_a_eliminar->valor);
         free(parametro_a_eliminar);
     }
     list_destroy(io_detail.parametros);
