@@ -909,6 +909,7 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
             
             if (bloque_inicio_de_espacio_encontrado != -1) {
                 //Se encontro un espacio contiguo libre suficiente en el disco
+                usleep(RETRASO_COMPACTACION*1000);
                 liberar_bloques(actual_nro_bloque_inicial_archivo, tamanio_actual_en_bloques_de_archivo_a_truncar, nombre_archivo_a_truncar);
                 metadata_archivo_a_truncar->bloque_inicial = bloque_inicio_de_espacio_encontrado;
                 metadata_archivo_a_truncar->tamanio_archivo = nuevo_tamanio_archivo;
