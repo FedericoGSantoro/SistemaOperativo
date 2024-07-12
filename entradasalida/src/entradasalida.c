@@ -760,7 +760,7 @@ void io_fs_write(int cantidadParametros, t_list* parametrosRecibidos, uint32_t p
     char* valor_leido = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
     
     t_metadata_archivo metadata = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo);
-    memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_leido, string_length(valor_leido));
+    memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_leido, tamanio_a_escribir);
     sync_file(bloques_datos_addr, BLOCK_COUNT * BLOCK_SIZE);
 }
 
