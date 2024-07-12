@@ -472,7 +472,7 @@ void levantarArchivoDeBloques() {
             perror("Error al abrir bloques.dat");
             exit(EXIT_FAILURE);
         }
-        if (ftruncate(fd_bloque_de_datos, BLOCK_COUNT) == -1) {
+        if (ftruncate(fd_bloque_de_datos, BLOCK_COUNT * BLOCK_SIZE) == -1) {
             perror("Error al truncar bloques.dat");
             exit(EXIT_FAILURE);
         }
@@ -759,13 +759,8 @@ void io_fs_write(int cantidadParametros, t_list* parametrosRecibidos, uint32_t p
 
     char* valor_leido = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
     
-    void* valor_leido2 = malloc(tamanio_a_escribir);
-    void* valor_escrito = malloc(string_length(valor_leido));
-    memcpy(valor_escrito, valor_leido, string_length(valor_leido));
-
     t_metadata_archivo metadata = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo);
-    memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_escrito, string_length(valor_leido));
-    memcpy(valor_leido2, bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, tamanio_a_escribir);
+    memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_leido, string_length(valor_leido));
     sync_file(bloques_datos_addr, BLOCK_COUNT * BLOCK_SIZE);
 }
 
