@@ -18,6 +18,8 @@
 #include <commons/bitarray.h>
 #include <readline/readline.h>
 #include <math.h>
+#include <dirent.h>
+#include <sys/types.h>
 
 /*---------DEFINES---------*/
 
@@ -47,6 +49,8 @@ FILE *archivo_bloques_dat;
 FILE *archivo_bitmap;
 void* bloques_datos_addr;
 t_bitarray* bitmap_mapeado;
+t_list* nombres_archivos_bitmap; //TODO: eliminemos esto dsps, es para pruebitas y logs internos nomas
+int indice_global_lista = 0;
 void* bitmap_addr;
 int fd_bitmap;
 int fd_bloque_de_datos;

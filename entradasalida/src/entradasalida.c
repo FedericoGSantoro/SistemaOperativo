@@ -75,6 +75,12 @@ int main(int argc, char* argv[]) {
     nombre = argv[1];
     path_config = argv[2];
     inicializar();
+    nombres_archivos_bitmap = list_create();
+    for (int i = 0; i < BLOCK_COUNT; i++) {
+        char* empty = string_new();
+        list_add_in_index(nombres_archivos_bitmap, i, empty);
+    }
+    indice_global_lista = 0;
     op_codigo codigoRecibido;
     int cantidadParametros;
     while( fd_kernel != -1 ){
@@ -168,6 +174,8 @@ int main(int argc, char* argv[]) {
             break;
         
         case IO_FS_CREATE:
+            log_info(logger_auxiliar, "Inicio función IO_FS_CREATE");
+            
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envio la instrucción IO_FS_CREATE a la interfaz no FS: %s", nombre);
                 break;
@@ -182,6 +190,8 @@ int main(int argc, char* argv[]) {
             break;
 
         case IO_FS_DELETE:
+            log_info(logger_auxiliar, "Inicio función IO_FS_DELETE");
+
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envió la instrucción IO_FS_DELETE a la interfaz no FS: %s", nombre);
                 break;
@@ -197,6 +207,8 @@ int main(int argc, char* argv[]) {
             break;
 
         case IO_FS_READ:
+            log_info(logger_auxiliar, "Inicio función IO_FS_READ");
+
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envió la instrucción IO_FS_READ a la interfaz no FS: %s", nombre);
                 break;
@@ -210,6 +222,8 @@ int main(int argc, char* argv[]) {
             break;
 
         case IO_FS_WRITE:
+            log_info(logger_auxiliar, "Inicio función IO_FS_WRITE");
+
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envió la instrucción IO_FS_WRITE a la interfaz no FS: %s", nombre);
                 break;
@@ -223,6 +237,8 @@ int main(int argc, char* argv[]) {
             break;
 
         case IO_FS_TRUNCATE:
+            log_info(logger_auxiliar, "Inicio función IO_FS_TRUNCATE");
+
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envio la instrucción IO_FS_TRUNCATE a la interfaz no FS: %s", nombre);
                 break;
@@ -364,7 +380,7 @@ void inicializar(){
     if (TIPO_INTERFAZ == FS) {
         levantarArchivoDeBloques();
         levantarArchivoDeBitmap();
-        map_archivos_metadata = dictionary_create();
+        levantarArchivosDeMetadata();
     }
 
     parametrosRecibidos = list_create();
@@ -528,6 +544,53 @@ void levantarArchivoDeBitmap() {
     bitmap_mapeado = bitarray_create_with_mode((char *)bitmap_addr, BLOCK_COUNT, LSB_FIRST);
 }
 
+t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
+    
+    if (dictionary_has_key(map_archivos_metadata, nombre_archivo_a_leer)) {
+        return (t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_leer);
+    }
+
+    char* path_metadata = string_new();
+    string_append(&path_metadata, PATH_BASE_DIALFS);
+    string_append(&path_metadata, "/");
+    string_append(&path_metadata, nombre_archivo_a_leer); //TODO: funcion para refactor esto y no duplicar comportamiento. Ahora no, muy tarde xd
+    
+    FILE *archivo = fopen(path_metadata, "r");
+    t_metadata_archivo* metadata_a_leer = malloc(sizeof(t_metadata_archivo));
+    fread(metadata_a_leer, sizeof(t_metadata_archivo), 1, archivo);
+
+    return metadata_a_leer;
+}
+
+void levantarArchivosDeMetadata() {
+
+    map_archivos_metadata = dictionary_create();
+
+    DIR *directorio;
+    struct dirent *entrada;
+
+    // Abrir el directorio
+    directorio = opendir(PATH_BASE_DIALFS);
+    
+    if (directorio == NULL) {
+        perror("Error al abrir el directorio");
+        return 1;
+    }
+    
+    // Leer y mostrar los nombres de archivo del directorio
+    while ((entrada = readdir(directorio)) != NULL) {
+        // Ignorar los directorios "." y ".."
+        char* nombre_archivo = (char*) (entrada->d_name);
+        if (entrada->d_type == DT_REG && !string_equals_ignore_case(nombre_archivo, "bloques.dat") && !string_equals_ignore_case(nombre_archivo, "bitmap.dat")) { // Verificar si es un archivo regular, si no es el de bloques y si no es el de bitmap
+            t_metadata_archivo* metadata_archivo = leer_metadata_archivo((char*)(nombre_archivo));
+            dictionary_put(map_archivos_metadata, nombre_archivo, metadata_archivo);
+        }
+    }
+    
+    // Cerrar el directorio
+    closedir(directorio);
+}
+
 void escribir_metadata(t_metadata_archivo* metadata, char* nombre_archivo) {
 
     char* path_metadata = string_new();
@@ -542,15 +605,9 @@ void escribir_metadata(t_metadata_archivo* metadata, char* nombre_archivo) {
     archivo = fopen(path_metadata, "wb");
     // Escribir la estructura en el archivo
     fwrite(metadata, sizeof(t_metadata_archivo), 1, archivo);
-    t_metadata_archivo metadata_a_leer;
     // Escribir la estructura en el archivo
-    fread(&metadata_a_leer, sizeof(t_metadata_archivo), 1, archivo);
     dictionary_put(map_archivos_metadata, nombre_archivo, metadata);
     fclose(archivo);
-}
-
-t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
-    return (t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_leer);
 }
 
 uint32_t buscar_primer_bloque_libre() {
@@ -578,6 +635,8 @@ void io_fs_create(char *nombre_archivo_a_crear) {
 
     // Marcar el bloque como ocupado en el bitmap
     bitarray_set_bit(bitmap_mapeado, bloque_libre);
+    list_add_in_index(nombres_archivos_bitmap, indice_global_lista, nombre_archivo_a_crear);
+    indice_global_lista++;
     sync_file(bitmap_addr, BLOCK_COUNT);
 
     // Escribir metadata del archivo en el archivo de metadata
@@ -587,8 +646,11 @@ void io_fs_create(char *nombre_archivo_a_crear) {
     escribir_metadata(metadata, nombre_archivo_a_crear);
 }
 
-void liberar_bloques(uint32_t actual_nro_bloque_final_archivo, uint32_t cantidad_a_liberar_en_bloques) {
+void liberar_bloques(uint32_t actual_nro_bloque_final_archivo, uint32_t cantidad_a_liberar_en_bloques, char* nombre_archivo) {
     for (int i = 1; i <= cantidad_a_liberar_en_bloques; i++) {
+        list_remove(nombres_archivos_bitmap, actual_nro_bloque_final_archivo);
+        char* empty_string = string_new();
+        list_add_in_index(nombres_archivos_bitmap, actual_nro_bloque_final_archivo, empty_string);
         bitarray_clean_bit(bitmap_mapeado, actual_nro_bloque_final_archivo);
         actual_nro_bloque_final_archivo--;
     }
@@ -601,7 +663,7 @@ void achicar_archivo(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_arch
     uint32_t tamanio_a_truncar_en_bloques = ceil(resultado_tamanio_a_truncar_en_bytes);
 
     // Liberar los bloques que exceden al archivo
-    liberar_bloques(actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques);
+    liberar_bloques(actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques, nombre_archivo_a_truncar);
     metadata_archivo_a_truncar->tamanio_archivo = nuevo_tamanio_archivo;
 
     //escribir metadata
@@ -623,9 +685,10 @@ uint32_t obtener_cantidad_de_bloques_libres_al_final_de_archivo(uint32_t actual_
     return cantidad_bloques_libres;
 }
 
-void ocupar_bloques(uint32_t nro_bloque_inicio, uint32_t cantidad_bloques) {
+void ocupar_bloques(uint32_t nro_bloque_inicio, uint32_t cantidad_bloques, char* nombre_archivos_bitmap) {
     for (int i = nro_bloque_inicio; i < nro_bloque_inicio + cantidad_bloques; i++) {
         bitarray_set_bit(bitmap_mapeado, i);
+        list_add_in_index(nombres_archivos_bitmap, i, nombre_archivos_bitmap);
     }
 }
 
@@ -663,16 +726,22 @@ void mostrar_bloques_libres() {
 
     uint32_t cantidad_de_espacios_libres = bloques_libres();
     char* bloques_libres_con_formato = string_new();
+    char* nombres_bloques_libres_con_formato = string_new();
 
     for (int i = 0; i < BLOCK_COUNT; i++) {
         string_append_with_format(&bloques_libres_con_formato, "%d-", bitarray_test_bit(bitmap_mapeado, i));
     }
+    for (int i = 0; i < list_size(nombres_archivos_bitmap); i++) {
+        string_append_with_format(&nombres_bloques_libres_con_formato, "%s-", (char*) list_get(nombres_archivos_bitmap, i));
+    }
 
     log_info(logger_auxiliar, "cantidad bloques libres: %d con formato: %s", cantidad_de_espacios_libres, bloques_libres_con_formato);
+    log_info(logger_auxiliar, "nombres bloques libres: %s", nombres_bloques_libres_con_formato);
 }
 
-void clear_bitmap() {
+void clear_bitmap(char* nombre_archivos_bitmap) {
     for (int i = 0; i < BLOCK_COUNT; i++) {
+        list_remove(nombres_archivos_bitmap, i);
         bitarray_clean_bit(bitmap_mapeado, i);
     }
 }
@@ -692,7 +761,6 @@ t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_a
     t_list* nombre_archivos_metadata = dictionary_keys(map_archivos_metadata);
     int pointer_memory_bloque_de_datos = 0;
     int aux_pointer_memory_bloque_de_datos = 0;
-    list_remove_element(nombre_archivos_metadata, nombre_archivo_a_truncar);
 
     for (int i = 0; i < list_size(nombre_archivos_metadata); i++) {
         char* nombre_metadata_archivo = list_get(nombre_archivos_metadata, i);
@@ -717,7 +785,7 @@ t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_a
     }
 
     //reseteamos todo el bitmap a 0 para luego volver a setearlo correspondiente a los bloques de datos que hayamos ocupado
-    clear_bitmap();
+    clear_bitmap(nombre_archivo_a_truncar);
     fill_bitmap(pointer_memory_bloque_de_datos + tamanio_a_truncar_en_bloques);
 
     //cargamos en el nuevo de bloque de datos el archivo a truncar
@@ -737,6 +805,8 @@ t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_a
     //escribimos en disco las modificaciones
     sync_file(bitmap_addr, BLOCK_COUNT);
     sync_file(bloques_datos_addr, BLOCK_COUNT * BLOCK_SIZE);
+
+    usleep(RETRASO_COMPACTACION*1000);
 
     return metadata_archivo_a_truncar;
 }
@@ -811,7 +881,9 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
         //si solo ocupa un bloque el nuevo tamaño, usamos ese directo, sin importar si mas adelante hay o no libres
 
         if (tamanio_a_truncar_en_bloques == 1 || bloques_libres_al_final >= tamanio_a_truncar_en_bloques) {
-            ocupar_bloques(actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques);
+            if (tamanio_a_truncar_en_bloques != 1) {
+                ocupar_bloques(actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques, nombre_archivo_a_truncar);
+            }
             metadata_archivo_a_truncar->tamanio_archivo = nuevo_tamanio_archivo;
             //escribir metadata
             escribir_metadata(metadata_archivo_a_truncar, nombre_archivo_a_truncar);
@@ -831,10 +903,10 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
             
             if (bloque_inicio_de_espacio_encontrado != -1) {
                 //Se encontro un espacio contiguo libre suficiente en el disco
-                liberar_bloques(actual_nro_bloque_inicial_archivo, tamanio_actual_en_bloques_de_archivo_a_truncar);
+                liberar_bloques(actual_nro_bloque_inicial_archivo, tamanio_actual_en_bloques_de_archivo_a_truncar, nombre_archivo_a_truncar);
                 metadata_archivo_a_truncar->bloque_inicial = bloque_inicio_de_espacio_encontrado;
                 metadata_archivo_a_truncar->tamanio_archivo = nuevo_tamanio_archivo;
-                ocupar_bloques(bloque_inicio_de_espacio_encontrado, tamanio_a_truncar_en_bloques);
+                ocupar_bloques(bloque_inicio_de_espacio_encontrado, tamanio_a_truncar_en_bloques, nombre_archivo_a_truncar);
                 escribir_metadata(metadata_archivo_a_truncar, nombre_archivo_a_truncar);
                 sync_file(bitmap_addr, BLOCK_COUNT);
                 return;
@@ -872,7 +944,7 @@ void io_fs_delete(char* nombre_archivo_a_borrar) {
     uint32_t primer_bloque = metadata_archivo_a_borrar->bloque_inicial;
 
     //limpiar en el bitmap los bloques correspondientes
-    liberar_bloques(primer_bloque + bloques_a_borrar - 1, bloques_a_borrar); 
+    liberar_bloques(primer_bloque + bloques_a_borrar - 1, bloques_a_borrar, nombre_archivo_a_borrar); 
     // el -1 para evitar borrar de mas y eliminar "desde hasta" (si entendi bien)
 
     //cerrar y eliminar el archivo de metadata (remove)
