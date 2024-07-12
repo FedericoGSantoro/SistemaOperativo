@@ -382,7 +382,7 @@ void inicializar(){
     if (TIPO_INTERFAZ == FS) {
         levantarArchivoDeBloques();
         levantarArchivoDeBitmap();
-        levantarArchivosDeMetadata();
+        levantarArchivoMetadata();
     }
 
     parametrosRecibidos = list_create();
@@ -564,7 +564,7 @@ t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
     return metadata_a_leer;
 }
 
-void levantarArchivosDeMetadata() {
+void levantarArchivoMetadata() {
 
     map_archivos_metadata = dictionary_create();
 
@@ -576,7 +576,7 @@ void levantarArchivosDeMetadata() {
     
     if (directorio == NULL) {
         perror("Error al abrir el directorio");
-        return 1;
+        return;
     }
     
     // Leer y mostrar los nombres de archivo del directorio
