@@ -11,6 +11,7 @@
 #include <readline/history.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/dictionary.h>
+#include <commons/temporal.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -118,14 +119,11 @@ int pid_siguiente = 1;
 comando_consola comando;
 bool planificacionEjecutandose = true;
 bool planificacionNoEjecutandosePorFinalizarProceso = false;
-char* pathArchivo;
-int numeroConsola = 1;
-uint32_t pcbADesalojar;
+t_pcb* pcbADesalojar;
 uint32_t pidAEliminar;
 t_list* pidsAFinalizar;
 char* interfazAEliminar;
 uint32_t PidAEnviarExit;
-
 
 /*---------COLAS---------*/
 
@@ -255,7 +253,7 @@ comando_consola transformarAOperacion(char* operacionLeida);
 // Obtiene el tipo de interfaz
 char* obtenerTipoInterfaz(typeInterface tipoInterfaz);
 // Comprueba si el pcb esta en la lista de pids a eliminar
-bool comprobarSiSeDebeEliminar(t_pcb* pcbAComprobar);
+t_pcb* comprobarSiSeDebeEliminar(uint32_t* pcbAComprobar);
 // Atiende al cliente
 void atender_cliente(interfazConectada* argumentoVoid);
 // Itera el paquete y lo muestra por pantalla

@@ -47,6 +47,7 @@ extern uint32_t valor_registro_numerico;
 //extern t_punteros_memoria punteros_memoria;
 extern process_state state;
 extern blocked_reason motivo_bloqueo;
+extern motivo_finalizacion motivoFinalizacion;
 // instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse
 extern char* ir;
 

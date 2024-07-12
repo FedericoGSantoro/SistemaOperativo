@@ -58,8 +58,17 @@ typedef enum {
 	OK_OPERACION,
 	ERROR_OPERACION,
 	INTERRUPCION,
-	OUT_OF_MEMORY,
+	NO_MEMORY,
 } op_codigo;
+
+typedef enum {
+	NONEXISTENT, //no aplica
+	SUCCESS,
+	INVALID_RESOURCE,
+	INVALID_INTERFACE,
+	OUT_OF_MEMORY,
+	INTERRUPTED_BY_USER,
+} motivo_finalizacion;
 
 // Razones de bloqueo
 typedef enum{
@@ -132,11 +141,12 @@ typedef struct{
 	process_state state;
 	blocked_reason motivo_bloqueo;
 	t_io_detail io_detail;
+	motivo_finalizacion motivoFinalizacion;
 } t_contexto_ejecucion;
 // PCB
 typedef struct{
 	uint64_t quantum_faltante; // duracion restante del tiempo de ejecucion
-	int io_identifier; // identificador de la entrada/salida correspondiente
+	t_list* recursosAsignados; // lista con los recursos asignados
 	t_contexto_ejecucion contexto_ejecucion;
 	char* path_archivo; // archivo con las instrucciones a ejecutar
 } t_pcb;

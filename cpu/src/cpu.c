@@ -271,6 +271,7 @@ void empaquetarContextoEjecucion(t_paquete *paquete) {
     agregar_a_paquete(paquete, &(registros_cpu.si), sizeof(uint32_t));
     agregar_a_paquete(paquete, &(registros_cpu.di), sizeof(uint32_t));
     agregar_a_paquete(paquete, &(motivo_bloqueo), sizeof(int));
+    agregar_a_paquete(paquete, &(motivoFinalizacion), sizeof(int));
     agregar_io_detail(paquete);
 }
 
@@ -299,6 +300,8 @@ void desempaquetarContextoEjecucion(t_list *paquete) {
     motivo_bloqueo = *(blocked_reason *)list_get(paquete, 13);
     io_detail.nombre_io = "";
     io_detail.parametros = list_create();
+    io_detail.io_instruccion = NONE;
+    motivoFinalizacion = NONEXISTENT;
 }
 
 void recvContextoEjecucion() {
