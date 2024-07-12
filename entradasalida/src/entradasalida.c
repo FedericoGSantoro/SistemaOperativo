@@ -176,6 +176,7 @@ int main(int argc, char* argv[]) {
             if (0 < cantidadParametros){
                 char* nombre_archivo_a_crear = (char*) list_get(parametrosRecibidos, 0);
                 io_fs_create(nombre_archivo_a_crear);
+                mostrar_bloques_libres();
             }
             enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
@@ -185,6 +186,14 @@ int main(int argc, char* argv[]) {
                 log_error(logger_error, "Se envió la instrucción IO_FS_DELETE a la interfaz no FS: %s", nombre);
                 break;
             }
+            cantidadParametros = list_size(parametrosRecibidos);
+            if (0 < cantidadParametros){
+                char* nombre_archivo_a_borrar = (char*) list_get(parametrosRecibidos, 0);
+                log_info(logger_obligatorio, "PID: %d - Eliminar Archivo: %s", pid, nombre_archivo_a_borrar); //lo hago local para aclarar el nombre.
+                io_fs_delete(nombre_archivo_a_borrar);
+                mostrar_bloques_libres();
+            }
+            enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
 
         case IO_FS_READ:
@@ -578,8 +587,8 @@ void io_fs_create(char *nombre_archivo_a_crear) {
     escribir_metadata(metadata, nombre_archivo_a_crear);
 }
 
-void liberar_bloques(uint32_t actual_nro_bloque_final_archivo, uint32_t tamanio_a_truncar_en_bloques) {
-    for (int i = 1; i <= tamanio_a_truncar_en_bloques; i++) {
+void liberar_bloques(uint32_t actual_nro_bloque_final_archivo, uint32_t cantidad_a_liberar_en_bloques) {
+    for (int i = 1; i <= cantidad_a_liberar_en_bloques; i++) {
         bitarray_clean_bit(bitmap_mapeado, actual_nro_bloque_final_archivo);
         actual_nro_bloque_final_archivo--;
     }
@@ -844,6 +853,35 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
         }
 
     }
+}
+
+void io_fs_delete(char* nombre_archivo_a_borrar) {
+
+    char* path_archivo_a_eliminar = string_new();
+    string_append(&path_archivo_a_eliminar, PATH_BASE_DIALFS);
+    string_append(&path_archivo_a_eliminar, "/");
+    string_append(&path_archivo_a_eliminar, nombre_archivo_a_borrar);
+
+
+    log_info(logger_auxiliar, "Inicio función FS_delete");
+    //Abrir archivo de metadata y leer primer bloque + tamaño en bytes
+    t_metadata_archivo* metadata_archivo_a_borrar = leer_metadata_archivo(nombre_archivo_a_borrar);
+    //aca se podría abstraer en un calcular_desplazamiento_de_bloques(archivo) o algo así
+    float calculo_bloques_a_borrar = ((float) metadata_archivo_a_borrar->tamanio_archivo / (float) BLOCK_SIZE);
+    uint32_t bloques_a_borrar = ceil(calculo_bloques_a_borrar); //incluyendo al inicial
+    uint32_t primer_bloque = metadata_archivo_a_borrar->bloque_inicial;
+
+    //limpiar en el bitmap los bloques correspondientes
+    liberar_bloques(primer_bloque + bloques_a_borrar - 1, bloques_a_borrar); 
+    // el -1 para evitar borrar de mas y eliminar "desde hasta" (si entendi bien)
+
+    //cerrar y eliminar el archivo de metadata (remove)
+    if (remove(path_archivo_a_eliminar) == 0) {
+        log_info(logger_auxiliar, "El archivo \"%s\" fue eliminado correctamente.\n", nombre_archivo_a_borrar);
+    } else {
+        log_error(logger_error, "Error al intentar eliminar el archivo \"%s\".\n", nombre_archivo_a_borrar);
+    }
+    //abrir bloques.dat y limpiar los correspondientes (no hace falta segun issue3987)
 }
 
 char* enumToString(t_nombre_instruccion nombreDeInstruccion){

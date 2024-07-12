@@ -351,8 +351,9 @@ void resize_instruction(t_list *parametros)
     resize_en_memoria(pid, size_to_resize);
     op_codigo codigoOperacion = recibir_operacion(fd_memoria);
     // TODO: Recibir operacion y fijarse si es Out Of Memory o OK
-    if (codigoOperacion == OUT_OF_MEMORY)
-    {
+    if (codigoOperacion == NO_MEMORY)
+    {   
+        motivoFinalizacion = OUT_OF_MEMORY;
         manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
         log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
         return;
@@ -378,6 +379,28 @@ void agregar_parametro_io(tipo_de_dato tipo_de_dato, int tamanio_valor, int indi
     parametro_io_tamanio->valor = malloc(tamanio_valor);
     parametro_io_tamanio->valor = valor_parametro;
     list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
+}
+
+void io_fs_delete_instruction(t_list* parametros) {
+    // recibe:(Interfaz, Nombre archivo)
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *nombre_archivo = (char *)list_get(parametros, 1);
+    
+    // cargo parametro de IO con nombre de archivo
+    t_params_io *parametro_io_fs_create = malloc(sizeof(int) + string_length(nombre_archivo) + 1);
+    parametro_io_fs_create->tipo_de_dato = STRING;
+    parametro_io_fs_create->valor = nombre_archivo;
+    list_add_in_index(io_detail.parametros, 0, parametro_io_fs_create);
+    
+    // cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = IO_FS_DELETE;
+    io_detail.io_instruccion = *io_instruccion;
+    // cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
 }
 
 void io_fs_create_instruction(t_list* parametros) {
@@ -667,6 +690,7 @@ void signal_instruction(t_list *parametros)
 
 void exit_instruction(t_list *parametros)
 {
+    motivoFinalizacion = SUCCESS;
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
 }
 
@@ -736,8 +760,10 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_CREATE;
         tipo_instruccion_mapped.execute = io_fs_create_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_DELETE"))
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_DELETE")) {
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_DELETE;
+        tipo_instruccion_mapped.execute = io_fs_delete_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_TRUNCATE")) {
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_TRUNCATE;
         tipo_instruccion_mapped.execute = io_fs_truncate_instruction;

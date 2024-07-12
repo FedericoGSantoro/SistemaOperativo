@@ -180,7 +180,7 @@ void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
     int cant_pags_usadas = obtener_cant_pags_usadas();
     if (cant_pags_a_risezear + cant_pags_usadas > cant_marcos) {
         // outofmemory
-        enviar_codigo_op(OUT_OF_MEMORY, fd_cliente_cpu); //No considero necesario mandar un OK_OPERACION
+        enviar_codigo_op(NO_MEMORY, fd_cliente_cpu); //No considero necesario mandar un OK_OPERACION
         return;
     }
 

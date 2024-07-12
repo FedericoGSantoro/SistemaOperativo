@@ -37,6 +37,7 @@ uint32_t valor_registro_numerico;
 // t_punteros_memoria punteros_memoria;
 process_state state;
 blocked_reason motivo_bloqueo;
+motivo_finalizacion motivoFinalizacion;
 // instruction register (IR) almacena la instruccion actual que se está ejecutando o que está por ejecutarse
 char *ir;
 
