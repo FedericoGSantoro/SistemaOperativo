@@ -31,7 +31,7 @@ int buscar_marco_en_tlb(uint32_t dir_logica) {
         log_info(logger_aux_cpu, "No encontre la pagina en la TLB: %d", num_pagina);
         log_info(logger_obligatorio_cpu, "PID: %d - TLB MISS - Pagina: %d", pid, num_pagina);
         int num_marco = solicitar_numero_de_marco(num_pagina);
-
+        
         if (num_marco == -1) {
             return num_marco;
         }

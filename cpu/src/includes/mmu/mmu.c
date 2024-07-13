@@ -55,10 +55,14 @@ t_list* peticion_de_direcciones_fisicas(void* cantidad_bytes, tipo_de_dato tipo_
 
 int traducir_direccion_mmu(uint32_t dir_logica)
 {
-    int desplazamiento = dir_logica - numero_pagina(dir_logica) * tam_pagina; // esto seria el resto entre la division de DL y tamanio de pagina (cuyo cociente es el numero de pagina)
+
+    uint32_t num_pagina = numero_pagina(dir_logica);
+    int desplazamiento = dir_logica - num_pagina * tam_pagina; // esto seria el resto entre la division de DL y tamanio de pagina (cuyo cociente es el numero de pagina)
    
     // TODO: Cambiar para usar TLB:
     int num_marco = buscar_marco_en_tlb(dir_logica);
+    log_info(logger_obligatorio_cpu, "PID: %d - OBTENER MARCO - Pagina: %d - Marco: %d", pid, num_pagina, num_marco);
+    
     if(num_marco == -1)
     {
         return -1;
