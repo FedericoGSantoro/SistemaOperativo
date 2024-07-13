@@ -372,13 +372,44 @@ void agregar_direccion_fisica_a_lista(uint32_t *dir_fis)
     // no se si hace falta un free() uwu
 }
 
+void agregar_parametro_io(tipo_de_dato tipo_de_dato, int tamanio_valor, int indice_parametros, void* valor_parametro) {
+
+    t_params_io *parametro_io_tamanio = malloc(sizeof(int) + tamanio_valor);
+    parametro_io_tamanio->tipo_de_dato = tipo_de_dato;
+    parametro_io_tamanio->valor = malloc(tamanio_valor);
+    parametro_io_tamanio->valor = valor_parametro;
+    list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
+}
+
+void io_fs_delete_instruction(t_list* parametros) {
+    // recibe:(Interfaz, Nombre archivo)
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *nombre_archivo = (char *)list_get(parametros, 1);
+    
+    // cargo parametro de IO con nombre de archivo
+    t_params_io *parametro_io_fs_create = malloc(sizeof(int) + string_length(nombre_archivo) + 1);
+    parametro_io_fs_create->tipo_de_dato = STRING;
+    parametro_io_fs_create->valor = nombre_archivo;
+    list_add_in_index(io_detail.parametros, 0, parametro_io_fs_create);
+    
+    // cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = IO_FS_DELETE;
+    io_detail.io_instruccion = *io_instruccion;
+    // cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+}
+
 void io_fs_create_instruction(t_list* parametros) {
     // recibe:(Interfaz, Nombre archivo)
     char *nombre_io = (char *)list_get(parametros, 0);
     char *nombre_archivo = (char *)list_get(parametros, 1);
     
     // cargo parametro de IO con nombre de archivo
-    t_params_io *parametro_io_fs_create = malloc(string_length(nombre_archivo) + 1);
+    t_params_io *parametro_io_fs_create = malloc(sizeof(int) + string_length(nombre_archivo) + 1);
     parametro_io_fs_create->tipo_de_dato = STRING;
     parametro_io_fs_create->valor = nombre_archivo;
     list_add_in_index(io_detail.parametros, 0, parametro_io_fs_create);
@@ -394,6 +425,130 @@ void io_fs_create_instruction(t_list* parametros) {
     free(io_instruccion);
 }
 
+void io_fs_truncate_instruction(t_list *parametros) {
+    // recibe:(Interfaz, Nombre archivo, Tamanio a truncar)
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *nombre_archivo = (char *)list_get(parametros, 1);
+    char *registro_tamanio = (char *)list_get(parametros, 2);
+    
+    void *reg_tam = mapear_registro(registro_tamanio);
+    tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_tamanio);
+    uint32_t reg_tam_casteado = get_registro_numerico_casteado_32b(reg_tam, tipo_de_dato_datos);
+
+    // cargo parametro de IO con nombre de archivo
+    t_params_io *parametro_io_1_fs_truncate = malloc(sizeof(int) + string_length(nombre_archivo) + 1);
+    parametro_io_1_fs_truncate->tipo_de_dato = STRING;
+    parametro_io_1_fs_truncate->valor = nombre_archivo;
+    list_add_in_index(io_detail.parametros, 0, parametro_io_1_fs_truncate);
+    
+    // cargo parametro de IO con tamanio a truncar
+    t_params_io *parametro_io_2_fs_truncate = malloc(string_length(nombre_archivo) + 1);
+    parametro_io_2_fs_truncate->tipo_de_dato = UINT32;
+    parametro_io_2_fs_truncate->valor = malloc(sizeof(uint32_t));
+    *(uint32_t *)parametro_io_2_fs_truncate->valor = reg_tam_casteado;
+    list_add_in_index(io_detail.parametros, 1, parametro_io_2_fs_truncate);
+
+    // cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = IO_FS_TRUNCATE;
+    io_detail.io_instruccion = *io_instruccion;
+    // cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+}
+
+t_list* agregar_parametros_dir_fisicas_para_io(int* indice_parametros, void* reg_dir, char *registro_direccion, void *reg_tam, char *registro_tamanio) {
+
+    int indice_parametros_value = *indice_parametros;
+    // armo el array con las direcs fis. y agrego a los parametros c/ posicion
+    tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_direccion);
+    tipo_de_dato tipo_de_dato_registro_bytes = mapear_tipo_de_dato(registro_tamanio);
+    t_list *dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
+    
+    t_params_io *parametro_io_tamanio = malloc(sizeof(int) + sizeof(int));
+    parametro_io_tamanio->tipo_de_dato = INT;
+    parametro_io_tamanio->valor = malloc(sizeof(int));
+    *(int*)parametro_io_tamanio->valor = list_size(dir_fisicas);
+    list_add_in_index(io_detail.parametros, indice_parametros_value, parametro_io_tamanio);
+
+    for (int indice_dir_fisicas = 0; indice_dir_fisicas < list_size(dir_fisicas); indice_dir_fisicas++)
+    {
+        indice_parametros_value++;
+        agregar_direccion_fisica_a_lista((uint32_t *)list_get(dir_fisicas, indice_dir_fisicas));
+    }
+
+    *indice_parametros = indice_parametros_value;
+    return dir_fisicas;
+}
+
+void agregar_params_y_ejecutar_interaccion_a_memoria_para_fs(t_list* parametros, t_nombre_instruccion nombre_instruccion) {
+
+    // recibe:(Interfaz, Nombre archivo, Registro Direccion, Registro Tamanio, Registro Puntero Archivo)
+    char *nombre_io = (char *)list_get(parametros, 0);
+    char *nombre_archivo = (char *)list_get(parametros, 1);
+    char *registro_direccion = (char *)list_get(parametros, 2);
+    char *registro_tamanio = (char *)list_get(parametros, 3);
+    char *registro_puntero_archivo = (char *)list_get(parametros, 4);
+
+    // mapeo
+    void *reg_dir = mapear_registro(registro_direccion);
+
+    void *reg_tam = mapear_registro(registro_tamanio);
+    tipo_de_dato tipo_de_dato_tamanio = mapear_tipo_de_dato(registro_tamanio);
+    uint32_t reg_tam_casteado = get_registro_numerico_casteado_32b(reg_tam, tipo_de_dato_tamanio);
+    
+    void *reg_registro_puntero_archivo_bits = mapear_registro(registro_puntero_archivo);
+    tipo_de_dato tipo_de_dato_ptr_archivo = mapear_tipo_de_dato(registro_puntero_archivo);
+    uint32_t registro_puntero_archivo_casteado = get_registro_numerico_casteado_32b(reg_registro_puntero_archivo_bits, tipo_de_dato_ptr_archivo);
+
+    // armo el array con las direcs fis. y agrego a los parametros c/ posicion
+    int indice_parametros = 0;
+    // agrego cantidad_dir_fisicas
+    t_list* dir_fisicas = agregar_parametros_dir_fisicas_para_io(&indice_parametros, reg_dir, registro_direccion, reg_tam, registro_tamanio);
+    // agrego el valor del tamaño a escribir
+    indice_parametros++;
+    t_params_io *parametro_io_tamanio = malloc(sizeof(int) + sizeof(uint32_t));
+    parametro_io_tamanio->tipo_de_dato = UINT32;
+    parametro_io_tamanio->valor = malloc(sizeof(uint32_t));
+    *(uint32_t*)parametro_io_tamanio->valor = reg_tam_casteado;
+    list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
+    // agrego el puntero del archivo
+    indice_parametros++;
+    t_params_io *parametro_io_ptr_archivo = malloc(sizeof(int) + sizeof(uint32_t));
+    parametro_io_ptr_archivo->tipo_de_dato = UINT32;
+    parametro_io_ptr_archivo->valor = malloc(sizeof(uint32_t));
+    *(uint32_t*)parametro_io_ptr_archivo->valor = registro_puntero_archivo_casteado;
+    list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_ptr_archivo);
+    // agrego el nombre del archivo
+    indice_parametros++;
+    t_params_io *parametro_io_fs_create = malloc(sizeof(int) + string_length(nombre_archivo) + 1);
+    parametro_io_fs_create->tipo_de_dato = STRING;
+    parametro_io_fs_create->valor = nombre_archivo;
+    list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_fs_create);
+    // cargo nombre instruccion
+    t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
+    *io_instruccion = nombre_instruccion;
+    io_detail.io_instruccion = *io_instruccion;
+    // cargo nombre io
+    io_detail.nombre_io = nombre_io;
+
+    manejarInterrupciones(LLAMADA_SISTEMA);
+    free(io_instruccion);
+    liberar_lista_de_datos_con_punteros(dir_fisicas);
+}
+
+void io_fs_read_instruction(t_list* parametros) {
+
+    agregar_params_y_ejecutar_interaccion_a_memoria_para_fs(parametros, IO_FS_READ);
+}
+
+void io_fs_write_instruction(t_list* parametros) {
+
+    agregar_params_y_ejecutar_interaccion_a_memoria_para_fs(parametros, IO_FS_WRITE);
+}
+
 void io_stdout_write_instruction(t_list *parametros)
 { // honores to: capo master fede (s, no w)
     // leo parametros
@@ -403,27 +558,20 @@ void io_stdout_write_instruction(t_list *parametros)
     char *registro_tamanio = (char *)list_get(parametros, 2);
     // mapeo
     void *reg_dir = mapear_registro(registro_direccion);
+    
     void *reg_tam = mapear_registro(registro_tamanio);
-
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_tamanio);
     uint32_t reg_tam_casteado = get_registro_numerico_casteado_32b(reg_tam, tipo_de_dato_datos);
 
     // armo el array con las direcs fis. y agrego a los parametros c/ posicion
-    tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_direccion);
-    tipo_de_dato tipo_de_dato_registro_bytes = mapear_tipo_de_dato(registro_tamanio);
-    t_list *dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
-
     int indice_parametros = 0;
-    for (indice_parametros = 0; indice_parametros < list_size(dir_fisicas); indice_parametros++)
-    {
-        agregar_direccion_fisica_a_lista((uint32_t *)list_get(dir_fisicas, indice_parametros));
-    }
-    
+    t_list* dir_fisicas = agregar_parametros_dir_fisicas_para_io(&indice_parametros, reg_dir, registro_direccion, reg_tam, registro_tamanio);
     // agrego el valor del tamaño a leer por ultimo
+    indice_parametros++;
     t_params_io *parametro_io_tamanio = malloc(sizeof(int) + sizeof(uint32_t));
-    parametro_io_tamanio->tipo_de_dato = INT;
+    parametro_io_tamanio->tipo_de_dato = UINT32;
     parametro_io_tamanio->valor = malloc(sizeof(uint32_t));
-    *(uint32_t *)parametro_io_tamanio->valor = reg_tam_casteado;
+    *(uint32_t*)parametro_io_tamanio->valor = reg_tam_casteado;
     list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
     // cargo nombre instruccion
     t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
@@ -446,23 +594,20 @@ void io_stdin_read_instruction(t_list *parametros)
     char *registro_tamanio = (char *)list_get(parametros, 2);
     // mapeo
     void *reg_dir = mapear_registro(registro_direccion);
+
     void *reg_tam = mapear_registro(registro_tamanio);
+    tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_tamanio);
+    uint32_t reg_tam_casteado = get_registro_numerico_casteado_32b(reg_tam, tipo_de_dato_datos);
 
     // armo el array con las direcs fis. y agrego a los parametros c/ posicion
-    tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_direccion);
-    tipo_de_dato tipo_de_dato_registro_bytes = mapear_tipo_de_dato(registro_tamanio);
-    t_list *dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
-
-    int indice_parametros;
-    for (indice_parametros = 0; indice_parametros < list_size(dir_fisicas); indice_parametros++)
-    {
-        agregar_direccion_fisica_a_lista((uint32_t *)list_get(dir_fisicas, indice_parametros));
-    }
+    int indice_parametros = 0;
+    t_list* dir_fisicas = agregar_parametros_dir_fisicas_para_io(&indice_parametros, reg_dir, registro_direccion, reg_tam, registro_tamanio);
     // agrego el valor del tamaño a leer por ultimo
-    t_params_io *parametro_io_tamanio = malloc(sizeof(int) * 2);
-    parametro_io_tamanio->tipo_de_dato = INT;
-    parametro_io_tamanio->valor = malloc(sizeof(int));
-    *(int *)parametro_io_tamanio->valor = *(int *) reg_tam;
+    indice_parametros++;
+    t_params_io *parametro_io_tamanio = malloc(sizeof(int) + sizeof(uint32_t));
+    parametro_io_tamanio->tipo_de_dato = UINT32;
+    parametro_io_tamanio->valor = malloc(sizeof(uint32_t));
+    *(uint32_t*)parametro_io_tamanio->valor = reg_tam_casteado;
     list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
     // cargo nombre instruccion
     t_nombre_instruccion *io_instruccion = malloc(sizeof(int));
@@ -486,7 +631,6 @@ void copy_string_instruction(t_list *parametros)
     tipo_de_dato tipo_de_dato_registro_di = mapear_tipo_de_dato("DI");
     t_list *dir_fisicas_si = peticion_de_direcciones_fisicas(cantidad_bytes, UINT32, registro_si, tipo_de_dato_registro_si);
     t_list *dir_fisicas_di = peticion_de_direcciones_fisicas(cantidad_bytes, UINT32, registro_di, tipo_de_dato_registro_di);
-    void *valor_obtenido_de_memoria;
     char *leido = string_new();
 
     // Obtenemos las direcciones fisicas de SI y DI
@@ -616,14 +760,22 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_CREATE;
         tipo_instruccion_mapped.execute = io_fs_create_instruction;
     }
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_DELETE"))
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_DELETE")) {
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_DELETE;
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_TRUNCATE"))
+        tipo_instruccion_mapped.execute = io_fs_delete_instruction;
+    }
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_TRUNCATE")) {
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_TRUNCATE;
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_WRITE"))
+        tipo_instruccion_mapped.execute = io_fs_truncate_instruction;
+    }
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_WRITE")){
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_WRITE;
-    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_READ"))
+        tipo_instruccion_mapped.execute = io_fs_write_instruction;
+    }
+    else if (string_equals_ignore_case(nombre_instruccion, "IO_FS_READ")){
         tipo_instruccion_mapped.nombre_instruccion = IO_FS_READ;
+        tipo_instruccion_mapped.execute = io_fs_read_instruction;
+    }
     else if (string_equals_ignore_case(nombre_instruccion, "WAIT"))
     {
         tipo_instruccion_mapped.nombre_instruccion = WAIT;

@@ -335,10 +335,14 @@ void crear_proceso(int fd_cliente_kernel) {
     // recibirPID
     int pid = *(int*) list_get(paquete_recibido, 0);
     // recibirPath
-    char *path = (char*) list_get(paquete_recibido, 1);
-    
+    char *path_relativo = (char*) list_get(paquete_recibido, 1);
+
+    char* path_absoluto = string_new();
+    string_append(&path_absoluto, memConfig.pathInstrucciones);
+    string_append(&path_absoluto, path_relativo);
+
     inicializar_tabla_paginas(pid);
-    crear_instrucciones(path, pid);
+    crear_instrucciones(path_absoluto, pid);
     
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(paquete_recibido);
