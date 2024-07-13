@@ -1,7 +1,7 @@
 #include "tlb.h"
 
 // Chequear uint32_t dir_logica
-uint32_t buscar_marco_en_tlb(uint32_t dir_logica) {
+int buscar_marco_en_tlb(uint32_t dir_logica) {
     // Se busca si la pagina de la dir logica esta en el tlb
     uint32_t num_pagina = numero_pagina(dir_logica);
     int indice = -1;
@@ -19,6 +19,7 @@ uint32_t buscar_marco_en_tlb(uint32_t dir_logica) {
     // Si lo encuentra lo devuelve (Si es LRU lo saca de la lista y lo agregga al final)
     if ( entradaTLB != NULL ) {
         log_info(logger_aux_cpu, "Encontre la pagina en la TLB: %d -> %d", entradaTLB->numeroPagina, entradaTLB->numeroMarco);
+        log_info(logger_obligatorio_cpu, "PID: %d - TLB HIT - Pagina: %d", pid, entradaTLB->numeroPagina);
         if ( ALGORITMO_TLB == LRU ) {
             list_remove(listaEntradasTLB, indice);
             list_add(listaEntradasTLB, entradaTLB);
@@ -28,7 +29,13 @@ uint32_t buscar_marco_en_tlb(uint32_t dir_logica) {
     // Si no lo encuentra hace la peticion a memoria para la traduccion y lo carga (Si no hay espacio, saca el primer elemento y agrega el nuevo al final)
     else {
         log_info(logger_aux_cpu, "No encontre la pagina en la TLB: %d", num_pagina);
-        uint32_t num_marco = solicitar_numero_de_marco(num_pagina);
+        log_info(logger_obligatorio_cpu, "PID: %d - TLB MISS - Pagina: %d", pid, num_pagina);
+        int num_marco = solicitar_numero_de_marco(num_pagina);
+
+        if (num_marco == -1) {
+            return num_marco;
+        }
+
         if ( CANTIDAD_ENTRADAS_TLB == 0 ) {
             log_info(logger_aux_cpu, "No existe TLB, devolviendo marco");
             free(entradaTLB);
@@ -56,25 +63,32 @@ uint32_t numero_pagina(uint32_t dir_logica) {
     return floor(dir_logica / tam_pagina);
 }
 
-uint32_t solicitar_numero_de_marco(uint32_t num_pagina) {
-    t_paquete *paquete = crear_paquete(DEVOLVER_MARCO);
+int solicitar_numero_de_marco(uint32_t num_pagina) {
 
-    agregar_a_paquete(paquete, &num_pagina, sizeof(uint32_t));
-    agregar_a_paquete(paquete, &pid, sizeof(int));
+    op_codigo cod_op;
 
-    enviar_paquete(paquete, fd_memoria);
+    do {
+        t_paquete *paquete = crear_paquete(DEVOLVER_MARCO);
 
-    op_codigo cod_op = recibir_operacion(fd_memoria);
+        agregar_a_paquete(paquete, &num_pagina, sizeof(uint32_t));
+        agregar_a_paquete(paquete, &pid, sizeof(int));
 
-    // TODO: Por que esta asi, que significa?
-    while (cod_op != DEVOLVER_MARCO)
-    {
+        enviar_paquete(paquete, fd_memoria);
+
+        eliminar_paquete(paquete);
+
         cod_op = recibir_operacion(fd_memoria);
+    } while (cod_op != DEVOLVER_MARCO && cod_op != NO_MEMORY);
+
+    if (cod_op == NO_MEMORY) {
+        return -1;
     }
-    
+
     t_list *paquete_recibido = recibir_paquete(fd_memoria);
     
     uint32_t numero_marco = *(uint32_t*) list_get(paquete_recibido, 0);
    
+    list_destroy(paquete_recibido);
+
     return numero_marco;
 }

@@ -476,8 +476,11 @@ void largo_plazo_new() {
         }
         pthread_mutex_unlock(&sem_planificacion);
         sem_wait(&semContadorColaNew);
+        pthread_mutex_lock(&mx_cantidad_ejecutandose);
         pthread_mutex_lock(&sem_grado_multiprogramacion);
-        if ( elementosEjecutandose() < GRADO_MULTIPROGRAMACION ) {
+        if ( cantidad_elementos_ejecutandose < GRADO_MULTIPROGRAMACION ) {
+            cantidad_elementos_ejecutandose++;
+            pthread_mutex_unlock(&mx_cantidad_ejecutandose);
             pthread_mutex_unlock(&sem_grado_multiprogramacion);
             t_pcb* pcb = quitarPcbCola(cola_new, sem_cola_new);
             mensaje_memoria(CREAR_PCB, pcb);
@@ -487,6 +490,7 @@ void largo_plazo_new() {
             cambiarEstado(READY, pcb);
             continue;
         }
+        pthread_mutex_unlock(&mx_cantidad_ejecutandose);
         pthread_mutex_unlock(&sem_grado_multiprogramacion);
         sem_post(&semContadorColaNew);
     }
@@ -521,6 +525,9 @@ void largo_plazo_exit() {
         t_pcb* pcb = quitarPcbCola(cola_exit, sem_cola_exit);
         log_info(logs_obligatorios, "Finaliza el proceso %d - Motivo: %s", pcb->contexto_ejecucion.pid, obtenerMotivo(pcb->contexto_ejecucion.motivoFinalizacion));
         eliminar_pcb(pcb);
+        pthread_mutex_lock(&mx_cantidad_ejecutandose);
+        cantidad_elementos_ejecutandose--;
+        pthread_mutex_unlock(&mx_cantidad_ejecutandose);
     }
 }
 
@@ -674,6 +681,7 @@ void inicializarSemaforos() {
     pthread_mutex_init(&mutexEliminarProceso, NULL);
     pthread_mutex_init(&mutexpidAEnviarExit, NULL);
     pthread_mutex_init(&mutexInterfazAEliminar, NULL);
+    pthread_mutex_init(&mx_cantidad_ejecutandose, NULL);
     pthread_mutex_init(&sem_grado_multiprogramacion, NULL);
     pthread_mutex_init(&sem_planificacion, NULL);
     pthread_cond_init(&condicion_planificacion, NULL);
@@ -988,7 +996,7 @@ void ejecutar_comando_consola(char** arrayComando) {
         log_info(logs_obligatorios, "Cola EXIT: [%s]", obtenerPids(cola_exit, sem_cola_exit));
         break;
     default:
-        log_info(logs_auxiliares, "Comando desconocido");
+        log_info(logs_auxiliares, "Comando desconocido: %d", comando);
         break;
     }
 }
@@ -1296,9 +1304,9 @@ void enviar_handshake() {
 }
 
 void crearLogs() {
-    logs_auxiliares = log_create("logsExtras.log", "[EXTRA]", false, LOG_LEVEL_INFO);
+    logs_auxiliares = log_create("logsExtras2.log", "[EXTRA]", false, LOG_LEVEL_INFO);
     logs_obligatorios = log_create("obligatoriosKernel.log", "[OBLIGATORIOS]", false, LOG_LEVEL_INFO);
-    logs_error = log_create("logsExtras.log", "[ERROR]", false, LOG_LEVEL_INFO);
+    logs_error = log_create("logsExtras2.log", "[ERROR]", false, LOG_LEVEL_INFO);
     // Comprobacion de logs creador correctamente
     if ( logs_auxiliares == NULL || logs_obligatorios == NULL || logs_error == NULL) {
         terminarPrograma();
@@ -1458,6 +1466,7 @@ void terminarPrograma() {
     pthread_mutex_destroy(&sem_cola_blocked);
     pthread_mutex_destroy(&sem_cola_exit);
     pthread_mutex_destroy(&sem_grado_multiprogramacion);
+    pthread_mutex_destroy(&mx_cantidad_ejecutandose);
     pthread_cond_destroy(&condicion_planificacion);
     sem_destroy(&semContadorColaNew);
     sem_destroy(&semContadorColaReady);

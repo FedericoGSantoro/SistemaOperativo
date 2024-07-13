@@ -96,6 +96,11 @@ uint32_t asignar_frame_libre()
 		pthread_mutex_lock(&mx_lista_marcos);
         marco_libre_encontrado = list_find(lista_marcos, (void*)marco_libre);
 		pthread_mutex_unlock(&mx_lista_marcos);
+        
+        if (marco_libre_encontrado == NULL) {
+            log_info(loggerAux, "No hay mas marcos libres");
+            return -1;
+        }
 
         pthread_mutex_lock(marco_libre_encontrado->mutexMarco);
 	    marco_libre_encontrado->libre = false;
@@ -107,7 +112,7 @@ uint32_t asignar_frame_libre()
         return numero_marco_hallado;
 }
 
-uint32_t resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
+int resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
 
     char* pid_str = int_to_string(pid);
 
@@ -134,7 +139,7 @@ uint32_t resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
     return numero_marco;
 }
 
-void agrandar_proceso(int cant_pags_usadas, int cant_pags_a_risezear, int cant_marcos, int pid) {
+void agrandar_proceso(int cant_pags_usadas, int cant_pags_a_risezear, int cant_marcos, int pid, int fd_cliente_cpu) {
 
     t_list* tabla_paginas_de_proceso = get_tabla_paginas_por_proceso(pid);
 
@@ -147,6 +152,11 @@ void agrandar_proceso(int cant_pags_usadas, int cant_pags_a_risezear, int cant_m
     for(int i = index; i < index + cant_pags_a_risezear; i++) {
         t_pagina *pagina = (t_pagina*)malloc(sizeof(t_pagina));
         pagina->marco = asignar_frame_libre();
+        if (pagina->marco == -1) {
+            free(pagina);
+            enviar_codigo_op(NO_MEMORY, fd_cliente_cpu);
+            return;
+        }
         pagina->tiempo_carga = 0; 
         pagina->ultima_referencia = 0;
         pagina->pid = pid;
@@ -164,7 +174,7 @@ void achicar_proceso(int cant_pags_a_risezear, int pid) {
         uint32_t id_marco_usado = pagina_removida->marco;
         t_marco* marco_usado = list_get(lista_marcos, id_marco_usado);
         pthread_mutex_lock(marco_usado->mutexMarco);
-        marco_usado->libre = false;
+        marco_usado->libre = true;
         pthread_mutex_unlock(marco_usado->mutexMarco); 
     
         pthread_mutex_destroy(pagina_removida->mx_pagina);   
@@ -180,6 +190,7 @@ void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
     int cant_pags_usadas = obtener_cant_pags_usadas();
     if (cant_pags_a_risezear + cant_pags_usadas > cant_marcos) {
         // outofmemory
+        log_info(loggerAux, "me quede sin memoria :(");
         enviar_codigo_op(NO_MEMORY, fd_cliente_cpu); //No considero necesario mandar un OK_OPERACION
         return;
     }
@@ -187,7 +198,7 @@ void resize_proceso(int pid, int size_to_resize, int fd_cliente_cpu) {
     int cant_paginas_usadas_por_proceso = obtener_cant_paginas_usadas_por_proceso(pid);
 
     if (cant_paginas_usadas_por_proceso < cant_pags_a_risezear){ //La cantidad de paginas es menor? Osea, estoy agrandando el proceso?
-        agrandar_proceso(cant_pags_usadas, cant_pags_a_risezear, cant_marcos, pid);
+        agrandar_proceso(cant_pags_usadas, cant_pags_a_risezear, cant_marcos, pid, fd_cliente_cpu);
         log_info(loggerOblig, "PID: %d - Tamaño Actual: %d - Tamaño a Ampliar: %d", pid, cant_paginas_usadas_por_proceso*memConfig.tamPagina, cant_pags_a_risezear*memConfig.tamPagina);
     } else {
         achicar_proceso(cant_pags_a_risezear, pid);
