@@ -56,7 +56,6 @@ void corto_plazo_blocked() {
         t_pcb* pcbBloqueado = queue_pop(cola_blocked_aux);
         pthread_mutex_unlock(&sem_cola_blocked_aux);
         ioBuscada = pcbBloqueado->contexto_ejecucion.io_detail.nombre_io;
-        log_info(logs_obligatorios, "PID: %d - Bloqueado por: %s", pcbBloqueado->contexto_ejecucion.pid, ioBuscada);
         interfazConectada* interfazEncontrada = NULL;
         switch (pcbBloqueado->contexto_ejecucion.io_detail.io_instruccion) {
         case IO_GEN_SLEEP:
@@ -88,7 +87,7 @@ void corto_plazo_blocked() {
             sem_post(&semContadorColaExit);
             continue;
         }
-        log_info(logs_auxiliares, "Interfaz encontrada %s", interfazEncontrada->nombre);
+        log_info(logs_auxiliares, "Interfaz encontrada %s para PID %d", interfazEncontrada->nombre, pcbBloqueado->contexto_ejecucion.pid);
         pthread_mutex_lock(&(interfazEncontrada->semaforoMutex));        
         queue_push(interfazEncontrada->colaEjecucion, &(pcbBloqueado->contexto_ejecucion.pid));
         pthread_mutex_unlock(&(interfazEncontrada->semaforoMutex));
@@ -96,6 +95,7 @@ void corto_plazo_blocked() {
         pthread_mutex_lock(&sem_cola_blocked);  
         list_add(cola_blocked, pcbBloqueado);
         pthread_mutex_unlock(&sem_cola_blocked);
+        log_info(logs_obligatorios, "PID: %d - Bloqueado por: %s", pcbBloqueado->contexto_ejecucion.pid, ioBuscada);
     } 
 }
 
@@ -476,7 +476,6 @@ void largo_plazo_new() {
         }
         pthread_mutex_unlock(&sem_planificacion);
         sem_wait(&semContadorColaNew);
-        // Sumar la cola de ready aux?
         pthread_mutex_lock(&sem_grado_multiprogramacion);
         if ( elementosEjecutandose() < GRADO_MULTIPROGRAMACION ) {
             pthread_mutex_unlock(&sem_grado_multiprogramacion);
@@ -486,7 +485,10 @@ void largo_plazo_new() {
             log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
             sem_post(&semContadorColaReady);
             cambiarEstado(READY, pcb);
+            continue;
         }
+        pthread_mutex_unlock(&sem_grado_multiprogramacion);
+        sem_post(&semContadorColaNew);
     }
 }
 
@@ -571,6 +573,7 @@ void crear_pcb(char* pathArchivo) {
     pcb->quantum_faltante = QUANTUM;
     pcb->contexto_ejecucion.motivo_bloqueo = NOTHING;
     pcb->path_archivo = pathArchivo;
+    // SACAR
     pcb->contexto_ejecucion.registro_estados = 0;
     iniciarRegistrosCPU(pcb);
     // iniciarPunterosMemoria(pcb);
@@ -643,7 +646,6 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb) {
     case ELIMINAR_PCB:
         paquete = crear_paquete(ELIMINAR_PCB);
         agregar_a_paquete(paquete, &(pcb->contexto_ejecucion.pid), sizeof(uint32_t));
-        // empaquetar_punteros_memoria(paquete, pcb);
         enviar_paquete(paquete, fd_memoria);
         if ( !evaluar_respuesta_de_operacion(fd_memoria, MEMORIA_SERVER, ELIMINAR_PCB) ) {
             log_warning(logs_auxiliares, "Reintentando eliminacion pid: %d", pcb->contexto_ejecucion.pid);
@@ -665,7 +667,6 @@ void inicializarColas() {
     cola_exec = queue_create();
     cola_exit = queue_create();
     cola_ready_aux = queue_create();
-    pidsAFinalizar = list_create();
 }
 
 void inicializarSemaforos() {
@@ -744,11 +745,9 @@ void atender_recurso(recursoSistema* dataRecurso) {
         if ( ALGORITMO_PLANIFICACION == VRR && pcbDesbloqueado->quantum_faltante != QUANTUM ) {
             agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbDesbloqueado);
             log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
-
         } else {
             agregarPcbCola(cola_ready, sem_cola_ready, pcbDesbloqueado);
             log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
-
         }
         cambiarEstado(READY, pcbDesbloqueado);
         sem_post(&semContadorColaReady);
@@ -924,7 +923,6 @@ void eliminarPid() {
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_exec, sem_cola_exec)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
         mensaje_cpu_interrupt();
-        alarm(0);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_blocked_aux, sem_cola_blocked_aux)) != NULL ){
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
         enviarPCBExit(pcbAEliminar);
@@ -996,7 +994,6 @@ void ejecutar_comando_consola(char** arrayComando) {
 }
 
 comando_consola transformarAOperacion(char* operacionLeida) {
-    
     if ( string_equals_ignore_case(operacionLeida, "EJECUTAR_SCRIPT") ) { // strcmp devuelve 0 si son iguales
         return EJECUTAR_SCRIPT;
     } else if ( string_equals_ignore_case(operacionLeida, "INICIAR_PROCESO") ) {
