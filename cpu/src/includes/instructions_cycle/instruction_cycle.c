@@ -694,6 +694,8 @@ void exit_instruction(t_list *parametros)
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
 }
 
+void none_instruction(t_list* parametros) {}
+
 // Mapeo y lectura de instrucciones (decode)
 
 t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
@@ -790,8 +792,11 @@ t_tipo_instruccion mapear_tipo_instruccion(char *nombre_instruccion)
     {
         tipo_instruccion_mapped.nombre_instruccion = EXIT_PROGRAM;
         tipo_instruccion_mapped.execute = exit_instruction;
+    } 
+    else {
+        tipo_instruccion_mapped.nombre_instruccion = NONE;
+        tipo_instruccion_mapped.execute = none_instruction;
     }
-
     return tipo_instruccion_mapped;
 }
 
