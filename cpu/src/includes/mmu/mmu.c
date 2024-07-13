@@ -38,8 +38,13 @@ t_list* peticion_de_direcciones_fisicas(void* cantidad_bytes, tipo_de_dato tipo_
     // Por cada pagina necesitada se realiza la traduccion a direccion fisica de la direccion logica
     for (int i = 0; i < cantidad_paginas; i++) {
         // En el primer caso se realiza con la direccion logica original, despues con una calculada que apunta a la siguiente paginas
-        uint32_t* traduccion = malloc(sizeof(uint32_t));
+        int* traduccion = malloc(sizeof(int));
         *traduccion = traducir_direccion_mmu(dir_logica);
+        
+        if (*traduccion == -1) {
+            return list_create();
+        }
+
         list_add_in_index(direcciones_fisicas, i, traduccion); 
         // Se cambia la direccion logica para que apunte a la siguiente pagina
         dir_logica = ( num_pagina + i + 1 ) * tam_pagina; 
@@ -48,12 +53,12 @@ t_list* peticion_de_direcciones_fisicas(void* cantidad_bytes, tipo_de_dato tipo_
     return direcciones_fisicas;
 }
 
-uint32_t traducir_direccion_mmu(uint32_t dir_logica)
+int traducir_direccion_mmu(uint32_t dir_logica)
 {
     int desplazamiento = dir_logica - numero_pagina(dir_logica) * tam_pagina; // esto seria el resto entre la division de DL y tamanio de pagina (cuyo cociente es el numero de pagina)
    
     // TODO: Cambiar para usar TLB:
-    uint32_t num_marco = buscar_marco_en_tlb(dir_logica);
+    int num_marco = buscar_marco_en_tlb(dir_logica);
     if(num_marco == -1)
     {
         return -1;

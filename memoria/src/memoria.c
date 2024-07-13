@@ -73,6 +73,8 @@ void gestionar_conexion(void *puntero_fd_cliente)
     while (fd_cliente != -1)
     {
         op_recibida = recibir_operacion(fd_cliente);
+        
+        log_info(loggerOblig, "Operacion recibida: %d", op_recibida);
 
         if (op_recibida == -1)
         {
@@ -156,7 +158,13 @@ void devolver_marco(int fd_cliente_cpu) {
     // recibirPID
     int pid = *(int*) list_get(paquete_recibido, 1);
    
-    uint32_t numero_marco = resolver_solicitud_de_marco(numero_pagina, pid);
+    int numero_marco = resolver_solicitud_de_marco(numero_pagina, pid);
+
+    if (numero_marco == -1) {
+        liberar_lista_de_datos_con_punteros(paquete_recibido);
+        enviar_codigo_op(NO_MEMORY, fd_cliente_cpu);
+        return;
+    }
 
     t_paquete* paquete_a_enviar = crear_paquete(DEVOLVER_MARCO);
     agregar_a_paquete(paquete_a_enviar, &numero_marco, sizeof(uint32_t));

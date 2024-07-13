@@ -278,6 +278,15 @@ void mov_in_instruction(t_list *parametros)
 
     t_list *devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&tamanio_a_leer_en_memoria, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); // estas direcciones SIEMPRE debe haber almenos una
 
+    if (list_is_empty(devolucion_direcciones_fisicas)) {
+        
+        motivoFinalizacion = OUT_OF_MEMORY;
+        manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
+        log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
+        liberar_lista_de_datos_con_punteros(devolucion_direcciones_fisicas);
+        return;
+    }
+
     t_list *valores_leidos = leer_de_memoria(devolucion_direcciones_fisicas, pid, tamanio_a_leer_en_memoria);
 
     for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++)
@@ -329,6 +338,15 @@ void mov_out_instruction(t_list *parametros)
     }
 
     t_list *devolucion_direcciones_fisicas = peticion_de_direcciones_fisicas(&cantidad_bytes, UINT32, registro_direccion_mapeado, tipo_de_dato_registro_direccion); // estas direcciones SIEMPRE debe haber almenos una
+
+    if (list_is_empty(devolucion_direcciones_fisicas)) {
+        
+        motivoFinalizacion = OUT_OF_MEMORY;
+        manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
+        log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso %d", pid);
+        liberar_lista_de_datos_con_punteros(devolucion_direcciones_fisicas);
+        return;
+    }
 
     t_list *valores_escritos = escribir_en_memoria(devolucion_direcciones_fisicas, pid, registro_datos_mapeado, cantidad_bytes);
 
@@ -467,6 +485,15 @@ t_list* agregar_parametros_dir_fisicas_para_io(int* indice_parametros, void* reg
     tipo_de_dato tipo_de_dato_registro_bytes = mapear_tipo_de_dato(registro_tamanio);
     t_list *dir_fisicas = peticion_de_direcciones_fisicas(reg_tam, tipo_de_dato_registro_bytes, reg_dir, tipo_de_dato_registro_direccion);
     
+    if (list_is_empty(dir_fisicas)) {
+        
+        motivoFinalizacion = OUT_OF_MEMORY;
+        manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
+        log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
+        liberar_lista_de_datos_con_punteros(dir_fisicas);
+        return;
+    }
+
     t_params_io *parametro_io_tamanio = malloc(sizeof(int) + sizeof(int));
     parametro_io_tamanio->tipo_de_dato = INT;
     parametro_io_tamanio->valor = malloc(sizeof(int));
@@ -636,6 +663,9 @@ void copy_string_instruction(t_list *parametros)
     // Obtenemos las direcciones fisicas de SI y DI
     if (list_size(dir_fisicas_di) == 0 || list_size(dir_fisicas_si) == 0)
     {
+        motivoFinalizacion = OUT_OF_MEMORY;
+        manejarInterrupciones(INTERRUPCION_FIN_EVENTO); // Deberia ir INTERRUPCION_OUT_OF_MEMORY
+        log_error(logger_error_cpu, "Out of Memory Pa, baneado proceso");
         log_error(logger_aux_cpu, "Error al traducir direcciones físicas de SI o DI");
         liberar_lista_de_datos_con_punteros(dir_fisicas_di);
         liberar_lista_de_datos_con_punteros(dir_fisicas_si);

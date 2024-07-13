@@ -124,6 +124,7 @@ uint32_t pidAEliminar;
 t_list* pidsAFinalizar;
 char* interfazAEliminar;
 uint32_t PidAEnviarExit;
+int cantidad_elementos_ejecutandose = 0;
 
 /*---------COLAS---------*/
 
@@ -159,6 +160,7 @@ pthread_mutex_t sem_cola_blocked_aux;
 pthread_mutex_t sem_cola_blocked;
 pthread_mutex_t sem_cola_exit;
 pthread_mutex_t sem_grado_multiprogramacion;
+pthread_mutex_t mx_cantidad_ejecutandose;
 sem_t semContadorColaNew;
 sem_t semContadorColaReady;
 sem_t semContadorColaReadyAux;
