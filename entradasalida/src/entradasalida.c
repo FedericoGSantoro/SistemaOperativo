@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
             }
             int cantidadUnidadesTrabajo = *(int*) list_get(parametrosRecibidos, 0);
             int tiempoSleep = cantidadUnidadesTrabajo * TIEMPO_UNIDAD_TRABAJO;
-            usleep(tiempoSleep);
+            usleep(tiempoSleep*1000);
             enviar_codigo_op(OK_OPERACION, fd_kernel);
             break;
 
@@ -175,6 +175,7 @@ int main(int argc, char* argv[]) {
         
         case IO_FS_CREATE:
             log_info(logger_auxiliar, "Inicio función IO_FS_CREATE");
+            usleep(TIEMPO_UNIDAD_TRABAJO*1000);
             
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envio la instrucción IO_FS_CREATE a la interfaz no FS: %s", nombre);
@@ -192,6 +193,7 @@ int main(int argc, char* argv[]) {
 
         case IO_FS_DELETE:
             log_info(logger_auxiliar, "Inicio función IO_FS_DELETE");
+            usleep(TIEMPO_UNIDAD_TRABAJO*1000);
 
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envió la instrucción IO_FS_DELETE a la interfaz no FS: %s", nombre);
@@ -209,6 +211,7 @@ int main(int argc, char* argv[]) {
 
         case IO_FS_READ:
             log_info(logger_auxiliar, "Inicio función IO_FS_READ");
+            usleep(TIEMPO_UNIDAD_TRABAJO*1000);
 
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envió la instrucción IO_FS_READ a la interfaz no FS: %s", nombre);
@@ -224,6 +227,7 @@ int main(int argc, char* argv[]) {
 
         case IO_FS_WRITE:
             log_info(logger_auxiliar, "Inicio función IO_FS_WRITE");
+            usleep(TIEMPO_UNIDAD_TRABAJO*1000);
 
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envió la instrucción IO_FS_WRITE a la interfaz no FS: %s", nombre);
@@ -239,6 +243,7 @@ int main(int argc, char* argv[]) {
 
         case IO_FS_TRUNCATE:
             log_info(logger_auxiliar, "Inicio función IO_FS_TRUNCATE");
+            usleep(TIEMPO_UNIDAD_TRABAJO*1000);
 
             if(TIPO_INTERFAZ != FS){
                 log_error(logger_error, "Se envio la instrucción IO_FS_TRUNCATE a la interfaz no FS: %s", nombre);
