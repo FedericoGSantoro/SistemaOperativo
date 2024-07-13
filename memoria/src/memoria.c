@@ -342,7 +342,7 @@ void crear_proceso(int fd_cliente_kernel) {
     string_append(&path_absoluto, path_relativo);
 
     inicializar_tabla_paginas(pid);
-    crear_instrucciones(path_relativo, pid);
+    crear_instrucciones(path_absoluto, pid);
     
     //libero la lista generada del paquete deserializado
     liberar_lista_de_datos_con_punteros(paquete_recibido);
