@@ -1,8 +1,8 @@
 #include "./pagination_handler.h"
 
-pthread_mutex_t* crear_mutex(){
-	pthread_mutex_t* mutex = malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(mutex,NULL);
+pthread_mutex_t crear_mutex(){
+	pthread_mutex_t mutex;
+	pthread_mutex_init(&mutex, NULL);
 	return mutex;
 }
 
@@ -28,9 +28,9 @@ int obtener_cant_pags_usadas() {
 t_list* get_tabla_paginas_por_proceso(uint32_t pid) {
 
     char* pid_str = int_to_string(pid);
-    return (t_list*) dictionary_get(tablas_por_proceso, pid_str);
-
+    t_list* tablas_por_proceso = (t_list*) dictionary_get(tablas_por_proceso, pid_str);
     free(pid_str);
+    return tablas_por_proceso;
 }
 
 int obtener_cant_paginas_usadas_por_proceso(uint32_t pid) {
@@ -102,10 +102,10 @@ uint32_t asignar_frame_libre()
             return -1;
         }
 
-        pthread_mutex_lock(marco_libre_encontrado->mutexMarco);
+        pthread_mutex_lock(&(marco_libre_encontrado->mutexMarco));
 	    marco_libre_encontrado->libre = false;
 	    uint32_t base = marco_libre_encontrado->base;
-	    pthread_mutex_unlock(marco_libre_encontrado->mutexMarco);
+	    pthread_mutex_unlock(&(marco_libre_encontrado->mutexMarco));
 
 	    numero_marco_hallado = base / memConfig.tamPagina;
 
@@ -128,10 +128,10 @@ int resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
     t_pagina *pagina = list_get(tabla_proceso, numero_pagina);
 	pthread_mutex_unlock(&mx_tablas_paginas);
 
-    pthread_mutex_lock(pagina->mx_pagina);
+    pthread_mutex_lock(&(pagina->mx_pagina));
     uint32_t numero_marco = pagina->marco;
     pagina->ultima_referencia = time(NULL);
-    pthread_mutex_unlock(pagina->mx_pagina);
+    pthread_mutex_unlock(&(pagina->mx_pagina));
 
     log_info(loggerOblig, "PID: %d - Pagina: %d - Marco: %d",pid, numero_pagina, numero_marco);
 
@@ -173,11 +173,11 @@ void achicar_proceso(int cant_pags_a_risezear, int pid) {
         t_pagina* pagina_removida = (t_pagina*) list_remove(tabla_paginas, i);
         uint32_t id_marco_usado = pagina_removida->marco;
         t_marco* marco_usado = list_get(lista_marcos, id_marco_usado);
-        pthread_mutex_lock(marco_usado->mutexMarco);
+        pthread_mutex_lock(&(marco_usado->mutexMarco));
         marco_usado->libre = true;
-        pthread_mutex_unlock(marco_usado->mutexMarco); 
+        pthread_mutex_unlock(&(marco_usado->mutexMarco)); 
     
-        pthread_mutex_destroy(pagina_removida->mx_pagina);   
+        pthread_mutex_destroy(&(pagina_removida->mx_pagina));   
         free(pagina_removida);    
     }
 }
@@ -213,10 +213,10 @@ void destruir_pagina(t_pagina* pagina){
 	t_marco* marco_a_liberar = list_get(lista_marcos, pagina->marco);
 	pthread_mutex_unlock(&mx_lista_marcos);
 
-	pthread_mutex_lock(marco_a_liberar->mutexMarco);
+	pthread_mutex_lock(&(marco_a_liberar->mutexMarco));
 	marco_a_liberar->libre = true;
-	pthread_mutex_unlock(marco_a_liberar->mutexMarco);
-	pthread_mutex_destroy(pagina->mx_pagina);
+	pthread_mutex_unlock(&(marco_a_liberar->mutexMarco));
+	pthread_mutex_destroy(&(pagina->mx_pagina));
 	free(pagina);
 }
 
@@ -232,4 +232,5 @@ void eliminar_paginas(int pid) {
 		log_info(loggerOblig, "Destruccion Tabla de Paginas PID: %d - Tamaño: %d", pid, list_size(tabla_de_paginas));
 		destruir_tabla_paginas(tabla_de_paginas);
 	}
+    free(pid_str);
 }

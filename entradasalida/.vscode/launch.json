@@ -8,7 +8,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/${workspaceFolderBasename}",
-      "args": [],
+      "args": ["TECLADO", "/home/utnso/tpSO/tp-2024-1c-Grupo-AFFOM/entradasalida/TECLADO.config"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],

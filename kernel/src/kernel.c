@@ -1080,6 +1080,7 @@ void enviarIoDetail(t_pcb* pcbAEjecutar, int fd_interfaz) {
     //agregar_a_paquete(paquete, pcbAEjecutar->contexto_ejecucion.io_detail.nombre_io, strlen(pcbAEjecutar->contexto_ejecucion.io_detail.nombre_io) + 1);
     agregar_a_paquete(paquete, &pcbAEjecutar->contexto_ejecucion.io_detail.io_instruccion, sizeof(int));
     enviar_paquete(paquete, fd_interfaz);
+    eliminar_paquete(paquete);
 }
 
 bool coincideInterfazADesconectar(void* interfazVoid) {
