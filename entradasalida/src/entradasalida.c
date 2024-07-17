@@ -593,7 +593,6 @@ void io_fs_create(char *nombre_archivo_a_crear) {
 
 void liberar_bloques(uint32_t actual_nro_bloque_final_archivo, uint32_t cantidad_a_liberar_en_bloques, char* nombre_archivo) {
     for (int i = 1; i <= cantidad_a_liberar_en_bloques; i++) {
-        char* empty_string = string_new();
         bitarray_clean_bit(bitmap_mapeado, actual_nro_bloque_final_archivo);
         actual_nro_bloque_final_archivo--;
     }
@@ -668,7 +667,6 @@ void mostrar_bloques_libres() {
 
     uint32_t cantidad_de_espacios_libres = bloques_libres();
     char* bloques_libres_con_formato = string_new();
-    char* nombres_bloques_libres_con_formato = string_new();
 
     for (int i = 0; i < BLOCK_COUNT; i++) {
         string_append_with_format(&bloques_libres_con_formato, "%d-", bitarray_test_bit(bitmap_mapeado, i));

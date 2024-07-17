@@ -247,6 +247,7 @@ void agregar_io_detail(t_paquete *paquete) {
 
 void eliminar_io_detail() {
     if (io_detail.parametros == NULL || io_detail.parametros->elements_count == 0) {
+        list_destroy(io_detail.parametros);
         return;
     }
     

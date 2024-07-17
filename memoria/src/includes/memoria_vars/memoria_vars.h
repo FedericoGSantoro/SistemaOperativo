@@ -43,7 +43,7 @@ typedef struct{
     time_t tiempo_carga;//Para FIFO
     time_t ultima_referencia;//Para LRU
     int pid;
-	pthread_mutex_t mx_pagina;
+	pthread_mutex_t* mx_pagina;
 } t_pagina;
 
 typedef struct {
@@ -51,7 +51,7 @@ typedef struct {
 	int base;
 	int limite;
     time_t* ultimo_uso;
-    pthread_mutex_t mutexMarco;
+    pthread_mutex_t* mutexMarco;
 } t_marco;
 
 extern t_list* lista_marcos;

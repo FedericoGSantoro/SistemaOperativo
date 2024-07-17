@@ -355,9 +355,10 @@ void crear_proceso(int fd_cliente_kernel) {
 
     inicializar_tabla_paginas(pid);
     crear_instrucciones(path_absoluto, pid);
-    
+    free(path_relativo);
+    free(path_absoluto);
     //libero la lista generada del paquete deserializado
-    liberar_lista_de_datos_con_punteros(paquete_recibido);
+    list_destroy(paquete_recibido);
 }
 
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel) {
@@ -429,7 +430,7 @@ void terminar_programa()
     t_list* todas_las_paginas = dictionary_elements(tablas_por_proceso);
     for (int i = 0; i < list_size(todas_las_paginas); i++) {
         t_pagina pagina = *(t_pagina*) list_get(todas_las_paginas, i);
-        pthread_mutex_destroy(&(pagina.mx_pagina));
+        pthread_mutex_destroy(pagina.mx_pagina);
     }
     dictionary_destroy_and_destroy_elements(tablas_por_proceso, liberar_lista_de_datos_planos);
     free(espacio_usuario.espacio_usuario);
