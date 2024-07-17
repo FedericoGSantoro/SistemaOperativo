@@ -8,7 +8,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/${workspaceFolderBasename}",
-      "args": ["GENERICA", "/home/utnso/tpSO/tp-2024-1c-Grupo-AFFOM/entradasalida/GENERICA.config"],
+      "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],
