@@ -840,6 +840,15 @@ t_instruccion *new_instruction(t_tipo_instruccion tipo_instruccion, t_list *para
     return tmp;
 }
 
+void free_tokens(char **tokens, int count) {
+
+    for (int i = 0; i < count; ++i) {
+        free(tokens[i]);
+    }
+
+    free(tokens);
+}
+
 t_instruccion *procesar_instruccion(char *instruccion_entrante)
 {
     // Nos quedamos con el string hasta encontrar el \n
@@ -856,7 +865,7 @@ t_instruccion *procesar_instruccion(char *instruccion_entrante)
     char *parametros_string = string_new();
     while (tokens[i] != NULL)
     {
-        registro_mapeado = string_new(tokens[i]);
+        registro_mapeado = string_duplicate(tokens[i]);
         string_append_with_format(&parametros_string, "%s ", registro_mapeado);
         list_add(parameters, registro_mapeado);
         i++;
@@ -864,6 +873,7 @@ t_instruccion *procesar_instruccion(char *instruccion_entrante)
     t_instruccion *instruccion_obtenida = new_instruction(tipo_instruccion, parameters);
     instruccion_obtenida->parametros_string = parametros_string;
     free(instruccion_entrante);
+    free_tokens(tokens, i);
     return instruccion_obtenida;
 }
 

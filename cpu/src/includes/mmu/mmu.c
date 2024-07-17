@@ -82,7 +82,7 @@ t_list* obtener_valores() {
         list_add_in_index(valores, i, bytes_guardados);
     }
 
-    liberar_lista_de_datos_con_punteros(paquete_recibido);
+    list_destroy(paquete_recibido);
 
     return valores;
 }

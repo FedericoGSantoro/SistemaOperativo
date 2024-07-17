@@ -159,7 +159,6 @@ int main(int argc, char* argv[]) {
                 t_list* lecturas_memoria = leer_valor_de_memoria(fd_memoria, cantidad_direcciones, parametrosRecibidos, pid, tamanio);
                 char *valorAMostrar = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
                 log_info(logger_auxiliar, "%s", valorAMostrar);
-                free(valorAMostrar);
                 enviar_codigo_op(OK_OPERACION, fd_kernel);
                 liberar_lista_de_datos_con_punteros(lecturas_memoria);
             }else{
@@ -259,8 +258,8 @@ int main(int argc, char* argv[]) {
             log_error(logger_error, "Se recibio una instruccion no esperada: %d", tipoInstruccion);
             break;
         }
-        liberar_lista_de_datos_con_punteros(paquete);
-        liberar_lista_de_datos_con_punteros(parametrosRecibidos);
+        list_clean(parametrosRecibidos);
+        list_destroy(paquete);
     }
     terminarPrograma();
     return 0;
@@ -496,6 +495,9 @@ t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
         return (t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_leer);
     }
 
+    char* linea = string_new();
+    char* clave = string_new();
+    char* valor = string_new();
     char* path_metadata = string_new();
     string_append(&path_metadata, PATH_BASE_DIALFS);
     string_append(&path_metadata, "/");
@@ -503,7 +505,20 @@ t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
     
     FILE *archivo = fopen(path_metadata, "r");
     t_metadata_archivo* metadata_a_leer = malloc(sizeof(t_metadata_archivo));
-    fread(metadata_a_leer, sizeof(t_metadata_archivo), 1, archivo);
+    
+    // Leer el archivo línea por línea
+    while (fgets(linea, sizeof(linea), archivo)) {
+        // Separar la línea en clave y valor
+        sscanf(linea, "%[^=]=%[^\n]", clave, valor);
+        
+        // Imprimir clave y valor obtenidos (o almacenarlos como necesites)
+        printf("Clave: %s, Valor: %s\n", clave, valor);
+        if (string_equals_ignore_case(valor, "BLOQUE_INICIAL")) {
+            metadata_a_leer->bloque_inicial = (uint32_t) int_to_string(valor);
+        } else {
+            metadata_a_leer->tamanio_archivo = (uint32_t) int_to_string(valor);
+        }
+    }
 
     return metadata_a_leer;
 }
@@ -550,9 +565,13 @@ void escribir_metadata(t_metadata_archivo* metadata, char* nombre_archivo) {
     // Abrir el archivo en modo escritura binaria ("wb")
     archivo = fopen(path_metadata, "wb");
     // Escribir la estructura en el archivo
-    fwrite(metadata, sizeof(t_metadata_archivo), 1, archivo);
-    // Escribir la estructura en el archivo
+
+    // Escribir en el archivo con el formato especificado
+    fprintf(archivo, "BLOQUE_INICIAL=%d\n", metadata->bloque_inicial);
+    fprintf(archivo, "TAMANIO_ARCHIVO=%d\n", metadata->tamanio_archivo);
+
     dictionary_put(map_archivos_metadata, nombre_archivo, metadata);
+
     fclose(archivo);
 }
 
@@ -775,11 +794,13 @@ void io_fs_write(int cantidadParametros, t_list* parametrosRecibidos, uint32_t p
 
     t_list *lecturas_memoria = leer_valor_de_memoria(fd_memoria, cantidad_direcciones, parametrosRecibidos, pid, tamanio_a_escribir);
 
-    char* valor_leido = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
+    char* valor_leido = string_duplicate(list_get(lecturas_memoria, list_size(lecturas_memoria) - 1)); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
     
     t_metadata_archivo metadata = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo);
     memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_leido, tamanio_a_escribir);
     sync_file(bloques_datos_addr, BLOCK_COUNT * BLOCK_SIZE);
+    
+    liberar_lista_de_datos_con_punteros(lecturas_memoria);
 }
 
 void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo, uint32_t pid) {

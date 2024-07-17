@@ -7,6 +7,7 @@
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
 #include "../../utils/src/liberador/liberador.h"
+#include "../../utils/src/castingfunctions/castfunctions.h"
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>

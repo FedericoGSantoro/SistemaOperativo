@@ -39,7 +39,6 @@ void rellenar_cache_de_instrucciones(FILE* file_instructions, int pid) {
 
     char* pid_convertido = int_to_string(pid);
     dictionary_put(cache_instrucciones, pid_convertido, lista_de_instrucciones);
-    free(line);
 }
 
 //rellena el mapa de instrucciones del proceso (pid) con el path obtenido 
