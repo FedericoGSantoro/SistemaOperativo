@@ -6,6 +6,8 @@
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
+#include "../../utils/src/liberador/liberador.h"
+#include "../../utils/src/castingfunctions/castfunctions.h"
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -49,7 +51,6 @@ FILE *archivo_bloques_dat;
 FILE *archivo_bitmap;
 void* bloques_datos_addr;
 t_bitarray* bitmap_mapeado;
-t_list* nombres_archivos_bitmap; //TODO: eliminemos esto dsps, es para pruebitas y logs internos nomas
 int indice_global_lista = 0;
 void* bitmap_addr;
 int fd_bitmap;

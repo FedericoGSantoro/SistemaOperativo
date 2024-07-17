@@ -88,7 +88,7 @@ int solicitar_numero_de_marco(uint32_t num_pagina) {
     
     uint32_t numero_marco = *(uint32_t*) list_get(paquete_recibido, 0);
    
-    list_destroy(paquete_recibido);
+    liberar_lista_de_datos_con_punteros(paquete_recibido);
 
     return numero_marco;
 }

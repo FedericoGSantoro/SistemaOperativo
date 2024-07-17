@@ -38,11 +38,11 @@ int main(void)
 
 void leer_config()
 {
-    memConfig.puertoEscucha = config_get_string_value(config, "PUERTO_ESCUCHA");
+    memConfig.puertoEscucha = string_duplicate(config_get_string_value(config, "PUERTO_ESCUCHA"));
     memConfig.tamMemoria = config_get_int_value(config, "TAM_MEMORIA");
     memConfig.tamPagina = config_get_int_value(config, "TAM_PAGINA");
     memConfig.retardoRespuesta = config_get_int_value(config, "RETARDO_RESPUESTA");
-    memConfig.pathInstrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
+    memConfig.pathInstrucciones = string_duplicate(config_get_string_value(config, "PATH_INSTRUCCIONES"));
 }
 
 int server_escuchar(int fd_memoria)
@@ -112,6 +112,7 @@ void gestionar_conexion(void *puntero_fd_cliente)
             t_paquete* paquete_con_lecturas_a_devolver = proceso_lectura_valor_memoria(&cantidad_direcciones_fisicas_leidas, &tamanio_a_leer_en_memoria, fd_cliente);
             usleep(memConfig.retardoRespuesta*1000*cantidad_direcciones_fisicas_leidas);
             enviar_paquete(paquete_con_lecturas_a_devolver, fd_cliente);
+            eliminar_paquete(paquete_con_lecturas_a_devolver);
             break;
         case ESCRIBIR_VALOR_MEMORIA:
             int cantidad_direcciones_fisicas_escritas;
@@ -120,6 +121,7 @@ void gestionar_conexion(void *puntero_fd_cliente)
             usleep(memConfig.retardoRespuesta*1000*cantidad_direcciones_fisicas_escritas);
             //LE AVISO A CPU
             enviar_paquete(paquete_con_escrituras_a_devolver, fd_cliente);
+            eliminar_paquete(paquete_con_escrituras_a_devolver);
             break;
         case RESIZE_EN_MEMORIA:
             resize_memoria(fd_cliente);
@@ -169,6 +171,8 @@ void devolver_marco(int fd_cliente_cpu) {
     t_paquete* paquete_a_enviar = crear_paquete(DEVOLVER_MARCO);
     agregar_a_paquete(paquete_a_enviar, &numero_marco, sizeof(uint32_t));
     enviar_paquete(paquete_a_enviar, fd_cliente_cpu);
+
+    eliminar_paquete(paquete_a_enviar);
 
     liberar_lista_de_datos_con_punteros(paquete_recibido);
 }
@@ -351,9 +355,10 @@ void crear_proceso(int fd_cliente_kernel) {
 
     inicializar_tabla_paginas(pid);
     crear_instrucciones(path_absoluto, pid);
-    
+    free(path_relativo);
+    free(path_absoluto);
     //libero la lista generada del paquete deserializado
-    liberar_lista_de_datos_con_punteros(paquete_recibido);
+    list_destroy(paquete_recibido);
 }
 
 void eliminar_estructuras_asociadas_al_proceso(int fd_cliente_kernel) {
@@ -406,6 +411,7 @@ void inicializar_config()
 {
     config = iniciar_config(rutaConfiguracion, loggerError, (void *)terminar_programa);
     leer_config();
+    config_destroy(config);
 }
 
 void inicializar_semaforos(){
@@ -428,5 +434,6 @@ void terminar_programa()
     }
     dictionary_destroy_and_destroy_elements(tablas_por_proceso, liberar_lista_de_datos_planos);
     free(espacio_usuario.espacio_usuario);
+    list_destroy(todas_las_paginas);
     pthread_mutex_destroy(&espacio_usuario.mx_espacio_usuario);
 }

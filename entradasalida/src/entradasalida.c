@@ -75,11 +75,6 @@ int main(int argc, char* argv[]) {
     nombre = argv[1];
     path_config = argv[2];
     inicializar();
-    nombres_archivos_bitmap = list_create();
-    for (int i = 0; i < BLOCK_COUNT; i++) {
-        char* empty = string_new();
-        list_add_in_index(nombres_archivos_bitmap, i, empty);
-    }
     indice_global_lista = 0;
     op_codigo codigoRecibido;
     int cantidadParametros;
@@ -164,9 +159,8 @@ int main(int argc, char* argv[]) {
                 t_list* lecturas_memoria = leer_valor_de_memoria(fd_memoria, cantidad_direcciones, parametrosRecibidos, pid, tamanio);
                 char *valorAMostrar = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
                 log_info(logger_auxiliar, "%s", valorAMostrar);
-                free(valorAMostrar);
                 enviar_codigo_op(OK_OPERACION, fd_kernel);
-                list_destroy(lecturas_memoria);
+                liberar_lista_de_datos_con_punteros(lecturas_memoria);
             }else{
                 log_error(logger_error, "No se recibio lo necesario para leer de memoria");
                 enviar_codigo_op(ERROR_OPERACION, fd_kernel);
@@ -264,8 +258,8 @@ int main(int argc, char* argv[]) {
             log_error(logger_error, "Se recibio una instruccion no esperada: %d", tipoInstruccion);
             break;
         }
-        list_destroy(paquete);
         list_clean(parametrosRecibidos);
+        list_destroy(paquete);
     }
     terminarPrograma();
     return 0;
@@ -320,62 +314,6 @@ void recibirIoDetail(t_list* listaPaquete, int ultimo_indice) {
         tipoInstruccion = *(t_nombre_instruccion *)list_get(listaPaquete, ultimo_indice); //obtengo el nombre de la instruccion contra IO
     }
 }
-
-/*
-void enviarMsj(){
-    char* comandoLeido = readline("String > ");
-    enviar_mensaje(comandoLeido, socketAEnviar);
-    log_info(logger_auxiliar, "Mensaje enviado");
-    free(comandoLeido);
-}
-
-void enviarPaquete() {
-    char* comandoLeido;
-	t_paquete* paquete = crear_paquete(PAQUETE);
-
-	// Leemos y esta vez agregamos las lineas al paquete
-	comandoLeido = readline("String > "); // Leo de consola
-	while (strcmp(comandoLeido, "")){ // Mientras no sea cadena vacia
-		agregar_a_paquete(paquete, comandoLeido, strlen(comandoLeido)+1); // Agregamos al paquete el stream
-		comandoLeido = readline("String > "); // Leo nueva linea
-	}
-	enviar_paquete(paquete, socketAEnviar); // Enviamos el paquete
-    log_info(logger_auxiliar, "Paquete enviado");
-	free(comandoLeido);
-	eliminar_paquete(paquete);
-}
-
-void enviarOperacionA() {
-    char* moduloNombre; // No hace falta liberar ya que es cadena literal
-    pthread_t hiloAEnviar;
-    if ( !strcmp(enviarA, "KERNEL") ) {
-        hiloAEnviar = hilo_kernel;
-        socketAEnviar = fd_kernel;
-        moduloNombre = "Kernel";
-    }
-    else if ( !strcmp(enviarA, "MEMORIA") ) {
-        hiloAEnviar = hilo_memoria;
-        socketAEnviar = fd_memoria;
-        moduloNombre = "Memoria";
-    }
-    else {
-        log_error(logger_error, "Destino Incorrecto");
-        return;
-    }
-    crearHiloJoin(&hiloAEnviar, (void*) tipoOperacion, NULL, moduloNombre, logger_auxiliar, logger_error);
-}
-
-op_codigo transformarAOperacion(char* operacionLeida) {
-    string_to_upper(operacionLeida);
-    if ( !strcmp(operacionLeida, "MENSAJE") ) { // strcmp devuelve 0 si son iguales
-        return MENSAJE;
-    } else if ( !strcmp(operacionLeida, "PAQUETE") ) {
-        return PAQUETE;
-    } else {
-        return -1; // Valor por defecto para indicar error
-    }
-}
-*/
 
 void inicializar(){
     inicializarLogs();
@@ -557,6 +495,9 @@ t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
         return (t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo_a_leer);
     }
 
+    char* linea = string_new();
+    char* clave = string_new();
+    char* valor = string_new();
     char* path_metadata = string_new();
     string_append(&path_metadata, PATH_BASE_DIALFS);
     string_append(&path_metadata, "/");
@@ -564,7 +505,20 @@ t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
     
     FILE *archivo = fopen(path_metadata, "r");
     t_metadata_archivo* metadata_a_leer = malloc(sizeof(t_metadata_archivo));
-    fread(metadata_a_leer, sizeof(t_metadata_archivo), 1, archivo);
+    
+    // Leer el archivo línea por línea
+    while (fgets(linea, sizeof(linea), archivo)) {
+        // Separar la línea en clave y valor
+        sscanf(linea, "%[^=]=%[^\n]", clave, valor);
+        
+        // Imprimir clave y valor obtenidos (o almacenarlos como necesites)
+        printf("Clave: %s, Valor: %s\n", clave, valor);
+        if (string_equals_ignore_case(valor, "BLOQUE_INICIAL")) {
+            metadata_a_leer->bloque_inicial = (uint32_t) int_to_string(valor);
+        } else {
+            metadata_a_leer->tamanio_archivo = (uint32_t) int_to_string(valor);
+        }
+    }
 
     return metadata_a_leer;
 }
@@ -611,9 +565,13 @@ void escribir_metadata(t_metadata_archivo* metadata, char* nombre_archivo) {
     // Abrir el archivo en modo escritura binaria ("wb")
     archivo = fopen(path_metadata, "wb");
     // Escribir la estructura en el archivo
-    fwrite(metadata, sizeof(t_metadata_archivo), 1, archivo);
-    // Escribir la estructura en el archivo
+
+    // Escribir en el archivo con el formato especificado
+    fprintf(archivo, "BLOQUE_INICIAL=%d\n", metadata->bloque_inicial);
+    fprintf(archivo, "TAMANIO_ARCHIVO=%d\n", metadata->tamanio_archivo);
+
     dictionary_put(map_archivos_metadata, nombre_archivo, metadata);
+
     fclose(archivo);
 }
 
@@ -642,7 +600,6 @@ void io_fs_create(char *nombre_archivo_a_crear) {
 
     // Marcar el bloque como ocupado en el bitmap
     bitarray_set_bit(bitmap_mapeado, bloque_libre);
-    list_add_in_index(nombres_archivos_bitmap, indice_global_lista, nombre_archivo_a_crear);
     indice_global_lista++;
     sync_file(bitmap_addr, BLOCK_COUNT);
 
@@ -655,9 +612,6 @@ void io_fs_create(char *nombre_archivo_a_crear) {
 
 void liberar_bloques(uint32_t actual_nro_bloque_final_archivo, uint32_t cantidad_a_liberar_en_bloques, char* nombre_archivo) {
     for (int i = 1; i <= cantidad_a_liberar_en_bloques; i++) {
-        list_remove(nombres_archivos_bitmap, actual_nro_bloque_final_archivo);
-        char* empty_string = string_new();
-        list_add_in_index(nombres_archivos_bitmap, actual_nro_bloque_final_archivo, empty_string);
         bitarray_clean_bit(bitmap_mapeado, actual_nro_bloque_final_archivo);
         actual_nro_bloque_final_archivo--;
     }
@@ -695,7 +649,6 @@ uint32_t obtener_cantidad_de_bloques_libres_al_final_de_archivo(uint32_t actual_
 void ocupar_bloques(uint32_t nro_bloque_inicio, uint32_t cantidad_bloques, char* nombre_archivos_bitmap) {
     for (int i = nro_bloque_inicio; i < nro_bloque_inicio + cantidad_bloques; i++) {
         bitarray_set_bit(bitmap_mapeado, i);
-        list_add_in_index(nombres_archivos_bitmap, i, nombre_archivos_bitmap);
     }
 }
 
@@ -733,22 +686,16 @@ void mostrar_bloques_libres() {
 
     uint32_t cantidad_de_espacios_libres = bloques_libres();
     char* bloques_libres_con_formato = string_new();
-    char* nombres_bloques_libres_con_formato = string_new();
 
     for (int i = 0; i < BLOCK_COUNT; i++) {
         string_append_with_format(&bloques_libres_con_formato, "%d-", bitarray_test_bit(bitmap_mapeado, i));
     }
-    for (int i = 0; i < list_size(nombres_archivos_bitmap); i++) {
-        string_append_with_format(&nombres_bloques_libres_con_formato, "%s-", (char*) list_get(nombres_archivos_bitmap, i));
-    }
 
     log_info(logger_auxiliar, "cantidad bloques libres: %d con formato: %s", cantidad_de_espacios_libres, bloques_libres_con_formato);
-    log_info(logger_auxiliar, "nombres bloques libres: %s", nombres_bloques_libres_con_formato);
 }
 
 void clear_bitmap(char* nombre_archivos_bitmap) {
     for (int i = 0; i < BLOCK_COUNT; i++) {
-        list_remove(nombres_archivos_bitmap, i);
         bitarray_clean_bit(bitmap_mapeado, i);
     }
 }
@@ -847,11 +794,13 @@ void io_fs_write(int cantidadParametros, t_list* parametrosRecibidos, uint32_t p
 
     t_list *lecturas_memoria = leer_valor_de_memoria(fd_memoria, cantidad_direcciones, parametrosRecibidos, pid, tamanio_a_escribir);
 
-    char* valor_leido = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
+    char* valor_leido = string_duplicate(list_get(lecturas_memoria, list_size(lecturas_memoria) - 1)); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
     
     t_metadata_archivo metadata = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_archivo);
     memcpy(bloques_datos_addr + (metadata.bloque_inicial * BLOCK_SIZE) + registro_puntero_archivo, valor_leido, tamanio_a_escribir);
     sync_file(bloques_datos_addr, BLOCK_COUNT * BLOCK_SIZE);
+    
+    liberar_lista_de_datos_con_punteros(lecturas_memoria);
 }
 
 void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archivo, uint32_t pid) {

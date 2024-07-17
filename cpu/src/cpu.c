@@ -77,6 +77,7 @@ void getTamanioPagina() {
     recibir_operacion(fd_memoria);
     char* tam_pagina_obtenido = recibir_mensaje(fd_memoria);
     tam_pagina = string_to_int(tam_pagina_obtenido);
+    free(tam_pagina_obtenido);
 }
 
 void enviarMsjMemoria() {
@@ -204,7 +205,7 @@ void desempaquetarInterrupcion(t_list *paquete) {
 void recvInterrupcion() {
     t_list *paquete = recibir_paquete(fd_kernel_interrupt);
     desempaquetarInterrupcion(paquete);
-    list_destroy(paquete);
+    liberar_lista_de_datos_con_punteros(paquete);
 }
 
 void agregar_io_detail(t_paquete *paquete) {
@@ -246,6 +247,7 @@ void agregar_io_detail(t_paquete *paquete) {
 
 void eliminar_io_detail() {
     if (io_detail.parametros == NULL || io_detail.parametros->elements_count == 0) {
+        list_destroy(io_detail.parametros);
         return;
     }
     
@@ -308,7 +310,7 @@ void desempaquetarContextoEjecucion(t_list *paquete) {
 void recvContextoEjecucion() {
     t_list *paquete = recibir_paquete(fd_kernel_dispatch);
     desempaquetarContextoEjecucion(paquete);
-    list_destroy(paquete);
+    liberar_lista_de_datos_con_punteros(paquete);
 }
 
 void fetch() {

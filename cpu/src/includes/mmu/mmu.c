@@ -105,6 +105,8 @@ t_list* leer_de_memoria(t_list* direcciones_fisicas, int pid, uint32_t tamanio_a
 
     enviar_paquete(paquete, fd_memoria);
 
+    eliminar_paquete(paquete);
+
     op_codigo cod_op = recibir_operacion(fd_memoria);
     while (cod_op != LEER_VALOR_MEMORIA)
     {
@@ -136,6 +138,8 @@ t_list* escribir_en_memoria(t_list* direcciones_fisicas, int pid, void* registro
     agregar_a_paquete(paquete, registro, cantidad_bytes);
 
     enviar_paquete(paquete, fd_memoria);
+
+    eliminar_paquete(paquete);
     
     op_codigo cod_op = recibir_operacion(fd_memoria);
     while (cod_op != ESCRIBIR_VALOR_MEMORIA)
@@ -158,6 +162,8 @@ void resize_en_memoria(int pid, int size_to_resize) {
     agregar_a_paquete(paquete, &size_to_resize, sizeof(int));
 
     enviar_paquete(paquete, fd_memoria);
+
+    eliminar_paquete(paquete);
 
     log_info(logger_aux_cpu, "SE RESIZEO EN MEMORIA");
 }

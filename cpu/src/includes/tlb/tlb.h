@@ -2,6 +2,7 @@
 #define TLB_H_
 
 #include "../cpu_vars/cpu_vars.h"
+#include "../../../../utils/src/liberador/liberador.h"
 #include <math.h>
 
 /*----------------ESTRUCTURA TLB----------------*/

@@ -6,6 +6,7 @@
 #include <math.h>
 #include "../../../../utils/src/sockets/sockets.h"
 #include "../../../../utils/src/types/types.h"
+#include "../../../../utils/src/liberador/liberador.h"
 
 void inicializar_memoria_almacenamiento();
 void inicializar_tabla_paginas();

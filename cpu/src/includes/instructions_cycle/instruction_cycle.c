@@ -309,7 +309,8 @@ void mov_in_instruction(t_list *parametros)
         break;
     }
 
-    list_destroy(valores_leidos);
+    liberar_lista_de_datos_con_punteros(valores_leidos);   
+    liberar_lista_de_datos_con_punteros(devolucion_direcciones_fisicas);
 }
 
 void mov_out_instruction(t_list *parametros)
@@ -357,7 +358,6 @@ void mov_out_instruction(t_list *parametros)
     }
 
     liberar_lista_de_datos_con_punteros(devolucion_direcciones_fisicas);
-
     list_destroy(valores_escritos);
 }
 
@@ -681,9 +681,8 @@ void copy_string_instruction(t_list *parametros)
     escribir_en_memoria(dir_fisicas_di, pid, leido, *cantidad_bytes + 1);
 
     // Liberar la memoria asignada
-    free(leido);
     liberar_lista_de_datos_con_punteros(dir_fisicas_di);
-    liberar_lista_de_datos_con_punteros(dir_fisicas_si);
+    liberar_lista_de_datos_con_punteros(valores_leidos);   
 }
 
 void wait_instruction(t_list *parametros)
@@ -724,7 +723,9 @@ void exit_instruction(t_list *parametros)
     manejarInterrupciones(INTERRUPCION_FIN_EVENTO);
 }
 
-void none_instruction(t_list* parametros) {}
+void none_instruction(t_list* parametros) {
+    manejarInterrupciones(LLAMADA_SISTEMA);
+}
 
 // Mapeo y lectura de instrucciones (decode)
 
@@ -839,6 +840,15 @@ t_instruccion *new_instruction(t_tipo_instruccion tipo_instruccion, t_list *para
     return tmp;
 }
 
+void free_tokens(char **tokens, int count) {
+
+    for (int i = 0; i < count; ++i) {
+        free(tokens[i]);
+    }
+
+    free(tokens);
+}
+
 t_instruccion *procesar_instruccion(char *instruccion_entrante)
 {
     // Nos quedamos con el string hasta encontrar el \n
@@ -855,22 +865,24 @@ t_instruccion *procesar_instruccion(char *instruccion_entrante)
     char *parametros_string = string_new();
     while (tokens[i] != NULL)
     {
-        registro_mapeado = tokens[i];
+        registro_mapeado = string_duplicate(tokens[i]);
         string_append_with_format(&parametros_string, "%s ", registro_mapeado);
         list_add(parameters, registro_mapeado);
         i++;
     }
     t_instruccion *instruccion_obtenida = new_instruction(tipo_instruccion, parameters);
     instruccion_obtenida->parametros_string = parametros_string;
-    free(identificador);
-    free(tokens);
+    free(instruccion_entrante);
+    free_tokens(tokens, i);
     return instruccion_obtenida;
 }
+
 
 // Funcion para eliminar instruccion de memoria
 
 void liberar_instruccion()
-{
+{    
+    free(instruccion->parametros_string);
     liberar_lista_de_datos_planos(instruccion->parametros);
     free(instruccion);
 }

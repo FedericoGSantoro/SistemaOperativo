@@ -22,15 +22,16 @@ int obtener_cant_pags_usadas() {
 
     log_info(loggerAux, "Cantidad de paginas usadas %d", cantidad_paginas);
 
+    list_destroy(todas_las_tablas_de_paginas);
     return cantidad_paginas;
 }
 
 t_list* get_tabla_paginas_por_proceso(uint32_t pid) {
 
     char* pid_str = int_to_string(pid);
-    return (t_list*) dictionary_get(tablas_por_proceso, pid_str);
-
+    t_list* tablas_por_proceso_to_return = (t_list*) dictionary_get(tablas_por_proceso, pid_str);
     free(pid_str);
+    return tablas_por_proceso_to_return;
 }
 
 int obtener_cant_paginas_usadas_por_proceso(uint32_t pid) {
@@ -119,6 +120,8 @@ int resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
     pthread_mutex_lock(&mx_tablas_paginas);
     t_list* tabla_proceso = dictionary_get(tablas_por_proceso, pid_str);
 
+    free(pid_str);
+    
     if(numero_pagina < 0 || numero_pagina >= (list_size(tabla_proceso))){
         log_error(loggerAux, "El numero de pagina se encuentra fuera de los limites");
         //TODO: Ver que hacer cuando hay errorcito
@@ -135,7 +138,6 @@ int resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
 
     log_info(loggerOblig, "PID: %d - Pagina: %d - Marco: %d",pid, numero_pagina, numero_marco);
 
-    free(pid_str);
     return numero_marco;
 }
 
@@ -232,4 +234,5 @@ void eliminar_paginas(int pid) {
 		log_info(loggerOblig, "Destruccion Tabla de Paginas PID: %d - Tamaño: %d", pid, list_size(tabla_de_paginas));
 		destruir_tabla_paginas(tabla_de_paginas);
 	}
+    free(pid_str);
 }
