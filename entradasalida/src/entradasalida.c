@@ -503,22 +503,12 @@ t_metadata_archivo* leer_metadata_archivo(char* nombre_archivo_a_leer) {
     string_append(&path_metadata, "/");
     string_append(&path_metadata, nombre_archivo_a_leer); //TODO: funcion para refactor esto y no duplicar comportamiento. Ahora no, muy tarde xd
     
-    FILE *archivo = fopen(path_metadata, "r");
     t_metadata_archivo* metadata_a_leer = malloc(sizeof(t_metadata_archivo));
     
-    // Leer el archivo línea por línea
-    while (fgets(linea, sizeof(linea), archivo)) {
-        // Separar la línea en clave y valor
-        sscanf(linea, "%[^=]=%[^\n]", clave, valor);
-        
-        // Imprimir clave y valor obtenidos (o almacenarlos como necesites)
-        printf("Clave: %s, Valor: %s\n", clave, valor);
-        if (string_equals_ignore_case(valor, "BLOQUE_INICIAL")) {
-            metadata_a_leer->bloque_inicial = (uint32_t) int_to_string(valor);
-        } else {
-            metadata_a_leer->tamanio_archivo = (uint32_t) int_to_string(valor);
-        }
-    }
+    t_config* metadata_leida = config_create(path_metadata);
+
+    metadata_a_leer->bloque_inicial = (uint32_t) config_get_int_value(metadata_leida, "BLOQUE_INICIAL");
+    metadata_a_leer->tamanio_archivo = (uint32_t) config_get_int_value(metadata_leida, "TAMANIO_ARCHIVO");
 
     return metadata_a_leer;
 }
