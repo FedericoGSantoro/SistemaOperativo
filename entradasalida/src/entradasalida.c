@@ -703,7 +703,7 @@ t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_a
     void* bloques_de_archivos_nuevo = malloc(BLOCK_COUNT * BLOCK_SIZE);
 
     t_list* nombre_archivos_metadata = dictionary_keys(map_archivos_metadata);
-    int pointer_memory_bloque_de_datos = 0;
+    int pointer_memory_bloque_de_datos = -1;
     int aux_pointer_memory_bloque_de_datos = 0;
 
     for (int i = 0; i < list_size(nombre_archivos_metadata); i++) {
@@ -721,8 +721,8 @@ t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_a
 
         uint32_t nuevo_bloque_inicial = pointer_memory_bloque_de_datos;
         for (int j = metadata_archivo.bloque_inicial; j < limite; j++) {
-            memcpy(bloques_de_archivos_nuevo + (pointer_memory_bloque_de_datos * BLOCK_SIZE), bloques_datos_addr + (j * BLOCK_SIZE), BLOCK_SIZE);
             pointer_memory_bloque_de_datos++;
+            memcpy(bloques_de_archivos_nuevo + (pointer_memory_bloque_de_datos * BLOCK_SIZE), bloques_datos_addr + (j * BLOCK_SIZE), BLOCK_SIZE);
         }
 
         metadata_archivo.bloque_inicial = nuevo_bloque_inicial;
