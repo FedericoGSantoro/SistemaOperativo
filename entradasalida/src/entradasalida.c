@@ -555,6 +555,9 @@ void escribir_metadata(t_metadata_archivo* metadata, char* nombre_archivo) {
     // Abrir el archivo en modo escritura binaria ("wb")
     archivo = fopen(path_metadata, "wb");
     // Escribir la estructura en el archivo
+    
+    // Posicionarse al inicio del archivo para sobreescribir
+    fseek(archivo, 0, SEEK_SET);
 
     // Escribir en el archivo con el formato especificado
     fprintf(archivo, "BLOQUE_INICIAL=%d\n", metadata->bloque_inicial);
@@ -684,7 +687,7 @@ void mostrar_bloques_libres() {
     log_info(logger_auxiliar, "cantidad bloques libres: %d con formato: %s", cantidad_de_espacios_libres, bloques_libres_con_formato);
 }
 
-void clear_bitmap(char* nombre_archivos_bitmap) {
+void clear_bitmap() {
     for (int i = 0; i < BLOCK_COUNT; i++) {
         bitarray_clean_bit(bitmap_mapeado, i);
     }
@@ -703,7 +706,7 @@ t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_a
     void* bloques_de_archivos_nuevo = malloc(BLOCK_COUNT * BLOCK_SIZE);
 
     t_list* nombre_archivos_metadata = dictionary_keys(map_archivos_metadata);
-    int pointer_memory_bloque_de_datos = -1;
+    int pointer_memory_bloque_de_datos = 0;
     int aux_pointer_memory_bloque_de_datos = 0;
 
     for (int i = 0; i < list_size(nombre_archivos_metadata); i++) {
@@ -720,16 +723,18 @@ t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_a
         uint32_t limite = metadata_archivo.bloque_inicial + tamanio_actual_en_bloques;
 
         uint32_t nuevo_bloque_inicial = pointer_memory_bloque_de_datos;
+
         for (int j = metadata_archivo.bloque_inicial; j < limite; j++) {
-            pointer_memory_bloque_de_datos++;
             memcpy(bloques_de_archivos_nuevo + (pointer_memory_bloque_de_datos * BLOCK_SIZE), bloques_datos_addr + (j * BLOCK_SIZE), BLOCK_SIZE);
+            pointer_memory_bloque_de_datos++;
         }
 
         metadata_archivo.bloque_inicial = nuevo_bloque_inicial;
+        escribir_metadata(&metadata_archivo, nombre_metadata_archivo);
     }
 
     //reseteamos todo el bitmap a 0 para luego volver a setearlo correspondiente a los bloques de datos que hayamos ocupado
-    clear_bitmap(nombre_archivo_a_truncar);
+    clear_bitmap();
     fill_bitmap(pointer_memory_bloque_de_datos + tamanio_a_truncar_en_bloques);
 
     //cargamos en el nuevo de bloque de datos el archivo a truncar
@@ -880,6 +885,10 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
     }
 }
 
+void liberar_archivo_map_metadata(void* map_metadata_element) {
+    free(map_metadata_element);
+}
+
 void io_fs_delete(char* nombre_archivo_a_borrar) {
 
     char* path_archivo_a_eliminar = string_new();
@@ -907,6 +916,8 @@ void io_fs_delete(char* nombre_archivo_a_borrar) {
         log_error(logger_error, "Error al intentar eliminar el archivo \"%s\".\n", nombre_archivo_a_borrar);
     }
     //abrir bloques.dat y limpiar los correspondientes (no hace falta segun issue3987)
+    
+    dictionary_remove_and_destroy(map_archivos_metadata, nombre_archivo_a_borrar, liberar_archivo_map_metadata);
 }
 
 char* enumToString(t_nombre_instruccion nombreDeInstruccion){
@@ -943,10 +954,6 @@ void enviarMsjKernel(){
 void cerrar_archivos() {
     close(fd_bitmap);
     close(fd_bloque_de_datos);
-}
-
-void liberar_archivo_map_metadata(void* map_metadata_element) {
-    free(map_metadata_element);
 }
 
 void finalizar_fs() {
