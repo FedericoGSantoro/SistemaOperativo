@@ -194,7 +194,8 @@ void comprobarContextoNuevo(t_pcb* pcb) {
         log_info(logs_obligatorios, "PID: %d - Desalojado por fin de Quantum", pcb->contexto_ejecucion.pid);
         agregarPcbCola(cola_ready, sem_cola_ready, pcb);
         cambiarEstado(READY, pcb);
-        log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+        char* pids = obtenerPids(cola_ready, sem_cola_ready);
+        log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
         sem_post(&semContadorColaReady);
         break;
     case LLAMADA_SISTEMA:
@@ -485,7 +486,9 @@ void largo_plazo_new() {
             t_pcb* pcb = quitarPcbCola(cola_new, sem_cola_new);
             mensaje_memoria(CREAR_PCB, pcb);
             agregarPcbCola(cola_ready, sem_cola_ready, pcb);
-            log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+            char* pids = obtenerPids(cola_ready, sem_cola_ready);
+            log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
+            free(pids);
             sem_post(&semContadorColaReady);
             cambiarEstado(READY, pcb);
             continue;
@@ -752,10 +755,14 @@ void atender_recurso(recursoSistema* dataRecurso) {
         pthread_mutex_unlock(&sem_cola_blocked);
         if ( ALGORITMO_PLANIFICACION == VRR && pcbDesbloqueado->quantum_faltante != QUANTUM ) {
             agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbDesbloqueado);
-            log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+            char* pids = obtenerPids(cola_ready_aux, sem_cola_ready_aux);
+            log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", pids);
+            free(pids);
         } else {
             agregarPcbCola(cola_ready, sem_cola_ready, pcbDesbloqueado);
-            log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+            char* pids = obtenerPids(cola_ready, sem_cola_ready);
+            log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
+            free(pids);
         }
         cambiarEstado(READY, pcbDesbloqueado);
         sem_post(&semContadorColaReady);
@@ -986,14 +993,27 @@ void ejecutar_comando_consola(char** arrayComando) {
         log_info(logs_auxiliares, "Grado de multiprogramacion cambiado a: %d", GRADO_MULTIPROGRAMACION);
         break;
     case PROCESO_ESTADO:
-        log_info(logs_obligatorios, "Cola NEW: [%s]", obtenerPids(cola_new, sem_cola_new));
-        log_info(logs_obligatorios, "Cola READY: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+        char* pids_new = obtenerPids(cola_new, sem_cola_new);
+        char* pids_ready = obtenerPids(cola_ready, sem_cola_ready);
+        char* pids_exec = obtenerPids(cola_exec, sem_cola_exec);
+        char* pids_blocked = obtenerPidsBloqueados();
+        char* pids_exit = obtenerPids(cola_exit, sem_cola_exit);
+
+        log_info(logs_obligatorios, "Cola NEW: [%s]", pids_new);
+        log_info(logs_obligatorios, "Cola READY: [%s]", pids_ready);
         if ( ALGORITMO_PLANIFICACION == VRR ) {
-            log_info(logs_obligatorios, "Cola READY Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+            char* pids_ready_aux = obtenerPids(cola_ready_aux, sem_cola_ready_aux);
+            log_info(logs_obligatorios, "Cola READY Prioridad: [%s]", pids_ready_aux);
+            free(pids_ready_aux);
         }
-        log_info(logs_obligatorios, "Cola EXEC: [%s]", obtenerPids(cola_exec, sem_cola_exec));
-        log_info(logs_obligatorios, "Cola BLOCKED: [%s]", obtenerPidsBloqueados());
-        log_info(logs_obligatorios, "Cola EXIT: [%s]", obtenerPids(cola_exit, sem_cola_exit));
+        log_info(logs_obligatorios, "Cola EXEC: [%s]", pids_exec);
+        log_info(logs_obligatorios, "Cola BLOCKED: [%s]", pids_blocked);
+        log_info(logs_obligatorios, "Cola EXIT: [%s]", pids_exit);
+        free(pids_new);
+        free(pids_ready);
+        free(pids_exec);
+        free(pids_blocked);
+        free(pids_exit);
         break;
     default:
         log_info(logs_auxiliares, "Comando desconocido: %d", comando);
@@ -1183,10 +1203,14 @@ void atender_cliente(interfazConectada* datosInterfaz) {
                 pthread_mutex_unlock(&sem_cola_blocked);
                 if ( ALGORITMO_PLANIFICACION == VRR && pcbAEjecutar->quantum_faltante != QUANTUM ) {
                     agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbAEjecutar);
-                    log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+                    char* pids = obtenerPids(cola_ready_aux, sem_cola_ready_aux);
+                    log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", pids);
+                    free(pids);
                 } else {
                     agregarPcbCola(cola_ready, sem_cola_ready, pcbAEjecutar);
-                    log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+                    char* pids = obtenerPids(cola_ready, sem_cola_ready);
+                    log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
+                    free(pids);
                 }
                 cambiarEstado(READY, pcbAEjecutar);
                 sem_post(&semContadorColaReady);
