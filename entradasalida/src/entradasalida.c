@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
 
                 t_list* lecturas_memoria = leer_valor_de_memoria(fd_memoria, cantidad_direcciones, parametrosRecibidos, pid, tamanio);
                 char *valorAMostrar = list_get(lecturas_memoria, list_size(lecturas_memoria) - 1); // En el ultimo valor de la lista de valores leidos, se encuentra el valor completo (o final)
-                log_info(logger_auxiliar, "%s", valorAMostrar);
+                log_info(logger_obligatorio, "%s", valorAMostrar);
                 enviar_codigo_op(OK_OPERACION, fd_kernel);
                 liberar_lista_de_datos_con_punteros(lecturas_memoria);
             }else{
