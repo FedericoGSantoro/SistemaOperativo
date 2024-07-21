@@ -300,7 +300,7 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                     log_info(logs_auxiliares, "PID: %d - Tiempo sobrante asignado: %ld", pcb->contexto_ejecucion.pid, pcb->quantum_faltante);
                 }
                 cargar_contexto_recibido(contextoNuevo, pcb);
-                list_destroy(contextoNuevo);
+                liberar_lista_de_datos_con_punteros(contextoNuevo);
                 if ( pcb->contexto_ejecucion.io_detail.io_instruccion == SIGNAL ) {
                     recursoSistema* recursoEncontrado = NULL;
                     recursoBuscado = pcb->contexto_ejecucion.io_detail.nombre_io;
@@ -545,6 +545,7 @@ void eliminar_io_detail(t_pcb* pcb) {
     t_io_detail io_detail_de_contexto = pcb->contexto_ejecucion.io_detail;
 
     if (io_detail_de_contexto.parametros == NULL || io_detail_de_contexto.parametros->elements_count == 0) {
+        list_destroy(io_detail_de_contexto.parametros);
         return;
     }
     list_destroy_and_destroy_elements(io_detail_de_contexto.parametros, (void*) eliminarLista);
@@ -834,9 +835,9 @@ void atender_consola_interactiva() {
         add_history(leido);
         arrayComando = string_split(leido, " ");
         ejecutar_comando_consola(arrayComando);
+        free(leido);
     }
     free(arrayComando);
-    free(leido);
 }
 
 char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo) {
@@ -869,6 +870,8 @@ void ejecutar_script(char* pathScript) {
         log_info(logs_auxiliares, "Comando: %s", arrayComando[0]);
         log_info(logs_auxiliares, "Path: %s", arrayComando[1]);
         ejecutar_comando_consola(arrayComando);
+        free(arrayComando[0]);
+        free(arrayComando[1]);
     }
     fclose(archivoScript);
     free(lineaLeida);
@@ -957,9 +960,11 @@ void ejecutar_comando_consola(char** arrayComando) {
     case EJECUTAR_SCRIPT:
         ejecutar_script(arrayComando[1]);
         log_info(logs_auxiliares, "Script de ' %s ' ejecutado", arrayComando[1]);
+        free(arrayComando[1]);
         break;
     case INICIAR_PROCESO:
         crear_pcb(arrayComando[1]);
+        free(arrayComando[1]);
         break;
     case FINALIZAR_PROCESO:
         pidAEliminar = atoi(arrayComando[1]);
@@ -972,6 +977,7 @@ void ejecutar_comando_consola(char** arrayComando) {
         planificacionNoEjecutandosePorFinalizarProceso = false;
         pthread_mutex_unlock(&sem_planificacion);
         pthread_cond_broadcast(&condicion_planificacion);
+        free(arrayComando[1]);
         break;
     case DETENER_PLANIFICACION:
         pthread_mutex_lock(&sem_planificacion);
@@ -991,6 +997,7 @@ void ejecutar_comando_consola(char** arrayComando) {
         GRADO_MULTIPROGRAMACION = atoi(arrayComando[1]);
         pthread_mutex_unlock(&sem_grado_multiprogramacion);
         log_info(logs_auxiliares, "Grado de multiprogramacion cambiado a: %d", GRADO_MULTIPROGRAMACION);
+        free(arrayComando[1]);
         break;
     case PROCESO_ESTADO:
         char* pids_new = obtenerPids(cola_new, sem_cola_new);
