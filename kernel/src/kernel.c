@@ -111,39 +111,45 @@ void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice
         ultimo_indice++;
         tipo_de_dato tipo_de_dato_parametro_io = *(tipo_de_dato*) list_get(contexto, ultimo_indice);
 
-        t_params_io* parametro_io_a_guardar;
+        int size_value;
+        t_params_io parametro_io_a_value;
         
         ultimo_indice++;
-        void* valor_parametro_io_recibido = (void*) list_get(contexto, ultimo_indice);
-        void* valor_parametro_a_guardar;
+        void* valor_parametro_io_recibido = list_get(contexto, ultimo_indice);
 
         switch (tipo_de_dato_parametro_io)
         {
         case INT:
-            parametro_io_a_guardar = malloc(sizeof(int)*2);
-            valor_parametro_a_guardar = malloc(sizeof(int));
-            valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
+            parametro_io_a_value.valor = malloc(sizeof(int));
+            *(int*)parametro_io_a_value.valor = *(int*)valor_parametro_io_recibido;
+            size_value = sizeof(int);
+            log_info(logs_auxiliares, "Se envia el parametro %d", *(int*)valor_parametro_io_recibido);
             break;
         case UINT32:
-                parametro_io_a_guardar = malloc(sizeof(int)*2);
-                valor_parametro_a_guardar = malloc(sizeof(uint32_t));
-                valor_parametro_a_guardar = (uint32_t *)valor_parametro_io_recibido;
-                log_info(logs_auxiliares, "Se envia el parametro %d", *(uint32_t*)valor_parametro_a_guardar);
-                break;
+            parametro_io_a_value.valor = malloc(sizeof(uint32_t));
+            *(uint32_t*)parametro_io_a_value.valor = *(uint32_t*)valor_parametro_io_recibido;
+            size_value = sizeof(uint32_t);
+            log_info(logs_auxiliares, "Se envia el parametro %d", *(uint32_t*)valor_parametro_io_recibido);
+            break;
         case STRING:
-            valor_parametro_a_guardar = (char *)valor_parametro_io_recibido;
-            parametro_io_a_guardar = malloc(sizeof(int) + string_length(valor_parametro_a_guardar) + 1);
-            log_info(logs_auxiliares, "Se envia el parametro string %s", (char *)valor_parametro_a_guardar);
+            int size_parametro_a_guardar = string_length((char *)valor_parametro_io_recibido) + 1;
+            parametro_io_a_value.valor = malloc(size_parametro_a_guardar);
+            parametro_io_a_value.valor = (char *)valor_parametro_io_recibido;
+            size_value = size_parametro_a_guardar;
+            log_info(logs_auxiliares, "Se envia el parametro string %s", (char *)valor_parametro_io_recibido);
             break;
         default:
             log_error(logs_error, "Error tipo de dato enviado");
             break;
         }
 
-        parametro_io_a_guardar->tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
+        parametro_io_a_value.tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
         //(esto va a servir mas adelante para que kernel pueda usarlo correctamente, ya que puede recibir char* o int)
-        parametro_io_a_guardar->valor = valor_parametro_a_guardar; //almaceno el valor del parametro de la instruccion de io
 
+        t_params_io* parametro_io_a_guardar = malloc(sizeof(t_params_io));
+        parametro_io_a_guardar->tipo_de_dato = parametro_io_a_value.tipo_de_dato;
+        parametro_io_a_guardar->valor = malloc(size_value);
+        memcpy(parametro_io_a_guardar->valor, parametro_io_a_value.valor, size_value);
         list_add_in_index(pcb->contexto_ejecucion.io_detail.parametros, i, parametro_io_a_guardar); //almaceno el parametro en la lista de parametros que usara kernel luego
     }
     ultimo_indice++;
@@ -196,6 +202,7 @@ void comprobarContextoNuevo(t_pcb* pcb) {
         cambiarEstado(READY, pcb);
         char* pids = obtenerPids(cola_ready, sem_cola_ready);
         log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
+        free(pids);
         sem_post(&semContadorColaReady);
         break;
     case LLAMADA_SISTEMA:
@@ -300,7 +307,7 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                     log_info(logs_auxiliares, "PID: %d - Tiempo sobrante asignado: %ld", pcb->contexto_ejecucion.pid, pcb->quantum_faltante);
                 }
                 cargar_contexto_recibido(contextoNuevo, pcb);
-                liberar_lista_de_datos_con_punteros(contextoNuevo);
+                list_destroy(contextoNuevo);
                 if ( pcb->contexto_ejecucion.io_detail.io_instruccion == SIGNAL ) {
                     recursoSistema* recursoEncontrado = NULL;
                     recursoBuscado = pcb->contexto_ejecucion.io_detail.nombre_io;
@@ -835,9 +842,9 @@ void atender_consola_interactiva() {
         add_history(leido);
         arrayComando = string_split(leido, " ");
         ejecutar_comando_consola(arrayComando);
-        free(leido);
     }
     free(arrayComando);
+    free(leido);
 }
 
 char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo) {
