@@ -870,8 +870,7 @@ void ejecutar_script(char* pathScript) {
         log_info(logs_auxiliares, "Comando: %s", arrayComando[0]);
         log_info(logs_auxiliares, "Path: %s", arrayComando[1]);
         ejecutar_comando_consola(arrayComando);
-        free(arrayComando[0]);
-        free(arrayComando[1]);
+        free(arrayComando);
     }
     fclose(archivoScript);
     free(lineaLeida);
@@ -923,30 +922,37 @@ t_pcb* buscarPidEnCola(t_queue* cola, pthread_mutex_t semaforo) {
     pthread_mutex_unlock(&semaforo);
     return pcbEncontrado;
 }
+
 // Chequear eficiencia
 void eliminarPid() {
     t_pcb* pcbAEliminar;
     if ( (pcbAEliminar = buscarPidEnCola(cola_new, sem_cola_new)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaNew);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready, sem_cola_ready)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaReady);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready_aux, sem_cola_ready_aux)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaReady);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_exec, sem_cola_exec)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         mensaje_cpu_interrupt();
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_blocked_aux, sem_cola_blocked_aux)) != NULL ){
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaBlocked);
     } else {
         pthread_mutex_lock(&sem_cola_blocked);
+        free(pcbAEliminar->path_archivo);
         pcbAEliminar = list_remove_by_condition(cola_blocked, coincidePidAEliminar);
         pthread_mutex_unlock(&sem_cola_blocked);
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
@@ -960,11 +966,9 @@ void ejecutar_comando_consola(char** arrayComando) {
     case EJECUTAR_SCRIPT:
         ejecutar_script(arrayComando[1]);
         log_info(logs_auxiliares, "Script de ' %s ' ejecutado", arrayComando[1]);
-        free(arrayComando[1]);
         break;
     case INICIAR_PROCESO:
         crear_pcb(arrayComando[1]);
-        free(arrayComando[1]);
         break;
     case FINALIZAR_PROCESO:
         pidAEliminar = atoi(arrayComando[1]);
@@ -977,7 +981,6 @@ void ejecutar_comando_consola(char** arrayComando) {
         planificacionNoEjecutandosePorFinalizarProceso = false;
         pthread_mutex_unlock(&sem_planificacion);
         pthread_cond_broadcast(&condicion_planificacion);
-        free(arrayComando[1]);
         break;
     case DETENER_PLANIFICACION:
         pthread_mutex_lock(&sem_planificacion);
@@ -997,7 +1000,6 @@ void ejecutar_comando_consola(char** arrayComando) {
         GRADO_MULTIPROGRAMACION = atoi(arrayComando[1]);
         pthread_mutex_unlock(&sem_grado_multiprogramacion);
         log_info(logs_auxiliares, "Grado de multiprogramacion cambiado a: %d", GRADO_MULTIPROGRAMACION);
-        free(arrayComando[1]);
         break;
     case PROCESO_ESTADO:
         char* pids_new = obtenerPids(cola_new, sem_cola_new);
