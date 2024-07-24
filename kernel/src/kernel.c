@@ -111,39 +111,45 @@ void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice
         ultimo_indice++;
         tipo_de_dato tipo_de_dato_parametro_io = *(tipo_de_dato*) list_get(contexto, ultimo_indice);
 
-        t_params_io* parametro_io_a_guardar;
+        int size_value;
+        t_params_io parametro_io_a_value;
         
         ultimo_indice++;
-        void* valor_parametro_io_recibido = (void*) list_get(contexto, ultimo_indice);
-        void* valor_parametro_a_guardar;
+        void* valor_parametro_io_recibido = list_get(contexto, ultimo_indice);
 
         switch (tipo_de_dato_parametro_io)
         {
         case INT:
-            parametro_io_a_guardar = malloc(sizeof(int)*2);
-            valor_parametro_a_guardar = malloc(sizeof(int));
-            valor_parametro_a_guardar = (int*)valor_parametro_io_recibido;
+            parametro_io_a_value.valor = malloc(sizeof(int));
+            *(int*)parametro_io_a_value.valor = *(int*)valor_parametro_io_recibido;
+            size_value = sizeof(int);
+            log_info(logs_auxiliares, "Se envia el parametro %d", *(int*)valor_parametro_io_recibido);
             break;
         case UINT32:
-                parametro_io_a_guardar = malloc(sizeof(int)*2);
-                valor_parametro_a_guardar = malloc(sizeof(uint32_t));
-                valor_parametro_a_guardar = (uint32_t *)valor_parametro_io_recibido;
-                log_info(logs_auxiliares, "Se envia el parametro %d", *(uint32_t*)valor_parametro_a_guardar);
-                break;
+            parametro_io_a_value.valor = malloc(sizeof(uint32_t));
+            *(uint32_t*)parametro_io_a_value.valor = *(uint32_t*)valor_parametro_io_recibido;
+            size_value = sizeof(uint32_t);
+            log_info(logs_auxiliares, "Se envia el parametro %d", *(uint32_t*)valor_parametro_io_recibido);
+            break;
         case STRING:
-            valor_parametro_a_guardar = (char *)valor_parametro_io_recibido;
-            parametro_io_a_guardar = malloc(sizeof(int) + string_length(valor_parametro_a_guardar) + 1);
-            log_info(logs_auxiliares, "Se envia el parametro string %s", (char *)valor_parametro_a_guardar);
+            int size_parametro_a_guardar = string_length((char *)valor_parametro_io_recibido) + 1;
+            parametro_io_a_value.valor = malloc(size_parametro_a_guardar);
+            parametro_io_a_value.valor = (char *)valor_parametro_io_recibido;
+            size_value = size_parametro_a_guardar;
+            log_info(logs_auxiliares, "Se envia el parametro string %s", (char *)valor_parametro_io_recibido);
             break;
         default:
             log_error(logs_error, "Error tipo de dato enviado");
             break;
         }
 
-        parametro_io_a_guardar->tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
+        parametro_io_a_value.tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
         //(esto va a servir mas adelante para que kernel pueda usarlo correctamente, ya que puede recibir char* o int)
-        parametro_io_a_guardar->valor = valor_parametro_a_guardar; //almaceno el valor del parametro de la instruccion de io
 
+        t_params_io* parametro_io_a_guardar = malloc(sizeof(t_params_io));
+        parametro_io_a_guardar->tipo_de_dato = parametro_io_a_value.tipo_de_dato;
+        parametro_io_a_guardar->valor = malloc(size_value);
+        memcpy(parametro_io_a_guardar->valor, parametro_io_a_value.valor, size_value);
         list_add_in_index(pcb->contexto_ejecucion.io_detail.parametros, i, parametro_io_a_guardar); //almaceno el parametro en la lista de parametros que usara kernel luego
     }
     ultimo_indice++;
@@ -194,7 +200,9 @@ void comprobarContextoNuevo(t_pcb* pcb) {
         log_info(logs_obligatorios, "PID: %d - Desalojado por fin de Quantum", pcb->contexto_ejecucion.pid);
         agregarPcbCola(cola_ready, sem_cola_ready, pcb);
         cambiarEstado(READY, pcb);
-        log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+        char* pids = obtenerPids(cola_ready, sem_cola_ready);
+        log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
+        free(pids);
         sem_post(&semContadorColaReady);
         break;
     case LLAMADA_SISTEMA:
@@ -485,7 +493,9 @@ void largo_plazo_new() {
             t_pcb* pcb = quitarPcbCola(cola_new, sem_cola_new);
             mensaje_memoria(CREAR_PCB, pcb);
             agregarPcbCola(cola_ready, sem_cola_ready, pcb);
-            log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+            char* pids = obtenerPids(cola_ready, sem_cola_ready);
+            log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
+            free(pids);
             sem_post(&semContadorColaReady);
             cambiarEstado(READY, pcb);
             continue;
@@ -542,6 +552,7 @@ void eliminar_io_detail(t_pcb* pcb) {
     t_io_detail io_detail_de_contexto = pcb->contexto_ejecucion.io_detail;
 
     if (io_detail_de_contexto.parametros == NULL || io_detail_de_contexto.parametros->elements_count == 0) {
+        list_destroy(io_detail_de_contexto.parametros);
         return;
     }
     list_destroy_and_destroy_elements(io_detail_de_contexto.parametros, (void*) eliminarLista);
@@ -752,10 +763,14 @@ void atender_recurso(recursoSistema* dataRecurso) {
         pthread_mutex_unlock(&sem_cola_blocked);
         if ( ALGORITMO_PLANIFICACION == VRR && pcbDesbloqueado->quantum_faltante != QUANTUM ) {
             agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbDesbloqueado);
-            log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+            char* pids = obtenerPids(cola_ready_aux, sem_cola_ready_aux);
+            log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", pids);
+            free(pids);
         } else {
             agregarPcbCola(cola_ready, sem_cola_ready, pcbDesbloqueado);
-            log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+            char* pids = obtenerPids(cola_ready, sem_cola_ready);
+            log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
+            free(pids);
         }
         cambiarEstado(READY, pcbDesbloqueado);
         sem_post(&semContadorColaReady);
@@ -862,6 +877,7 @@ void ejecutar_script(char* pathScript) {
         log_info(logs_auxiliares, "Comando: %s", arrayComando[0]);
         log_info(logs_auxiliares, "Path: %s", arrayComando[1]);
         ejecutar_comando_consola(arrayComando);
+        free(arrayComando);
     }
     fclose(archivoScript);
     free(lineaLeida);
@@ -913,30 +929,37 @@ t_pcb* buscarPidEnCola(t_queue* cola, pthread_mutex_t semaforo) {
     pthread_mutex_unlock(&semaforo);
     return pcbEncontrado;
 }
+
 // Chequear eficiencia
 void eliminarPid() {
     t_pcb* pcbAEliminar;
     if ( (pcbAEliminar = buscarPidEnCola(cola_new, sem_cola_new)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaNew);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready, sem_cola_ready)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaReady);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready_aux, sem_cola_ready_aux)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaReady);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_exec, sem_cola_exec)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         mensaje_cpu_interrupt();
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_blocked_aux, sem_cola_blocked_aux)) != NULL ){
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
+        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaBlocked);
     } else {
         pthread_mutex_lock(&sem_cola_blocked);
+        free(pcbAEliminar->path_archivo);
         pcbAEliminar = list_remove_by_condition(cola_blocked, coincidePidAEliminar);
         pthread_mutex_unlock(&sem_cola_blocked);
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
@@ -986,14 +1009,27 @@ void ejecutar_comando_consola(char** arrayComando) {
         log_info(logs_auxiliares, "Grado de multiprogramacion cambiado a: %d", GRADO_MULTIPROGRAMACION);
         break;
     case PROCESO_ESTADO:
-        log_info(logs_obligatorios, "Cola NEW: [%s]", obtenerPids(cola_new, sem_cola_new));
-        log_info(logs_obligatorios, "Cola READY: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+        char* pids_new = obtenerPids(cola_new, sem_cola_new);
+        char* pids_ready = obtenerPids(cola_ready, sem_cola_ready);
+        char* pids_exec = obtenerPids(cola_exec, sem_cola_exec);
+        char* pids_blocked = obtenerPidsBloqueados();
+        char* pids_exit = obtenerPids(cola_exit, sem_cola_exit);
+
+        log_info(logs_obligatorios, "Cola NEW: [%s]", pids_new);
+        log_info(logs_obligatorios, "Cola READY: [%s]", pids_ready);
         if ( ALGORITMO_PLANIFICACION == VRR ) {
-            log_info(logs_obligatorios, "Cola READY Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+            char* pids_ready_aux = obtenerPids(cola_ready_aux, sem_cola_ready_aux);
+            log_info(logs_obligatorios, "Cola READY Prioridad: [%s]", pids_ready_aux);
+            free(pids_ready_aux);
         }
-        log_info(logs_obligatorios, "Cola EXEC: [%s]", obtenerPids(cola_exec, sem_cola_exec));
-        log_info(logs_obligatorios, "Cola BLOCKED: [%s]", obtenerPidsBloqueados());
-        log_info(logs_obligatorios, "Cola EXIT: [%s]", obtenerPids(cola_exit, sem_cola_exit));
+        log_info(logs_obligatorios, "Cola EXEC: [%s]", pids_exec);
+        log_info(logs_obligatorios, "Cola BLOCKED: [%s]", pids_blocked);
+        log_info(logs_obligatorios, "Cola EXIT: [%s]", pids_exit);
+        free(pids_new);
+        free(pids_ready);
+        free(pids_exec);
+        free(pids_blocked);
+        free(pids_exit);
         break;
     default:
         log_info(logs_auxiliares, "Comando desconocido: %d", comando);
@@ -1183,10 +1219,14 @@ void atender_cliente(interfazConectada* datosInterfaz) {
                 pthread_mutex_unlock(&sem_cola_blocked);
                 if ( ALGORITMO_PLANIFICACION == VRR && pcbAEjecutar->quantum_faltante != QUANTUM ) {
                     agregarPcbCola(cola_ready_aux, sem_cola_ready_aux, pcbAEjecutar);
-                    log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", obtenerPids(cola_ready_aux, sem_cola_ready_aux));
+                    char* pids = obtenerPids(cola_ready_aux, sem_cola_ready_aux);
+                    log_info(logs_obligatorios, "Cola Ready Prioridad: [%s]", pids);
+                    free(pids);
                 } else {
                     agregarPcbCola(cola_ready, sem_cola_ready, pcbAEjecutar);
-                    log_info(logs_obligatorios, "Cola Ready: [%s]", obtenerPids(cola_ready, sem_cola_ready));
+                    char* pids = obtenerPids(cola_ready, sem_cola_ready);
+                    log_info(logs_obligatorios, "Cola Ready: [%s]", pids);
+                    free(pids);
                 }
                 cambiarEstado(READY, pcbAEjecutar);
                 sem_post(&semContadorColaReady);

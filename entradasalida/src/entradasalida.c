@@ -614,7 +614,7 @@ void achicar_archivo(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_arch
 
     uint32_t tamanio_a_truncar_en_bytes = metadata_archivo_a_truncar->tamanio_archivo - nuevo_tamanio_archivo;
     float resultado_tamanio_a_truncar_en_bytes = ((float)tamanio_a_truncar_en_bytes / (float)BLOCK_SIZE);
-    uint32_t tamanio_a_truncar_en_bloques = ceil(resultado_tamanio_a_truncar_en_bytes);
+    uint32_t tamanio_a_truncar_en_bloques = (uint32_t) ceil(resultado_tamanio_a_truncar_en_bytes);
 
     // Liberar los bloques que exceden al archivo
     liberar_bloques(actual_nro_bloque_final_archivo, tamanio_a_truncar_en_bloques, nombre_archivo_a_truncar);
@@ -718,7 +718,7 @@ t_metadata_archivo* compactar(char* nombre_archivo_a_truncar, uint32_t tamanio_a
         t_metadata_archivo metadata_archivo = *(t_metadata_archivo*) dictionary_get(map_archivos_metadata, nombre_metadata_archivo);
         
         float resultado_tamanio_actual =  ((float) metadata_archivo.tamanio_archivo / (float) BLOCK_SIZE);
-        uint32_t tamanio_actual_en_bloques = ceil(resultado_tamanio_actual);
+        uint32_t tamanio_actual_en_bloques = (uint32_t) ceil(resultado_tamanio_actual);
         
         uint32_t limite = metadata_archivo.bloque_inicial + tamanio_actual_en_bloques;
 
@@ -803,7 +803,7 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
     t_metadata_archivo* metadata_archivo_a_truncar = leer_metadata_archivo(nombre_archivo_a_truncar);
 
     float resultado_tamanio_actual_en_bloques_de_archivo_a_truncar =  ((float) metadata_archivo_a_truncar->tamanio_archivo / (float) BLOCK_SIZE);
-    uint32_t tamanio_actual_en_bloques_de_archivo_a_truncar = ceil(resultado_tamanio_actual_en_bloques_de_archivo_a_truncar);
+    uint32_t tamanio_actual_en_bloques_de_archivo_a_truncar = (uint32_t) ceil(resultado_tamanio_actual_en_bloques_de_archivo_a_truncar);
 
     if (tamanio_actual_en_bloques_de_archivo_a_truncar == 0) {
         tamanio_actual_en_bloques_de_archivo_a_truncar = 1;
@@ -828,7 +828,7 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
     if (nuevo_tamanio_archivo > metadata_archivo_a_truncar->tamanio_archivo) {
         uint32_t tamanio_a_truncar_en_bytes = nuevo_tamanio_archivo - metadata_archivo_a_truncar->tamanio_archivo;
         float resultado_tamanio_a_truncar_en_bytes = ((float)tamanio_a_truncar_en_bytes / (float)BLOCK_SIZE);
-        uint32_t tamanio_a_truncar_en_bloques = ceil(resultado_tamanio_a_truncar_en_bytes);
+        uint32_t tamanio_a_truncar_en_bloques = (uint32_t) ceil(resultado_tamanio_a_truncar_en_bytes);
 
         uint32_t bloques_libres_al_final = obtener_cantidad_de_bloques_libres_al_final_de_archivo(actual_nro_bloque_final_archivo);
         
@@ -854,7 +854,7 @@ void io_fs_truncate(char* nombre_archivo_a_truncar, uint32_t nuevo_tamanio_archi
             uint32_t tamanio_a_truncar_en_bytes = nuevo_tamanio_archivo;
             float resultado_tamanio_a_truncar_en_bytes = ((float)tamanio_a_truncar_en_bytes / (float)BLOCK_SIZE);
             //El tamanio no debe ser la diferencia, tiene que ser el total de bloques
-            uint32_t tamanio_a_truncar_en_bloques = ceil(resultado_tamanio_a_truncar_en_bytes);
+            uint32_t tamanio_a_truncar_en_bloques = (uint32_t) ceil(resultado_tamanio_a_truncar_en_bytes);
             
             if (bloque_inicio_de_espacio_encontrado != -1) {
                 //Se encontro un espacio contiguo libre suficiente en el disco
@@ -902,7 +902,7 @@ void io_fs_delete(char* nombre_archivo_a_borrar) {
     t_metadata_archivo* metadata_archivo_a_borrar = leer_metadata_archivo(nombre_archivo_a_borrar);
     //aca se podría abstraer en un calcular_desplazamiento_de_bloques(archivo) o algo así
     float calculo_bloques_a_borrar = ((float) metadata_archivo_a_borrar->tamanio_archivo / (float) BLOCK_SIZE);
-    uint32_t bloques_a_borrar = ceil(calculo_bloques_a_borrar); //incluyendo al inicial
+    uint32_t bloques_a_borrar = (uint32_t) ceil(calculo_bloques_a_borrar); //incluyendo al inicial
     uint32_t primer_bloque = metadata_archivo_a_borrar->bloque_inicial;
 
     //limpiar en el bitmap los bloques correspondientes

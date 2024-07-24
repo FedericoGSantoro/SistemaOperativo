@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 
 void iniciarLogs() {
     logger_obligatorio_cpu = log_create("logsObligatoriosCPU.log", "LOG_OBLIGATORIO_CPU", true, LOG_LEVEL_INFO);
-    logger_aux_cpu = log_create("logsExtrasCPU.log", "LOG_EXTRA_CPU", true, LOG_LEVEL_INFO);
+    logger_aux_cpu = log_create("logsExtrasCPU.log", "LOG_EXTRA_CPU", false, LOG_LEVEL_INFO);
     logger_error_cpu = log_create("logsExtrasCPU.log", "LOG_ERROR_CPU", true, LOG_LEVEL_INFO);
     // Comprobamos que los logs se hayan creado correctamente
     if (logger_aux_cpu == NULL || logger_obligatorio_cpu == NULL || logger_error_cpu == NULL) {
