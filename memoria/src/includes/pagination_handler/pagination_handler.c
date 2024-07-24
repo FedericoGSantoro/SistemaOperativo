@@ -8,7 +8,7 @@ pthread_mutex_t* crear_mutex(){
 
 int obtener_cant_pags(int size_proceso) {
     float resultado =  ((float) size_proceso / (float) memConfig.tamPagina);
-    return ceil(resultado); //dependiendo del tamaño del proceso se obtiene la cantidad de paginas con la division entera
+    return (int) ceil(resultado); //dependiendo del tamaño del proceso se obtiene la cantidad de paginas con la division entera
 }
 
 int obtener_cant_pags_usadas() {
@@ -125,6 +125,7 @@ int resolver_solicitud_de_marco(uint32_t numero_pagina, int pid) {
     if(numero_pagina < 0 || numero_pagina >= (list_size(tabla_proceso))){
         log_error(loggerAux, "El numero de pagina se encuentra fuera de los limites");
         //TODO: Ver que hacer cuando hay errorcito
+    	pthread_mutex_unlock(&mx_tablas_paginas);
         return -1;
     }
 

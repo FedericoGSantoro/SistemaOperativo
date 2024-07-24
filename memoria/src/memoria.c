@@ -74,8 +74,6 @@ void gestionar_conexion(void *puntero_fd_cliente)
     {
         op_recibida = recibir_operacion(fd_cliente);
         
-        log_info(loggerOblig, "Operacion recibida: %d", op_recibida);
-
         if (op_recibida == -1)
         {
             log_warning(loggerAux, "El cliente se desconecto de Memoria");

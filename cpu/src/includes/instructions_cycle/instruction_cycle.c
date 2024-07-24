@@ -291,8 +291,10 @@ void mov_in_instruction(t_list *parametros)
 
     for (int i = 0; i < list_size(devolucion_direcciones_fisicas); i++)
     {
-        uint32_t valor_escrito_parseado = *(uint32_t *)list_get(valores_leidos, i);
-        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t *)list_get(devolucion_direcciones_fisicas, i), valor_escrito_parseado);
+        uint32_t valor_leido_parseado;
+        uint8_t registro_direccion_valor = *(uint8_t*) (list_get(valores_leidos, i));
+        valor_leido_parseado = registro_direccion_valor;
+        log_info(logger_obligatorio_cpu, "PID: %d - Acción: LEER - Dirección Física: %d - Valor: %d", pid, *(uint32_t *)list_get(devolucion_direcciones_fisicas, i), valor_leido_parseado);
     }
 
     switch (tipo_de_dato_datos)
@@ -353,7 +355,9 @@ void mov_out_instruction(t_list *parametros)
 
     for (int i = 0; i < list_size(valores_escritos); i++)
     {
-        uint32_t valor_escrito_parseado = *(uint32_t *)list_get(valores_escritos, i);
+        uint32_t valor_escrito_parseado;
+        uint8_t registro_direccion_valor = *(uint8_t*) (list_get(valores_escritos, i));
+        valor_escrito_parseado = registro_direccion_valor;
         log_info(logger_obligatorio_cpu, "PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %d", pid, *(uint32_t *)list_get(devolucion_direcciones_fisicas, i), valor_escrito_parseado);
     }
 
