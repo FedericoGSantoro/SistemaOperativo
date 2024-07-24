@@ -935,31 +935,25 @@ void eliminarPid() {
     t_pcb* pcbAEliminar;
     if ( (pcbAEliminar = buscarPidEnCola(cola_new, sem_cola_new)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
-        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaNew);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready, sem_cola_ready)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
-        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaReady);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_ready_aux, sem_cola_ready_aux)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
-        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaReady);
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_exec, sem_cola_exec)) != NULL ) {
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
-        free(pcbAEliminar->path_archivo);
         mensaje_cpu_interrupt();
     } else if ( (pcbAEliminar = buscarPidEnCola(cola_blocked_aux, sem_cola_blocked_aux)) != NULL ){
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
-        free(pcbAEliminar->path_archivo);
         enviarPCBExit(pcbAEliminar);
         sem_wait(&semContadorColaBlocked);
     } else {
         pthread_mutex_lock(&sem_cola_blocked);
-        free(pcbAEliminar->path_archivo);
         pcbAEliminar = list_remove_by_condition(cola_blocked, coincidePidAEliminar);
         pthread_mutex_unlock(&sem_cola_blocked);
         pcbAEliminar->contexto_ejecucion.motivoFinalizacion = INTERRUPTED_BY_USER;
