@@ -8,7 +8,7 @@ pthread_mutex_t* crear_mutex(){
 
 int obtener_cant_pags(int size_proceso) {
     float resultado =  ((float) size_proceso / (float) memConfig.tamPagina);
-    return ceil(resultado); //dependiendo del tamaño del proceso se obtiene la cantidad de paginas con la division entera
+    return (int) ceil(resultado); //dependiendo del tamaño del proceso se obtiene la cantidad de paginas con la division entera
 }
 
 int obtener_cant_pags_usadas() {
