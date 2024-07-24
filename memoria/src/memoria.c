@@ -23,7 +23,6 @@ int main(void)
     // inicializando ando
     inicializar_loggers();
     inicializar_config();
-    inicializar_semaforos();
     //al ser dinámico los diccionarios se inicializan en el main y no como constante global, pues la memoria cambia
     cache_instrucciones = dictionary_create();
     tablas_por_proceso = dictionary_create();
@@ -389,10 +388,6 @@ void return_instruccion(char* instruccion, int fd_cliente) {
     enviar_mensaje(instruccion, fd_cliente);
 }
 
-void manejar_retardo(){
-    sem_post(&sem_retardo);
-}
-
 void iteradorPaquete(char *value)
 {
     log_info(loggerAux, "%s", value);
@@ -410,10 +405,6 @@ void inicializar_config()
     config = iniciar_config(rutaConfiguracion, loggerError, (void *)terminar_programa);
     leer_config();
     config_destroy(config);
-}
-
-void inicializar_semaforos(){
-    sem_init(&sem_retardo, 0, 0);
 }
 
 void terminar_programa()
