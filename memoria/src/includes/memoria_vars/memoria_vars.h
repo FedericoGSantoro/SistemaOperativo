@@ -68,7 +68,4 @@ extern int socketFdMemoria;
 extern pthread_t thr_server;
 extern pthread_t thr_server_conn;
 
-//Semaforos
-extern sem_t sem_retardo;
-
 #endif /* MEMORIA_VARS_H */
