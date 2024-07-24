@@ -19,7 +19,6 @@ void gestionar_conexion(void * puntero_fd_cliente);
 void terminar_programa();
 void inicializar_loggers();
 void inicializar_config();
-void inicializar_semaforos();
 void manejar_retardo();
 
 
