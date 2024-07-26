@@ -110,7 +110,6 @@ void iniciar_ciclo_instruccion() {
         registros_cpu.pc++;
         pthread_mutex_lock(&variableInterrupcion);
     }
-    log_info(logger_aux_cpu, "motivo nuevo: %d", motivo_bloqueo);
     pthread_mutex_unlock(&variableInterrupcion);
     // Empaquetamos el contexto de ejecucion y se lo enviamos a Kernel
     enviarContextoEjecucion();

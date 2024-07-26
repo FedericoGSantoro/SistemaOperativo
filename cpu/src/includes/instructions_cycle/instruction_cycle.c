@@ -234,24 +234,6 @@ void io_gen_sleep_instruction(t_list *parametros)
     free(io_instruccion);
 }
 
-uint32_t get_direccion_fisica(void *registro_direccion_mapeado, tipo_de_dato tipo_de_dato_registro_direccion)
-{
-
-    uint32_t registro_direccion_casteado;
-
-    if (tipo_de_dato_registro_direccion == UINT8)
-    {
-        uint8_t registro_direccion_valor = *(uint8_t *)(registro_direccion_mapeado);
-        registro_direccion_casteado = registro_direccion_valor;
-    }
-    else
-    {
-        registro_direccion_casteado = *(uint32_t *)(registro_direccion_mapeado);
-    }
-
-    return traducir_direccion_mmu(registro_direccion_casteado);
-}
-
 void mov_in_instruction(t_list *parametros)
 {
 
@@ -323,7 +305,6 @@ void mov_out_instruction(t_list *parametros)
     char *registro_direccion = (char *)list_get(parametros, 0);
     void *registro_direccion_mapeado = mapear_registro(registro_direccion);
     tipo_de_dato tipo_de_dato_registro_direccion = mapear_tipo_de_dato(registro_datos);
-    // uint32_t dir_fisica = get_direccion_fisica(registro_direccion_mapeado, tipo_de_dato_registro_direccion);
 
     tipo_de_dato tipo_de_dato_datos = mapear_tipo_de_dato(registro_datos);
     uint32_t cantidad_bytes;
@@ -392,15 +373,6 @@ void agregar_direccion_fisica_a_lista(uint32_t *dir_fis)
     log_info(logger_aux_cpu, "Direccion fisica cargandose: %d", *(uint32_t *)parametro_io->valor);
     list_add(io_detail.parametros, parametro_io);
     // no se si hace falta un free() uwu
-}
-
-void agregar_parametro_io(tipo_de_dato tipo_de_dato, int tamanio_valor, int indice_parametros, void* valor_parametro) {
-
-    t_params_io *parametro_io_tamanio = malloc(sizeof(int) + tamanio_valor);
-    parametro_io_tamanio->tipo_de_dato = tipo_de_dato;
-    parametro_io_tamanio->valor = malloc(tamanio_valor);
-    parametro_io_tamanio->valor = valor_parametro;
-    list_add_in_index(io_detail.parametros, indice_parametros, parametro_io_tamanio);
 }
 
 void io_fs_delete_instruction(t_list* parametros) {
