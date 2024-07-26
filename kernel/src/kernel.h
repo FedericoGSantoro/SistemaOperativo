@@ -6,17 +6,12 @@
 #include "../../utils/src/config/configs.h"
 #include "../../utils/src/sockets/sockets.h"
 #include "../../utils/src/hilos/hilos.h"
-#include <commons/string.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <commons/collections/queue.h>
-#include <commons/collections/dictionary.h>
 #include <commons/temporal.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <signal.h>
-#include <sys/time.h>
-#include <unistd.h>
 
 /*---------DEFINES---------*/
 
@@ -180,24 +175,30 @@ void iniciarPlanificacion();
 void planificacionCortoPlazo();
 // Busca la IO que solicita el proceso
 bool buscarIO(void* interfaz);
+// Busca el recurso en el sistema
+bool buscarRecurso(void* recurso);
 // Algoritmo para cola de blocked
 void corto_plazo_blocked();
+// Carga el contexto recibido de cpu en el pcb
+void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice);
 // Carga el contexto actual del pcb por el recibido
 void cargar_contexto_recibido(t_list* contexto, t_pcb* pcb);
 // Quita el primer PCB de la cola indicada
 t_pcb* quitarPcbCola(t_queue* cola, pthread_mutex_t semaforo);
 // Agrega el PCB a la cola indicada
 void agregarPcbCola(t_queue* cola, pthread_mutex_t semaforo, t_pcb* pcb);
-// Cambia el contexto del pcb con el recibido y lo asigna a la cola correspondiente
-void cambiarContexto(t_list* contexto, t_pcb* pcb);
+// Comprueba el nuevo contexto para determinar a que cola asignar el proceso
+void comprobarContextoNuevo(t_pcb* pcb);
 // Empaqueta los registros de la cpu del contexto para enviarlos
 void empaquetar_registros_cpu(t_paquete* paquete, t_pcb* pcb);
-// Empaqueta los punteros de memoria para enviarlos
-//void empaquetar_punteros_memoria(t_paquete* paquete, t_pcb* pcb);
 // Empaqueta el contexto de ejecucion para enviarlo
 void empaquetar_contexto_ejecucion(t_paquete* paquete, t_pcb* pcb);
 // Maneja la conexion con el interrupt de CPU para desalojar un pid
 void mensaje_cpu_interrupt();
+// Bloquea el pcb y lo agrega a la cola del recurso
+void bloquearPCBPorRecurso(recursoSistema* recurso, t_pcb* pcb);
+// Se encarga de enviar el mensaje de interrupt
+void corto_plazo_exec();
 // Maneja la conexion con el dispatch de CPU
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb);
 // Convierte el enum de estado a un string
@@ -210,22 +211,24 @@ void corto_plazo_ready();
 void planificacionLargoPlazo();
 // Devuelve la cantidad de elementos en la cola indicada
 int elementosEnCola(t_queue* cola, pthread_mutex_t semaforo);
-// Devuelve la cantidad de elementos ejecutandose
-int elementosEjecutandose();
 // Algoritmo para la cola de NEW
 void largo_plazo_new();
+// Obtiene el string del motivo
+char* obtenerMotivo(motivo_finalizacion motivo);
 // Algoritmo para la cola de EXIT
 void largo_plazo_exit();
+// Elimina la lista de parametros del io_detail
+void eliminarLista(void* parametroVoid);
+// Elimina el io_detail del pcb
+void eliminar_io_detail(t_pcb* pcb);
+// Libera los recursos que tiene asignados el pcb
+void liberarRecursosPcb(t_pcb* pcb);
 // Elimina el pcb en memoria
 void eliminar_pcb(t_pcb* pcb);
 // Crea el pcb
-void crear_pcb();
-// Inicializa los punteros a memoria
-//void iniciarPunterosMemoria(t_pcb* pcb);
+void crear_pcb(char* pathArchivo);
 // Inicia registros de cpu en 0
 void iniciarRegistrosCPU(t_pcb* pcb);
-// Asigna los punteros a memoria al pcb
-//void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb);
 // Comprueba la operacion recibida
 bool evaluar_respuesta_de_operacion(int fd_cliente, char* nombre_modulo_server, op_codigo codigo_operacion);
 // Maneja la conexion con memoria
@@ -234,8 +237,12 @@ void mensaje_memoria(op_codigo comandoMemoria, t_pcb* pcb);
 void inicializarColas();
 // Inicializa los semaforos
 void inicializarSemaforos();
-// Inicializa los diccionarios
+// Inicializa los las listas de cada tipo de interfaz
 void inicializarListasInterfaces();
+// Manejador de los procesos bloqueados por recursos
+void atender_recurso(recursoSistema* dataRecurso);
+// Inicializa las structs, hilo y funcion para manejar recursos
+void inicializarRecursos();
 // Inicializa las variables
 void inicializarVariables();
 // Inicializa la consola interactiva
@@ -248,19 +255,31 @@ char* obtenerPids (t_queue* cola, pthread_mutex_t semaforo);
 void ejecutar_script(char* pathScript);
 // Devuelve los pids bloqueados
 char* obtenerPidsBloqueados();
+// Busca el pid a eliminar
+bool coincidePidAEliminar(void* pcbVoid);
+// Busca el pid en la cola para eliminarlo
+t_pcb* buscarPidEnCola(t_queue* cola, pthread_mutex_t semaforo);
+// Elimina el pid indicado por consola
+void eliminarPid();
 // Ejecuta el comando correspondiente
 void ejecutar_comando_consola(char** arrayComando);
 // Devuelve el comando del enum correspondiente
 comando_consola transformarAOperacion(char* operacionLeida);
 // Obtiene el tipo de interfaz
 char* obtenerTipoInterfaz(typeInterface tipoInterfaz);
+// Envia el io_detail a la interfaz para ejecutar
+void enviarIoDetail(t_pcb* pcbAEjecutar, int fd_interfaz);
+// Comprueba si la interfaz es una que debe ser eliminada
+bool coincideInterfazADesconectar(void* interfazVoid);
+// Desconecta lainterfaz liberando todo lo que debe liberar
+bool desconectarInterfaz(t_list* listaInterfaz, pthread_mutex_t semaforo, interfazConectada* datoInterfaz);
 // Comprueba si el pcb esta en la lista de pids a eliminar
 t_pcb* comprobarSiSeDebeEliminar(uint32_t* pcbAComprobar);
 // Atiende al cliente
 void atender_cliente(interfazConectada* argumentoVoid);
 // Itera el paquete y lo muestra por pantalla
 void iteradorPaquete(char* value);
-// Crea la estructura de una interfaz y la agrega al diccionario
+// Crea la estructura de una interfaz y la agrega a la lista
 interfazConectada* crearInterfaz(t_list* nombreYTipoInterfaz, int socket_cliente);
 // Escucha el socket por peticiones
 bool escucharServer(int socket_servidor);
@@ -280,8 +299,14 @@ void leerConfig();
 int* string_array_as_int_array(char** arrayInstancias);
 // Envia un pcb a la cola de exit
 void enviarPCBExit(t_pcb* pcb);
+// Envia los procesos en la cola de la interfaz a exit
+void enviarProcesosInterfazAExit (t_queue* cola);
 // Elimina la interfaz de la memoria
 void eliminarInterfaz(interfazConectada* interfazAEliminar);
+// Elimina el recurso
+void eliminarRecurso(recursoSistema* recursoAEliminar);
+// Libera los recursos del sistema
+void liberarRecursos();
 // Libera las interfaces conectadas y sus elementos
 void liberarInterfaces();
 // Libera los espacios de memoria

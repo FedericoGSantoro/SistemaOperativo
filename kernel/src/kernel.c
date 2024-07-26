@@ -104,7 +104,6 @@ void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice
 
     ultimo_indice++;
     uint32_t cantidad_parametros_io_detail = *(uint32_t*)list_get(contexto, ultimo_indice);
-    //pcb->contexto_ejecucion.io_detail.parametros = list_create();
 
     for (int i = 0; i < cantidad_parametros_io_detail; i++) {
 
@@ -144,7 +143,6 @@ void cargar_io_detail_en_context(t_pcb* pcb, t_list* contexto, int ultimo_indice
         }
 
         parametro_io_a_value.tipo_de_dato = tipo_de_dato_parametro_io; //almaceno el tipo de dato del parametro de la instruccion de io 
-        //(esto va a servir mas adelante para que kernel pueda usarlo correctamente, ya que puede recibir char* o int)
 
         t_params_io* parametro_io_a_guardar = malloc(sizeof(t_params_io));
         parametro_io_a_guardar->tipo_de_dato = parametro_io_a_value.tipo_de_dato;
@@ -270,7 +268,6 @@ void corto_plazo_exec() {
 
 void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
     t_paquete* paquete;
-    //struct itimerval remaining_time;
     uint64_t tiempoTranscurridoMilisegundos;
     t_temporal* tiempoQuantum;
     pthread_t cortoPlazoExec;
@@ -320,7 +317,6 @@ void mensaje_cpu_dispatch(op_codigo codigoOperacion, t_pcb* pcb) {
                         pthread_mutex_unlock(&(recursoEncontrado->mutexCantidadInstancias));
                         list_remove_element(pcb->recursosAsignados, recursoEncontrado->nombre);
                         log_info(logs_auxiliares, "Recurso %s devuelto por el PID %d", recursoEncontrado->nombre, pcb->contexto_ejecucion.pid);
-                        //CHEQUEAR SI SIGUE HACIENDO FALTA 
                         pcb->contexto_ejecucion.io_detail.io_instruccion = NONE;
                         pcb->contexto_ejecucion.io_detail.nombre_io = "";
                         mensaje_cpu_dispatch(CONTEXTO_EJECUCION, pcb);
@@ -435,7 +431,6 @@ void corto_plazo_ready() {
         pthread_mutex_lock(&sem_cola_ready_aux);
         if ( ALGORITMO_PLANIFICACION == VRR && !queue_is_empty(cola_ready_aux) ) {
             pthread_mutex_unlock(&sem_cola_ready_aux);
-            // Agregar bloqueo cola ready aux
             pcb = quitarPcbCola(cola_ready_aux, sem_cola_ready_aux);
             agregarPcbCola(cola_exec, sem_cola_exec, pcb);
             cambiarEstado(EXEC, pcb);
@@ -463,17 +458,6 @@ int elementosEnCola(t_queue* cola, pthread_mutex_t semaforo) {
     cantidadProgramasEnCola = queue_size(cola);
     pthread_mutex_unlock(&semaforo);
     return cantidadProgramasEnCola;
-}
-
-int elementosEjecutandose() {
-    int cantidadProgramas = 0;
-    cantidadProgramas += elementosEnCola(cola_ready, sem_cola_ready);
-    cantidadProgramas += elementosEnCola(cola_exec, sem_cola_exec);
-    pthread_mutex_lock(&sem_cola_blocked);
-    cantidadProgramas += elementosEnCola(cola_blocked_aux, sem_cola_blocked_aux);
-    cantidadProgramas += list_size(cola_blocked);
-    pthread_mutex_unlock(&sem_cola_blocked);
-    return cantidadProgramas;
 }
 
 void largo_plazo_new() {
@@ -544,7 +528,6 @@ void largo_plazo_exit() {
 void eliminarLista(void* parametroVoid) {
     t_params_io parametro = *(t_params_io*) parametroVoid;
     free(parametro.valor);
-    // free(parametro);
 }
 
 void eliminar_io_detail(t_pcb* pcb) {
@@ -594,7 +577,6 @@ void crear_pcb(char* pathArchivo) {
     // SACAR
     pcb->contexto_ejecucion.registro_estados = 0;
     iniciarRegistrosCPU(pcb);
-    // iniciarPunterosMemoria(pcb);
     pcb->contexto_ejecucion.state = NEW;
     pcb->contexto_ejecucion.io_detail.nombre_io = "";
     pcb->contexto_ejecucion.io_detail.parametros = list_create();
@@ -605,13 +587,6 @@ void crear_pcb(char* pathArchivo) {
     sem_post(&semContadorColaNew);
     log_info(logs_obligatorios, "Se crea el proceso %d en NEW", pcb->contexto_ejecucion.pid);
 }
-
-// void iniciarPunterosMemoria(t_pcb* pcb) {
-//     pcb->contexto_ejecucion.punteros_memoria.stack_pointer = -1;
-//     pcb->contexto_ejecucion.punteros_memoria.heap_pointer = -1;
-//     pcb->contexto_ejecucion.punteros_memoria.data_pointer = -1;
-//     pcb->contexto_ejecucion.punteros_memoria.code_pointer = -1;
-// }
 
 void iniciarRegistrosCPU(t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.pc = 0;
@@ -626,14 +601,6 @@ void iniciarRegistrosCPU(t_pcb* pcb) {
     pcb->contexto_ejecucion.registros_cpu.si = 0;
     pcb->contexto_ejecucion.registros_cpu.di = 0;
 }
-
-// void asignar_punteros_memoria(t_list* punteros, t_pcb* pcb) {
-//     pcb->contexto_ejecucion.punteros_memoria.stack_pointer = *(uint64_t*) list_get(punteros, 0);
-//     pcb->contexto_ejecucion.punteros_memoria.heap_pointer = *(uint64_t*) list_get(punteros, 1);
-//     pcb->contexto_ejecucion.punteros_memoria.data_pointer = *(uint64_t*) list_get(punteros, 2);
-//     pcb->contexto_ejecucion.punteros_memoria.code_pointer = *(uint64_t*) list_get(punteros, 3);
-//     pcb->contexto_ejecucion.registros_cpu.pc = (uint32_t)pcb->contexto_ejecucion.punteros_memoria.code_pointer;
-// }
 
 bool evaluar_respuesta_de_operacion(int fd_cliente, char* nombre_modulo_server, op_codigo codigo_operacion) {
     op_codigo respuesta_recibida = recibir_operacion(fd_cliente);
@@ -930,7 +897,6 @@ t_pcb* buscarPidEnCola(t_queue* cola, pthread_mutex_t semaforo) {
     return pcbEncontrado;
 }
 
-// Chequear eficiencia
 void eliminarPid() {
     t_pcb* pcbAEliminar;
     if ( (pcbAEliminar = buscarPidEnCola(cola_new, sem_cola_new)) != NULL ) {
@@ -1107,7 +1073,6 @@ void enviarIoDetail(t_pcb* pcbAEjecutar, int fd_interfaz) {
         agregar_a_paquete(paquete, &parametro_io.tipo_de_dato, sizeof(int));
         agregar_a_paquete(paquete, valor_parametro_a_enviar, size_parametro);
     }
-    //agregar_a_paquete(paquete, pcbAEjecutar->contexto_ejecucion.io_detail.nombre_io, strlen(pcbAEjecutar->contexto_ejecucion.io_detail.nombre_io) + 1);
     agregar_a_paquete(paquete, &pcbAEjecutar->contexto_ejecucion.io_detail.io_instruccion, sizeof(int));
     enviar_paquete(paquete, fd_interfaz);
     eliminar_paquete(paquete);
@@ -1149,7 +1114,6 @@ t_pcb* comprobarSiSeDebeEliminar(uint32_t* pcbAComprobar) {
 
 void atender_cliente(interfazConectada* datosInterfaz) {
     int codigoOperacion;
-    // Reviso que haya conexion
     uint32_t* pidAEjecutar;
     t_pcb* pcbAEjecutar;
     bool tomarOtroPcb;
@@ -1162,7 +1126,6 @@ void atender_cliente(interfazConectada* datosInterfaz) {
             pthread_mutex_unlock(&sem_planificacion);
             sem_wait(&datosInterfaz->semaforoCantProcesos);
             sem_wait(&datosInterfaz->libre);
-            // Chequear que pasa si la consola termina antes de terminar ejecucion con el pcb
             tomarOtroPcb = false;
             pthread_mutex_lock(&datosInterfaz->semaforoMutex);
             pidAEjecutar = queue_peek(datosInterfaz->colaEjecucion);
@@ -1352,13 +1315,10 @@ void crearLogs() {
 bool crearConexiones() {
 
     fd_memoria = crear_conexion(IP_MEMORIA, PUERTO_MEMORIA, logs_error);
-    //crearHiloDetach(&thread_memoria, (void*) atender_cliente, (void*) &fd_memoria, "Memoria", logs_auxiliares, logs_error);
 
     fd_cpu_dispatch = crear_conexion(IP_CPU, PUERTO_CPU_DISPATCH, logs_error);
-    //crearHiloDetach(&thread_cpu_dispatch, (void*) atender_cliente, (void*) &fd_cpu_dispatch, "CPU Dispatch", logs_auxiliares, logs_error);
 
     fd_cpu_interrupt = crear_conexion(IP_CPU, PUERTO_CPU_INTERRUPT, logs_error);
-    //crearHiloDetach(&thread_cpu_interrupt, (void*) atender_cliente, (void*) &fd_cpu_interrupt, "CPU Interrupt", logs_auxiliares, logs_error);
 
     return true;
 }
@@ -1410,11 +1370,6 @@ int* string_array_as_int_array(char** arrayInstancias) {
         numeros[i] = numero;
     }
     return numeros;
-}
-
-bool coincidePidAEnviarExit(void* pidVoid) {
-    uint32_t pidAComprobarEnviarExit = *(uint32_t*) pidVoid;
-    return PidAEnviarExit == pidAComprobarEnviarExit;
 }
 
 void enviarPCBExit(t_pcb* pcb) {
